@@ -541,7 +541,22 @@ class WAPM_Admin {
 							</td>
 						</tr>
 					</table>
-					<p><button type="button" class="button button-primary" id="wapm-torob-save-settings"><?php esc_html_e( 'ذخیره تنظیمات', 'wapm' ); ?></button></p>
+					<p>
+						<button type="button" class="button button-primary" id="wapm-torob-save-settings"><?php esc_html_e( 'ذخیره تنظیمات', 'wapm' ); ?></button>
+						<button type="button" class="button" id="wapm-torob-verify"><?php esc_html_e( 'تأیید شناسه با ترب', 'wapm' ); ?></button>
+					</p>
+
+					<details style="margin-top:10px">
+						<summary style="cursor:pointer;font-weight:700"><?php esc_html_e( 'شناسه‌ام را ندارم؛ با نام فروشگاه پیدا کن', 'wapm' ); ?></summary>
+						<p class="description" style="margin-top:8px">
+							<?php esc_html_e( 'نام فروشگاه را همان‌طور که در ترب می‌بینید بنویسید. جستجو با دامنه کار نمی‌کند (محدودیت خود ترب) — فقط نام.', 'wapm' ); ?>
+						</p>
+						<p>
+							<input type="text" id="wapm-torob-shop-query" class="regular-text" placeholder="مثلاً ای ام موبایل">
+							<button type="button" class="button" id="wapm-torob-shop-search"><?php esc_html_e( 'جستجو', 'wapm' ); ?></button>
+						</p>
+						<div id="wapm-torob-shop-results"></div>
+					</details>
 				</div>
 
 				<div class="wapm-card" id="wapm-torob-status-card">
@@ -549,12 +564,26 @@ class WAPM_Admin {
 					<div id="wapm-torob-status-body">
 						<?php $this->render_torob_status(); ?>
 					</div>
+
+					<hr style="margin:18px 0">
+
+					<h3 style="margin:0 0 6px"><?php esc_html_e( 'همگام‌سازی کاتالوگ از API ترب', 'wapm' ); ?></h3>
+					<p class="description">
+						<?php esc_html_e( 'محصولات فروشگاه شما را از ترب می‌خواند و «قیمتی که ترب از شما نشان می‌دهد» را ذخیره می‌کند. با این کار ناسازگاری فید (ترب قیمت قدیمی نشان می‌دهد) برای همه‌ی محصولات مشخص می‌شود. هر کلیک صفحه‌به‌صفحه پیش می‌رود و هر صفحه یک درخواست به ترب می‌فرستد (هر درخواست تا ۲۴ محصول).', 'wapm' ); ?>
+					</p>
+					<p>
+						<button type="button" class="button button-primary" id="wapm-torob-catalog-sync"><?php esc_html_e( 'شروع همگام‌سازی کاتالوگ', 'wapm' ); ?></button>
+						<button type="button" class="button" id="wapm-torob-catalog-stop" style="display:none"><?php esc_html_e( 'توقف', 'wapm' ); ?></button>
+						<button type="button" class="button" id="wapm-torob-api-reset" style="display:none"><?php esc_html_e( 'بلاک را دستی برداشتم', 'wapm' ); ?></button>
+					</p>
+					<div id="wapm-torob-api-state"></div>
+					<div id="wapm-torob-catalog-result"></div>
 				</div>
 
 				<div class="wapm-card">
 					<h2><?php esc_html_e( '۳) همگام‌سازی با Bookmarklet', 'wapm' ); ?></h2>
 					<p class="description">
-						<?php esc_html_e( 'خواندن مستقیم صفحات ترب از سمت سرور سایت با سیستم ضد-ربات ترب بلاک می‌شود (پاسخ ۴۹۰). راه‌حل: این دکمه را به نوار بوکمارک مرورگرتان بکشید، بعد وارد صفحه‌ی محصولات فروشگاهتان در ترب شوید و رویش کلیک کنید — چون از مرورگر خودتان اجرا می‌شود، مثل یک بازدید واقعی دیده می‌شود.', 'wapm' ); ?>
+						<?php esc_html_e( 'این بوکمارکلت با API عمومی ترب (api.torob.com) کار می‌کند و فقط JSON می‌خواند — یعنی دیگر به ظاهر صفحه وابسته نیست. دو حالت دارد: «سریع» فقط کاتالوگ و قیمت خودتان را می‌گیرد؛ «کامل» برای هر محصول یک درخواست می‌فرستد و ارزان‌ترین رقیب را هم می‌آورد. چون از مرورگر خودتان و روی دامنه‌ی ترب اجرا می‌شود، مثل بازدید واقعی دیده می‌شود؛ ولی با بلاک ۴۹۰ فوراً متوقف می‌شود.', 'wapm' ); ?>
 					</p>
 
 					<ol style="margin-inline-start:20px">
@@ -946,168 +975,104 @@ class WAPM_Admin {
 		$js = <<<'JS'
 (function(){
 	'use strict';
-	var VERSION     = '2.0';
-	var ENDPOINT    = "%%ENDPOINT%%";
-	var TOKEN       = "%%TOKEN%%";
-	var DEFAULT_SHOP = "%%SHOP_ID%%";
-	var BATCH_SIZE  = 20;
-	var KEY_PREFIX  = 'wapm_bm_state_';
+	var VERSION  = '3.0';
+	var API      = 'https://api.torob.com';
+	var ENDPOINT = "%%ENDPOINT%%";
+	var TOKEN    = "%%TOKEN%%";
+	var SHOP_ID  = "%%SHOP_ID%%";
+	var PAGE     = 24;      // اندازه‌ی هر صفحه‌ی کاتالوگ (خود ترب ۲۴ می‌دهد)
+	var BATCH    = 15;      // هر چند محصول به سرور فرستاده شود
+	var MAX_SHOP_PAGES = 400;
 
-	var stopped = false;
+	var state = {
+		shopId: '',
+		mode: 'full',       // full | catalog
+		page: 0,
+		inPage: 0,
+		stopped: false,
+		discovered: 0,
+		matched: 0,
+		checked: 0,
+		unmatched: 0
+	};
+
 	var ui = null;
+	var cacheKey = '';
 
-	/* ---------- رابط وضعیت ---------- */
+	/* ---------- ابزار ---------- */
 
-	function buildUi(){
-		if (ui) return ui;
-		var box = document.createElement('div');
-		box.id = 'wapm-bm-box';
-		box.style.cssText = 'position:fixed;bottom:20px;left:20px;z-index:2147483647;background:#111;color:#fff;padding:14px 16px;border-radius:12px;font-family:Tahoma,sans-serif;font-size:13px;max-width:340px;direction:rtl;box-shadow:0 10px 30px rgba(0,0,0,.35);line-height:1.7';
-
-		var title = document.createElement('div');
-		title.textContent = 'همگام‌سازی با ترب (WAPM)';
-		title.style.cssText = 'font-weight:700;margin-bottom:8px';
-
-		var status = document.createElement('div');
-		status.id = 'wapm-bm-status';
-
-		var bar = document.createElement('div');
-		bar.style.cssText = 'height:6px;background:#333;border-radius:3px;margin:10px 0;overflow:hidden';
-		var fill = document.createElement('div');
-		fill.style.cssText = 'height:100%;width:0;background:#7f54b3;transition:width .2s';
-		bar.appendChild(fill);
-
-		var stop = document.createElement('button');
-		stop.type = 'button';
-		stop.textContent = 'توقف';
-		stop.style.cssText = 'background:#b32d2e;color:#fff;border:0;border-radius:8px;padding:6px 14px;font-weight:700;cursor:pointer';
-		stop.onclick = function(){ stopped = true; status.textContent = 'در حال توقف… (صفحه‌ی جاری تمام می‌شود)'; };
-
-		box.appendChild(title);
-		box.appendChild(status);
-		box.appendChild(bar);
-		box.appendChild(stop);
-		document.body.appendChild(box);
-
-		ui = { box: box, status: status, fill: fill, stop: stop };
-		return ui;
-	}
-
-	function say(msg){ buildUi().status.textContent = msg; }
-	function progress(pct){ buildUi().fill.style.width = Math.max(0, Math.min(100, pct)) + '%'; }
-	function finish(msg, autoHide){
-		say(msg);
-		buildUi().stop.style.display = 'none';
-		if (autoHide) {
-			setTimeout(function(){ var el = document.getElementById('wapm-bm-box'); if (el) el.remove(); ui = null; }, 12000);
-		}
+	function el(tag, css, text){
+		var n = document.createElement(tag);
+		if (css) { n.style.cssText = css; }
+		if (text) { n.textContent = text; }
+		return n;
 	}
 
 	function delay(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
-	function jitter(base){ return base + Math.floor(Math.random() * 250); }
+	function jitter(base){ return base + Math.floor(Math.random() * 400); }
 
-	function loadState(key){
-		try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { return null; }
-	}
-	function saveState(key, state){
-		try { localStorage.setItem(key, JSON.stringify(state)); } catch (e) {}
-	}
-	function clearState(key){
-		try { localStorage.removeItem(key); } catch (e) {}
-	}
+	function say(msg){ if (ui) { ui.status.textContent = msg; } }
+	function progress(pct){ if (ui) { ui.fill.style.width = Math.max(0, Math.min(100, pct)) + '%'; } }
 
-	/* ---------- خواندن داده از صفحات ترب ---------- */
-
-	function getNextData(html){
-		var m = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
-		if (!m) { return null; }
-		try { return JSON.parse(m[1]); } catch (e) { return null; }
+	function closeUi(delayMs){
+		if (!ui) { return; }
+		var box = ui.box;
+		ui = null;
+		setTimeout(function(){ if (box && box.parentNode) { box.parentNode.removeChild(box); } }, delayMs || 0);
 	}
 
-	function fetchWithRetry(url, tries){
-		tries = tries || 0;
-		return fetch(url, { credentials: 'omit' })
-			.then(function(res){
-				if (!res.ok) { throw new Error('HTTP ' + res.status); }
-				return res.text();
-			})
-			.catch(function(err){
-				if (tries < 2) {
-					return delay(1200 * (tries + 1)).then(function(){ return fetchWithRetry(url, tries + 1); });
-				}
-				throw err;
-			});
+	function finish(msg, autoHide){
+		say(msg);
+		if (ui) { ui.stop.style.display = 'none'; }
+		if (autoHide) { closeUi(15000); }
 	}
 
-	/* پیدا کردن آرایه‌ی محصولات در pageProps، مستقل از نام کلید. */
-	function extractList(pageProps){
-		if (!pageProps) { return null; }
-		var keys = Object.keys(pageProps);
-		for (var i = 0; i < keys.length; i++) {
-			var val = pageProps[keys[i]];
-			if (Array.isArray(val) && val.length && val[0] && (val[0].random_key || val[0].prk)) {
-				return val;
+	function loadState(){
+		try { return JSON.parse(localStorage.getItem(cacheKey) || 'null'); } catch (e) { return null; }
+	}
+	function saveState(){
+		try {
+			localStorage.setItem(cacheKey, JSON.stringify({
+				page: state.page,
+				inPage: state.inPage,
+				mode: state.mode,
+				at: Date.now()
+			}));
+		} catch (e) { /* حافظه‌ی مرورگر پر است یا غیرفعال */ }
+	}
+	function clearState(){
+		try { localStorage.removeItem(cacheKey); } catch (e) {}
+	}
+
+	/* ---------- شبکه ---------- */
+
+	/**
+	 * GET به API ترب. پاسخ JSON؛ در بلاک (۴۹۰/۴۰۳/۴۲۹) یا پاسخ غیر-JSON خطای
+	 * مشخص پرتاب می‌کند تا حلقه متوقف شود (تلاش دوباره، بلاک را طولانی‌تر می‌کند).
+	 */
+	function apiGet(path, params){
+		var qs = new URLSearchParams(params);
+		qs.set('source', 'next_desktop');
+
+		return fetch(API + path + '?' + qs.toString(), {
+			credentials: 'include',
+			headers: { 'Accept': 'application/json' }
+		}).then(function(res){
+			if ([490, 403, 429].indexOf(res.status) !== -1) {
+				var e = new Error('blocked');
+				e.code = res.status;
+				throw e;
 			}
-		}
-		// ساختارهای تودرتو رایج
-		var nested = ['products', 'results', 'items', 'data'];
-		for (var j = 0; j < nested.length; j++) {
-			var node = pageProps[nested[j]];
-			if (node && Array.isArray(node.results) && node.results.length && node.results[0] && node.results[0].random_key) {
-				return node.results;
+			if (!res.ok) { throw new Error('HTTP ' + res.status); }
+			return res.text();
+		}).then(function(text){
+			var t = (text || '').trim();
+			if (t.charAt(0) !== '{') {
+				var e = new Error('blocked');
+				e.code = 490;
+				throw e;
 			}
-			if (Array.isArray(node) && node.length && node[0] && node[0].random_key) {
-				return node;
-			}
-		}
-		return null;
-	}
-
-	function fetchShopPage(shopId, page){
-		var url = 'https://torob.com/shop/' + encodeURIComponent(shopId) + '/-/' + encodeURIComponent('محصولات')
-			+ '/?page=' + page + '&available=true&sort=-date';
-
-		return fetchWithRetry(url).then(function(html){
-			var data = getNextData(html);
-			if (!data) { return { items: [], structure: false, error: 'no_next_data' }; }
-
-			var list = extractList(data.props && data.props.pageProps);
-			if (null === list) { return { items: [], structure: true, error: 'no_list' }; }
-
-			return {
-				items: list.map(function(p){
-					return { name: p.name1 || p.name || p.title || '', prk: p.random_key || p.prk || '' };
-				}).filter(function(p){ return p.prk; }),
-				structure: false,
-				error: ''
-			};
-		});
-	}
-
-	function fetchProductSellers(prk){
-		var url = 'https://torob.com/p/' + encodeURIComponent(prk) + '/';
-
-		return fetchWithRetry(url).then(function(html){
-			var data = getNextData(html);
-			if (!data) { return { sellers: [], error: 'no_next_data' }; }
-
-			var bp = data.props && data.props.pageProps && data.props.pageProps.baseProduct;
-			if (!bp) { return { sellers: [], error: 'no_base_product' }; }
-
-			var info = bp.products_info || {};
-			var result = info.result || info.results || (Array.isArray(info) ? info : []) || [];
-
-			var sellers = result.map(function(s){
-				return {
-					shop_id: s.shop_id || s.shopId || 0,
-					shop_name: s.shop_name || s.seller_name || s.name || '',
-					price: s.price || 0
-				};
-			}).filter(function(s){ return s.price > 0; });
-
-			return { sellers: sellers, error: '' };
-		}).catch(function(err){
-			return { sellers: [], error: err.message };
+			return JSON.parse(t);
 		});
 	}
 
@@ -1122,7 +1087,6 @@ class WAPM_Admin {
 		return fetch(ENDPOINT, { method: 'POST', body: body, credentials: 'omit' })
 			.then(function(r){
 				if (r.status === 429) {
-					// محدودیت نرخ (فروشگاه بزرگ) — یک بار صبر کن و دوباره بفرست.
 					return delay(6000).then(function(){
 						return fetch(ENDPOINT, { method: 'POST', body: body, credentials: 'omit' });
 					});
@@ -1133,130 +1097,256 @@ class WAPM_Admin {
 			.then(function(r){ return r.json(); });
 	}
 
-	/* ---------- اجرای اصلی ---------- */
+	/* ---------- ساخت داده ---------- */
 
-	async function run(){
-		var shopId = window.prompt('شناسه فروشگاه ترب را وارد کنید:', DEFAULT_SHOP || '');
-		if (!shopId) { return; }
-		shopId = String(shopId).replace(/[^0-9]/g, '');
-		if (!shopId) { window.alert('شناسه فروشگاه باید عددی باشد (مثل 118417).'); return; }
-
-		var key = KEY_PREFIX + shopId;
-		var state = loadState(key);
-		var startPage = 1;
-
-		if (state && state.nextPage && state.nextPage > 1) {
-			if (window.confirm('همگام‌سازی قبلی تا صفحه‌ی ' + (state.nextPage - 1) + ' انجام شده است. از صفحه‌ی ' + state.nextPage + ' ادامه دهم؟\n(«لغو» = شروع از ابتدا)')) {
-				startPage = state.nextPage;
-			} else {
-				clearState(key);
-			}
-		}
-
-		buildUi();
-		progress(0);
-
-		var page = startPage;
-		var discovered = 0;
-		var totals = { matched: 0, checked: 0, unmatched: 0 };
-		var lastError = '';
-		var mismatchSeen = 0;
-
-		while (!stopped && page <= 200) {
-			say('خواندن فهرست محصولات — صفحه ' + page + '…');
-
-			var pageResult;
-			try {
-				pageResult = await fetchShopPage(shopId, page);
-			} catch (e) {
-				lastError = e.message || 'خطای شبکه';
-				break;
-			}
-
-			if (pageResult.structure) {
-				await sendBatch([], { probe: true, discovered: 0, pages: page, version: VERSION });
-				finish('⚠ ساختار صفحه‌ی ترب قابل خواندن نبود. یا صفحه‌ی محصولات فروشگاه باز نیست، یا ترب ساختارش را عوض کرده است. این را به پشتیبانی افزونه اطلاع دهید.');
-				return;
-			}
-
-			if (!pageResult.items.length) {
-				if (page === 1) {
-					await sendBatch([], { probe: true, discovered: 0, pages: 1, version: VERSION });
-					finish('هیچ محصولی پیدا نشد. مطمئن شوید در صفحه‌ی محصولات فروشگاه خودتان در ترب هستید و شناسه‌ی فروشگاه درست است.');
-					return;
-				}
-				break; // پایان صفحات
-			}
-
-			discovered += pageResult.items.length;
-
-			var batch = [];
-			for (var i = 0; i < pageResult.items.length && !stopped; i++) {
-				var item = pageResult.items[i];
-				var info;
-				try {
-					info = await fetchProductSellers(item.prk);
-				} catch (e) {
-					info = { sellers: [], error: e.message };
-				}
-
-				if (info.error === 'no_base_product' || info.error === 'no_next_data') {
-					mismatchSeen++;
-				}
-
-				batch.push({ name: item.name, prk: item.prk, sellers: info.sellers });
-
-				say('صفحه ' + page + ' — بررسی ' + (i + 1) + ' از ' + pageResult.items.length + ' (مجموع: ' + (discovered - pageResult.items.length + i + 1) + ')');
-
-				if (batch.length >= BATCH_SIZE || i === pageResult.items.length - 1) {
-					var res = await sendBatch(batch, {
-						discovered: discovered,
-						pages: page,
-						version: VERSION
-					});
-					if (res && res.success) {
-						totals.matched   += res.data.matched || 0;
-						totals.checked   += res.data.checked || 0;
-						totals.unmatched += res.data.unmatched || 0;
-					} else {
-						lastError = (res && res.data && res.data.message) ? res.data.message : 'پاسخ نامعتبر از سایت';
-					}
-					batch = [];
-				}
-
-				await delay(jitter(280));
-			}
-
-			page++;
-			saveState(key, { nextPage: page, at: Date.now() });
-			progress(Math.min(96, (page - startPage + 1) * 12));
-
-			if (stopped) { break; }
-			await delay(jitter(350));
-		}
-
-		progress(100);
-
-		if (stopped) {
-			finish('متوقف شد. دفعه‌ی بعد از همین‌جا ادامه می‌دهد.\nتا اینجا: ' + totals.matched + ' محصول متصل، ' + totals.checked + ' قیمت بررسی‌شده.');
-			return;
-		}
-
-		clearState(key);
-
-		var msg = '✓ همگام‌سازی کامل شد — ' + totals.matched + ' محصول متصل شد و ' + totals.checked + ' قیمت بررسی شد.';
-		if (totals.unmatched) {
-			msg += '\n' + totals.unmatched + ' محصول ترب به محصول ووکامرس وصل نشد؛ در تب «ترب» می‌توانید دستی وصل کنید.';
-		}
-		if (lastError) {
-			msg += '\n⚠ برخی دسته‌ها ناموفق بود: ' + lastError;
-		}
-		finish(msg, true);
+	function cardToItem(card, sellers){
+		var url = card.web_client_absolute_url || '';
+		return {
+			prk: card.random_key || '',
+			name: card.name1 || '',
+			our_price: Number(card.price) || null,
+			url: url ? 'https://torob.com' + url : '',
+			sellers: sellers || []
+		};
 	}
 
-	run().catch(function(e){
-		finish('خطا: ' + (e && e.message ? e.message : e));
-	});
+	/** فروشنده‌ها را به شکل سبک تبدیل می‌کند (حداکثر ۴۰ ردیف ارزان‌ترین). */
+	function slimSellers(rows){
+		var out = [];
+		(rows || []).forEach(function(r){
+			var price = Number(r.price) || 0;
+			if (!r.shop_id || price <= 0) { return; }
+			out.push({
+				shop_id: Number(r.shop_id),
+				shop_name: String(r.shop_name || '').slice(0, 80),
+				price: price,
+				available: r.availability !== false,
+				unreliable: !!r.is_price_unreliable,
+				last_change: String(r.last_price_change_date || '').slice(0, 40)
+			});
+		});
+		out.sort(function(a, b){ return a.price - b.price; });
+		return out.slice(0, 40);
+	}
+
+	/* ---------- رابط ---------- */
+
+	function buildStartUi(){
+		var box = el('div', 'position:fixed;bottom:20px;left:20px;z-index:2147483647;background:#111;color:#fff;padding:16px 18px;border-radius:14px;font-family:Tahoma,sans-serif;font-size:13px;max-width:360px;direction:rtl;box-shadow:0 12px 34px rgba(0,0,0,.4);line-height:1.9');
+
+		box.appendChild(el('div', 'font-weight:700;margin-bottom:6px', 'همگام‌سازی با ترب (WAPM)'));
+
+		var info = el('div', 'font-size:12px;color:#c7c7c7', 'شناسه فروشگاه: ' + state.shopId);
+		box.appendChild(info);
+
+		var full = el('button', 'margin-top:12px;width:100%;background:#7f54b3;color:#fff;border:0;border-radius:10px;padding:9px 12px;font-weight:700;cursor:pointer;font-family:inherit', 'کامل: کاتالوگ + قیمت رقبا');
+		full.onclick = function(){ start('full'); };
+
+		var catalog = el('button', 'margin-top:8px;width:100%;background:#2f2f2f;color:#fff;border:1px solid #4a4a4a;border-radius:10px;padding:9px 12px;font-weight:700;cursor:pointer;font-family:inherit', 'سریع: فقط کاتالوگ و قیمت خودمان');
+		catalog.onclick = function(){ start('catalog'); };
+
+		var hint = el('div', 'margin-top:8px;font-size:11px;color:#9a9a9a', 'حالت کامل برای هر محصول یک درخواست به ترب می‌فرستد (کندتر، ارزان‌ترین رقیب را هم می‌آورد).');
+		box.appendChild(full);
+		box.appendChild(catalog);
+		box.appendChild(hint);
+
+		var resume = loadState();
+		if (resume) {
+			var btnResume = el('button', 'margin-top:8px;width:100%;background:#1f3b2c;color:#d6ffe9;border:1px solid #2f5a44;border-radius:10px;padding:8px 12px;font-weight:700;cursor:pointer;font-family:inherit', 'ادامه از صفحه ' + (Number(resume.page) + 1));
+			btnResume.onclick = function(){
+				state.mode = resume.mode || 'full';
+				start(state.mode, resume);
+			};
+			box.appendChild(btnResume);
+		}
+
+		document.body.appendChild(box);
+		ui = { box: box, status: el('div'), fill: el('div'), stop: el('button') };
+		ui.status.style.display = 'none';
+	}
+
+	function buildProgressUi(){
+		var box = el('div', 'position:fixed;bottom:20px;left:20px;z-index:2147483647;background:#111;color:#fff;padding:14px 16px;border-radius:12px;font-family:Tahoma,sans-serif;font-size:13px;max-width:340px;direction:rtl;box-shadow:0 10px 30px rgba(0,0,0,.35);line-height:1.8');
+
+		var title = el('div', 'font-weight:700;margin-bottom:8px', 'همگام‌سازی با ترب (WAPM)');
+		var status = el('div', '', 'در حال شروع…');
+
+		var bar = el('div', 'height:6px;background:#333;border-radius:3px;margin:10px 0;overflow:hidden');
+		var fill = el('div', 'height:100%;width:0;background:#7f54b3;transition:width .2s');
+		bar.appendChild(fill);
+
+		var stop = el('button', 'background:#b32d2e;color:#fff;border:0;border-radius:8px;padding:6px 14px;font-weight:700;cursor:pointer;font-family:inherit', 'توقف');
+		stop.onclick = function(){
+			state.stopped = true;
+			stop.disabled = true;
+			status.textContent = 'در حال توقف… (تا پایان درخواست جاری)';
+		};
+
+		box.appendChild(title);
+		box.appendChild(status);
+		box.appendChild(bar);
+		box.appendChild(stop);
+		document.body.appendChild(box);
+
+		ui = { box: box, status: status, fill: fill, stop: stop };
+	}
+
+	/* ---------- اجرا ---------- */
+
+	async function start(mode, resume){
+		state.mode = mode;
+		state.page = resume ? Number(resume.page || 0) : 0;
+		state.inPage = resume ? Number(resume.inPage || 0) : 0;
+
+		// رابط شروع را با رابط پیشرفت جایگزین کن.
+		if (ui && ui.box && ui.box.parentNode) { ui.box.parentNode.removeChild(ui.box); }
+		ui = null;
+		buildProgressUi();
+
+		cacheKey = 'wapm_bm3_' + state.shopId + '_' + mode;
+		progress(2);
+
+		try {
+			await runCatalog();
+			if (!state.stopped) {
+				progress(100);
+				clearState();
+				var msg = '✓ تمام شد — ' + state.discovered + ' محصول از ترب بررسی شد.';
+				if (mode === 'full') {
+					msg += '\n' + state.checked + ' محصول قیمت رقیب گرفت' + (state.unmatched ? ' و ' + state.unmatched + ' مورد به لیست تطبیق‌نیافته رفت.' : '.');
+				} else {
+					msg += '\nقیمت خودمان از دید ترب به‌روز شد (برای قیمت رقبا، حالت کامل را اجرا کنید).';
+				}
+				finish(msg, true);
+			}
+		} catch (e) {
+			if (e && e.code === 490) {
+				saveState();
+				finish('⚠ ترب درخواست‌ها را محدود کرد (۴۹۰). این کار را جدی بگیرید: چند دقیقه صبر کنید و بعد با دکمه‌ی «ادامه» از همان صفحه ادامه دهید. تلاش پشت‌سرهم، زمان بلاک را طولانی‌تر می‌کند.');
+			} else if (e && e.message === 'blocked') {
+				saveState();
+				finish('⚠ ترب به‌جای داده، صفحه‌ی «ربات نیستید» برگرداند. چند دقیقه صبر کنید و از همان صفحه ادامه دهید.');
+			} else {
+				saveState();
+				finish('خطا: ' + (e && e.message ? e.message : e) + '\nاز همان صفحه قابل ادامه است.');
+			}
+		}
+	}
+
+	async function runCatalog(){
+		var myShop = Number(state.shopId);
+
+		while (!state.stopped && state.page < MAX_SHOP_PAGES) {
+			say('خواندن صفحه ' + (state.page + 1) + ' از کاتالوگ فروشگاه…');
+
+			var pageData = await apiGet('/v4/internet-shop/base-product/list/', {
+				shop_id: myShop,
+				page: state.page,
+				size: PAGE,
+				sort: '-date'
+			});
+
+			var cards = (pageData.results || []).filter(function(c){ return c && c.random_key; });
+			if (!cards.length) { break; }
+
+			state.discovered += cards.length;
+
+			var batch = [];
+			var total = Number(pageData.count) || state.discovered;
+			progress(Math.min(97, Math.round(((state.page * PAGE) / Math.max(total, 1)) * 100)));
+
+			// ادامه از وسط صفحه (اگر دفعه‌ی قبل وسط کار متوقف شده باشد).
+			var i = Number(state.inPage) || 0;
+
+			for (; i < cards.length && !state.stopped; i++) {
+				var card = cards[i];
+				var sellers = [];
+
+				if (state.mode === 'full') {
+					say('صفحه ' + (state.page + 1) + ' — محصول ' + (i + 1) + ' از ' + cards.length +
+						' (کل: ' + state.discovered + ')');
+
+					try {
+						var sdata = await apiGet('/v4/base-product/sellers/', {
+							prk: card.random_key,
+							list_type: 'products_info'
+						});
+						sellers = slimSellers(sdata.results);
+					} catch (err) {
+						if (err && err.code === 490) { throw err; }
+						// خطای یک محصول نباید کل کار را متوقف کند.
+						sellers = [];
+					}
+
+					await delay(jitter(900));
+				}
+
+				batch.push(cardToItem(card, sellers));
+
+				if (batch.length >= BATCH || i === cards.length - 1) {
+					var res = await sendBatch(batch, {
+						discovered: state.discovered,
+						pages: state.page + 1,
+						version: VERSION,
+						mode: state.mode
+					});
+
+					if (res && res.success) {
+						state.matched   += res.data.matched || 0;
+						state.checked   += res.data.checked || 0;
+						state.unmatched += res.data.unmatched || 0;
+					} else {
+						throw new Error((res && res.data && res.data.message) || 'پاسخ نامعتبر از سایت');
+					}
+
+					batch = [];
+					state.inPage = i + 1;
+					saveState();
+				}
+			}
+
+			state.page++;
+			state.inPage = 0;
+			saveState();
+
+			// بستن دسته‌ی باقی‌مانده‌ی صفحه (مثلاً وقتی «توقف» وسط صفحه زده شد).
+			if (batch.length) {
+				await sendBatch(batch, {
+					discovered: state.discovered,
+					pages: state.page,
+					version: VERSION,
+					mode: state.mode
+				});
+			}
+
+			if (state.stopped) { break; }
+
+			var done = Math.min(97, Math.round(((state.page * PAGE) / Math.max(Number(pageData.count) || state.discovered, 1)) * 100));
+			progress(done);
+
+			await delay(jitter(1200));
+		}
+
+		if (state.stopped) {
+			saveState();
+			finish('متوقف شد. دفعه‌ی بعد از همین‌جا ادامه می‌دهد.\nتا اینجا: ' + state.discovered + ' محصول بررسی شد.');
+		}
+	}
+
+	/* ---------- شروع ---------- */
+
+	var shopId = String(SHOP_ID || '').replace(/[^0-9]/g, '');
+	if (!shopId) {
+		shopId = String(window.prompt('شناسه فروشگاه ترب را وارد کنید (عدد در آدرس torob.com/shop/عدد/...):', '') || '').replace(/[^0-9]/g, '');
+	}
+	if (!shopId) {
+		window.alert('بدون شناسه‌ی فروشگاه نمی‌شود: افزونه باید بداند کدام فروشنده خودتان هستید تا قیمت خودتان را با رقیب اشتباه نگیرد.');
+		return;
+	}
+
+	state.shopId = shopId;
+	cacheKey = 'wapm_bm3_' + shopId + '_full';
+	buildStartUi();
 })();
 JS;
 
@@ -1266,6 +1356,6 @@ JS;
 			$js
 		);
 
-				return 'javascript:' . rawurlencode( $js );
+		return 'javascript:' . rawurlencode( $js );
 	}
 }
