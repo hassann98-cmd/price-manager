@@ -35,6 +35,23 @@ class WAPM_Logger {
 		return is_string( $formatted ) && '' !== $formatted ? $formatted : $mysql_local;
 	}
 
+	/**
+	 * شناسه‌ی Batch برای عملیات‌های پرتکرار و کوچک (ویرایش inline قیمت/موجودی).
+	 *
+	 * چرا گروهی و نه یکی برای هر تغییر: هر ویرایش inline قبلاً یک
+	 * `wp_generate_password()` تازه می‌ساخت؛ تاریخچه با هزاران Batch تک‌ردیفی پر
+	 * می‌شد و Undo گروهی معنا نداشت. حالا هر کاربر در هر روز یک Batch دارد
+	 * (`inline_u7_20261026`) و «بازگردانی» یعنی برگشت همه‌ی ویرایش‌های سریع همان
+	 * روز. ایمنی حفظ می‌شود: اگر بعد از آن، Batch دیگری (قانون/دستی) قیمت را
+	 * عوض کرده باشد، همان محافظ تداخل جلوی پاک‌شدن تغییر جدیدتر را می‌گیرد.
+	 */
+	public static function daily_batch_id( string $prefix ): string {
+		$prefix = preg_replace( '/[^a-z0-9_]/', '', strtolower( $prefix ) );
+		$prefix = '' !== $prefix ? $prefix : 'batch';
+
+		return $prefix . '_u' . get_current_user_id() . '_' . current_time( 'Ymd' );
+	}
+
 	public static function create_table(): void {
 		global $wpdb;
 		$table   = self::table();

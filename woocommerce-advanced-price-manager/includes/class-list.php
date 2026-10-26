@@ -651,6 +651,10 @@ class WAPM_List {
 			];
 		}
 
+		// همه‌ی ویرایش‌های سریع یک کاربر در یک روز یک Batch هستند: تاریخچه به‌جای
+		// هزاران Batch تک‌ردیفی، یک ردیف گروهی دارد و Undo گروهی ممکن می‌شود.
+		$batch_id = class_exists( 'WAPM_Logger' ) ? WAPM_Logger::daily_batch_id( 'inline' ) : 'inline';
+
 		$log_price_type = null;
 		$old            = null;
 
@@ -692,7 +696,7 @@ class WAPM_List {
 
 				// مسیر رسمی ووکامرس: وضعیت موجودی و قلاب‌ها را هم به‌روز می‌کند.
 				// تغییر با تاریخچه ثبت می‌شود تا اشتباه قابل بازگردانی باشد.
-				$stock = WAPM_Stock::set_quantity( $product->get_id(), (float) wc_stock_amount( $value ), 'inline_edit' );
+				$stock = WAPM_Stock::set_quantity( $product->get_id(), (float) wc_stock_amount( $value ), 'inline_edit', $batch_id );
 
 				if ( empty( $stock['ok'] ) ) {
 					// ذخیره‌ی همان مقدار قبلی «خطا» نیست؛ فقط ردیف تازه برمی‌گردانیم
@@ -731,7 +735,7 @@ class WAPM_List {
 
 		if ( $log_price_type && class_exists( 'WAPM_Logger' ) ) {
 			WAPM_Logger::log( [
-				'batch_id'     => 'inline_' . wp_generate_password( 10, false ),
+				'batch_id'     => $batch_id,
 				'product_id'   => $product->get_id(),
 				'parent_id'    => $product->get_parent_id(),
 				'product_name' => $product->get_name(),

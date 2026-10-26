@@ -134,7 +134,7 @@ msgstr ""
 msgid "ابتدا در جدول، محصول‌ها را تیک بزنید."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-list.php:687
+#: woocommerce-advanced-price-manager/includes/class-list.php:691
 msgid "ابتدا مدیریت انبار را برای این محصول فعال کنید."
 msgstr ""
 
@@ -260,7 +260,7 @@ msgstr ""
 msgid "امکان هم‌ترازی نیست"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-list.php:886
+#: woocommerce-advanced-price-manager/includes/class-list.php:890
 msgid "امکان کپی محصول در این نسخه ووکامرس فراهم نیست."
 msgstr ""
 
@@ -318,7 +318,7 @@ msgstr ""
 msgid "اگر وسط کار قطع شد، دوباره روی همان بوکمارک کلیک کنید؛ از همان صفحه ادامه می‌دهد."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-list.php:875
+#: woocommerce-advanced-price-manager/includes/class-list.php:879
 msgid "این آیتم قابل کپی نیست."
 msgstr ""
 
@@ -1363,7 +1363,7 @@ msgstr ""
 msgid "فیلتری برای ذخیره وجود ندارد."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-list.php:719
+#: woocommerce-advanced-price-manager/includes/class-list.php:723
 msgid "فیلد نامعتبر است."
 msgstr ""
 
@@ -1414,7 +1414,7 @@ msgstr ""
 msgid "قیمت اصلی (Regular)"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-list.php:662
+#: woocommerce-advanced-price-manager/includes/class-list.php:666
 msgid "قیمت اصلی باید از قیمت ویژه بیشتر باشد."
 msgstr ""
 
@@ -1485,7 +1485,7 @@ msgstr ""
 msgid "قیمت ویژه"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-list.php:673
+#: woocommerce-advanced-price-manager/includes/class-list.php:677
 msgid "قیمت ویژه باید از قیمت اصلی کمتر باشد."
 msgstr ""
 
@@ -1593,7 +1593,7 @@ msgstr ""
 msgid "محصول متغیر را به واریشن‌هایش باز کن (موجودی روی واریشن‌هاست)"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-list.php:764
+#: woocommerce-advanced-price-manager/includes/class-list.php:768
 msgid "محصول متغیر موجودی خودش را ندارد؛ مدیریت انبار را روی واریشن‌ها تنظیم کنید."
 msgstr ""
 
@@ -1615,7 +1615,7 @@ msgid "محصول پیدا نشد"
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/class-list.php:642
-#: woocommerce-advanced-price-manager/includes/class-list.php:755
+#: woocommerce-advanced-price-manager/includes/class-list.php:759
 msgid "محصول یافت نشد."
 msgstr ""
 
@@ -1739,7 +1739,7 @@ msgstr ""
 msgid "موجودی از"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-list.php:690
+#: woocommerce-advanced-price-manager/includes/class-list.php:694
 msgid "موجودی باید عدد باشد."
 msgstr ""
 
@@ -1755,7 +1755,7 @@ msgstr ""
 msgid "موجودی تا"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-list.php:684
+#: woocommerce-advanced-price-manager/includes/class-list.php:688
 msgid "موجودی محصول متغیر باید روی واریشن‌ها تغییر کند، نه روی والد."
 msgstr ""
 
@@ -2134,15 +2134,15 @@ msgstr ""
 msgid "کپی ساخته شد."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-list.php:917
+#: woocommerce-advanced-price-manager/includes/class-list.php:921
 msgid "کپی ساخته شد، ولی ووکامرس آن را «پیش‌نویس» ذخیره می‌کند و این لیست فقط محصولات منتشرشده را نشان می‌دهد. برای دیدن و انتشار کپی، «ویرایش کپی» را بزنید."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-list.php:916
+#: woocommerce-advanced-price-manager/includes/class-list.php:920
 msgid "کپی ساخته و منتشر شد."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-list.php:893
+#: woocommerce-advanced-price-manager/includes/class-list.php:897
 msgid "کپی محصول ناموفق بود."
 msgstr ""
 

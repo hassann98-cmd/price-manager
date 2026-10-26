@@ -164,8 +164,22 @@ function wp_json_encode( $data, $options = 0 ) {
 	return json_encode( $data, $options );
 }
 
+/**
+ * مثل current_time وردپرس: 'mysql' تاریخ‌وزمان، 'timestamp' عدد، و هر قالب
+ * دیگر (مثل 'Ymd') همان قالب روی زمان محلی.
+ */
 function current_time( $type = 'mysql', $gmt = 0 ) {
-	return 'mysql' === $type ? gmdate( 'Y-m-d H:i:s' ) : time();
+	if ( 'timestamp' === $type || 'U' === $type ) {
+		return time();
+	}
+	if ( 'mysql' === $type ) {
+		return gmdate( 'Y-m-d H:i:s' );
+	}
+	return gmdate( (string) $type );
+}
+
+function get_current_user_id() {
+	return (int) ( $GLOBALS['wapm_user_id'] ?? 0 );
 }
 
 function get_option( $key, $default = false ) {
@@ -528,6 +542,21 @@ test( 'تداخل: حذف/افزودن قیمت ویژه', function () {
 	ok( same_price( '', '' ), 'هر دو بدون قیمت' );
 	ok( ! same_price( '', '900000' ), 'قبلاً حذف شده بود، حالا قیمت دارد → تداخل' );
 	ok( ! same_price( '900000', '' ), 'قبلاً قیمت داشت، حالا حذف شده → تداخل' );
+} );
+
+test( 'batch/روزانه: ویرایش‌های inline یک کاربر در یک روز یک Batch هستند', function () {
+	$GLOBALS['wapm_user_id'] = 7;
+	$id = WAPM_Logger::daily_batch_id( 'inline' );
+
+	eq( 'inline_u7_' . gmdate( 'Ymd' ), $id, 'قالب: پیشوند + کاربر + تاریخ' );
+	eq( $id, WAPM_Logger::daily_batch_id( 'inline' ), 'در همان روز ثابت است' );
+
+	$GLOBALS['wapm_user_id'] = 8;
+	ok( $id !== WAPM_Logger::daily_batch_id( 'inline' ), 'کاربر دیگر → Batch دیگر' );
+
+	$GLOBALS['wapm_user_id'] = 7;
+	eq( 'inlineprice_u7_' . gmdate( 'Ymd' ), WAPM_Logger::daily_batch_id( 'Inline Price!' ), 'پیشوند نامعتبر پاک‌سازی می‌شود' );
+	$GLOBALS['wapm_user_id'] = 0;
 } );
 
 /* -------------------------------------------------------------------------
