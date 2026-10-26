@@ -3,7 +3,7 @@
  * Plugin Name:       WooCommerce Advanced Price Manager
  * Plugin URI:        https://jluxe.ir
  * Description:       مدیریت حرفه‌ای تغییرات گروهی قیمت محصولات ووکامرس — درصدی، عددی، قوانین، زمان‌بندی، پیش‌نمایش، تاریخچه و Rollback.
- * Version:           1.1.1
+ * Version:           1.1.2
  * Author:            Hassan
  * Text Domain:       wapm
  * Domain Path:       /languages
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'WAPM_VERSION', '1.1.1' );
+define( 'WAPM_VERSION', '1.1.2' );
 define( 'WAPM_FILE', __FILE__ );
 define( 'WAPM_PATH', plugin_dir_path( __FILE__ ) );
 define( 'WAPM_URL', plugin_dir_url( __FILE__ ) );

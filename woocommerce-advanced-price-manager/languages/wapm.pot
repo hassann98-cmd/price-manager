@@ -2,7 +2,7 @@
 # This file is distributed under the GPL-2.0-or-later license.
 msgid ""
 msgstr ""
-"Project-Id-Version: WooCommerce Advanced Price Manager 1.1.1\n"
+"Project-Id-Version: WooCommerce Advanced Price Manager 1.1.2\n"
 "Report-Msgid-Bugs-To: https://github.com/hassann98-cmd/price-manager/issues\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -129,12 +129,12 @@ msgstr ""
 msgid "آیا از اعمال تغییرات مطمئن هستید؟ این عملیات روی %d محصول اجرا می‌شود."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/assets/js/admin-list.js:1125
+#: woocommerce-advanced-price-manager/assets/js/admin-list.js:1178
 #: woocommerce-advanced-price-manager/assets/js/admin-stock.js:207
 msgid "ابتدا در جدول، محصول‌ها را تیک بزنید."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-list.php:698
+#: woocommerce-advanced-price-manager/includes/class-list.php:705
 msgid "ابتدا مدیریت انبار را برای این محصول فعال کنید."
 msgstr ""
 
@@ -260,7 +260,7 @@ msgstr ""
 msgid "امکان هم‌ترازی نیست"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-list.php:897
+#: woocommerce-advanced-price-manager/includes/class-list.php:907
 msgid "امکان کپی محصول در این نسخه ووکامرس فراهم نیست."
 msgstr ""
 
@@ -318,7 +318,7 @@ msgstr ""
 msgid "اگر وسط کار قطع شد، دوباره روی همان بوکمارک کلیک کنید؛ از همان صفحه ادامه می‌دهد."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-list.php:886
+#: woocommerce-advanced-price-manager/includes/class-list.php:896
 msgid "این آیتم قابل کپی نیست."
 msgstr ""
 
@@ -358,7 +358,7 @@ msgstr ""
 msgid "با انتخاب هر میان‌بر فقط فیلدها پر می‌شوند؛ تا «پیش‌نمایش» را نزنید هیچ چیزی عوض نمی‌شود."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/assets/js/admin-list.js:1017
+#: woocommerce-advanced-price-manager/assets/js/admin-list.js:1070
 msgid "با این فیلتر محصولی پیدا نشد."
 msgstr ""
 
@@ -412,7 +412,7 @@ msgstr ""
 msgid "برابر با رقیب"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/assets/js/admin-list.js:1351
+#: woocommerce-advanced-price-manager/assets/js/admin-list.js:1404
 msgid "برای بازگردانی اجباری (پاک‌کردن تغییرات بعدی) دوباره بزنید."
 msgstr ""
 
@@ -936,11 +936,11 @@ msgstr ""
 msgid "در پیش‌نمایش %d قیمت پرخطر (افت بیش از ۹۰٪) دیده شد. با آگاهی از این مورد اعمال شود؟"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/assets/js/admin-list.js:1253
+#: woocommerce-advanced-price-manager/assets/js/admin-list.js:1306
 msgid "در پیش‌نمایش %s قیمت افت بیش از ۹۰٪ دارد. قبل از اعمال نگاه کنید."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/assets/js/admin-list.js:1266
+#: woocommerce-advanced-price-manager/assets/js/admin-list.js:1319
 msgid "در پیش‌نمایش %s قیمت افت شدید دارد. ادامه می‌دهید؟"
 msgstr ""
 
@@ -1223,6 +1223,11 @@ msgstr ""
 msgid "شناسه فروشگاه در ترب (Shop ID)"
 msgstr ""
 
+#: woocommerce-advanced-price-manager/includes/class-list.php:651
+#: woocommerce-advanced-price-manager/includes/class-list.php:772
+msgid "شناسه محصول نامعتبر است."
+msgstr ""
+
 #: woocommerce-advanced-price-manager/includes/class-admin.php:495
 msgid "شناسه یا نام فروشگاه تنظیم نشده است."
 msgstr ""
@@ -1308,7 +1313,7 @@ msgstr ""
 msgid "فایل خالی است."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/assets/js/admin-list.js:1409
+#: woocommerce-advanced-price-manager/assets/js/admin-list.js:1462
 #: woocommerce-advanced-price-manager/assets/js/admin-stock.js:510
 #: woocommerce-advanced-price-manager/includes/class-ajax.php:1057
 #: woocommerce-advanced-price-manager/includes/class-ajax.php:1675
@@ -1395,7 +1400,7 @@ msgstr ""
 msgid "فیلتری برای ذخیره وجود ندارد."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-list.php:730
+#: woocommerce-advanced-price-manager/includes/class-list.php:737
 msgid "فیلد نامعتبر است."
 msgstr ""
 
@@ -1450,7 +1455,7 @@ msgstr ""
 msgid "قیمت اصلی (Regular)"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-list.php:673
+#: woocommerce-advanced-price-manager/includes/class-list.php:680
 msgid "قیمت اصلی باید از قیمت ویژه بیشتر باشد."
 msgstr ""
 
@@ -1488,7 +1493,7 @@ msgstr ""
 msgid "قیمت قبل"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-list.php:657
+#: woocommerce-advanced-price-manager/includes/class-list.php:664
 msgid "قیمت محصول متغیر باید روی واریشن‌ها تغییر کند، نه روی والد."
 msgstr ""
 
@@ -1521,7 +1526,7 @@ msgstr ""
 msgid "قیمت ویژه"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-list.php:684
+#: woocommerce-advanced-price-manager/includes/class-list.php:691
 msgid "قیمت ویژه باید از قیمت اصلی کمتر باشد."
 msgstr ""
 
@@ -1641,7 +1646,7 @@ msgstr ""
 msgid "محصول متغیر را به واریشن‌هایش باز کن (موجودی روی واریشن‌هاست)"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-list.php:775
+#: woocommerce-advanced-price-manager/includes/class-list.php:785
 msgid "محصول متغیر موجودی خودش را ندارد؛ مدیریت انبار را روی واریشن‌ها تنظیم کنید."
 msgstr ""
 
@@ -1662,8 +1667,8 @@ msgstr ""
 msgid "محصول پیدا نشد"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-list.php:649
-#: woocommerce-advanced-price-manager/includes/class-list.php:766
+#: woocommerce-advanced-price-manager/includes/class-list.php:656
+#: woocommerce-advanced-price-manager/includes/class-list.php:776
 msgid "محصول یافت نشد."
 msgstr ""
 
@@ -1747,7 +1752,7 @@ msgstr ""
 msgid "مقدار نامعتبر"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/assets/js/admin-list.js:1221
+#: woocommerce-advanced-price-manager/assets/js/admin-list.js:1274
 msgid "مقدار/قیمت هدف را وارد کنید."
 msgstr ""
 
@@ -1792,7 +1797,7 @@ msgstr ""
 msgid "موجودی از"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-list.php:701
+#: woocommerce-advanced-price-manager/includes/class-list.php:708
 msgid "موجودی باید عدد باشد."
 msgstr ""
 
@@ -1808,7 +1813,7 @@ msgstr ""
 msgid "موجودی تا"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-list.php:695
+#: woocommerce-advanced-price-manager/includes/class-list.php:702
 msgid "موجودی محصول متغیر باید روی واریشن‌ها تغییر کند، نه روی والد."
 msgstr ""
 
@@ -2189,19 +2194,19 @@ msgstr ""
 msgid "کمتر از ارزان‌ترین رقیب:"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/assets/js/admin-list.js:908
+#: woocommerce-advanced-price-manager/assets/js/admin-list.js:961
 msgid "کپی ساخته شد."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-list.php:928
+#: woocommerce-advanced-price-manager/includes/class-list.php:938
 msgid "کپی ساخته شد، ولی ووکامرس آن را «پیش‌نویس» ذخیره می‌کند و این لیست فقط محصولات منتشرشده را نشان می‌دهد. برای دیدن و انتشار کپی، «ویرایش کپی» را بزنید."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-list.php:927
+#: woocommerce-advanced-price-manager/includes/class-list.php:937
 msgid "کپی ساخته و منتشر شد."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-list.php:904
+#: woocommerce-advanced-price-manager/includes/class-list.php:914
 msgid "کپی محصول ناموفق بود."
 msgstr ""
 
@@ -2225,7 +2230,7 @@ msgstr ""
 msgid "یک Batch فقط وقتی بازگردانی می‌شود که مقدار فعلی محصول هنوز همان چیزی باشد که آن عملیات گذاشته است؛ اگر کسی بعد از آن موجودی را عوض کرده باشد، به‌عنوان تداخل گزارش می‌شود تا کار او پاک نشود."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/assets/js/admin-list.js:1053
+#: woocommerce-advanced-price-manager/assets/js/admin-list.js:1106
 msgid "یک عملیات انتخاب کنید."
 msgstr ""
 
