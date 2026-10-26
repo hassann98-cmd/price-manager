@@ -1248,6 +1248,7 @@ class WAPM_Admin {
 
 	var state = {
 		shopId: '',
+		run: '',            // شناسه‌ی این اجرا (برای جمع‌شدن آمار دسته‌ها)
 		mode: 'full',       // full | catalog
 		page: 0,
 		inPage: 0,
@@ -1298,6 +1299,7 @@ class WAPM_Admin {
 				page: state.page,
 				inPage: state.inPage,
 				mode: state.mode,
+				run: state.run,
 				at: Date.now()
 			}));
 		} catch (e) { /* حافظه‌ی مرورگر پر است یا غیرفعال */ }
@@ -1465,6 +1467,7 @@ class WAPM_Admin {
 
 	async function start(mode, resume){
 		state.mode = mode;
+		state.run  = (resume && resume.run) ? String(resume.run) : ('r' + Date.now() + Math.floor(Math.random() * 1000));
 		state.page = resume ? Number(resume.page || 0) : 0;
 		state.inPage = resume ? Number(resume.inPage || 0) : 0;
 
@@ -1560,7 +1563,8 @@ class WAPM_Admin {
 						discovered: state.discovered,
 						pages: state.page + 1,
 						version: VERSION,
-						mode: state.mode
+						mode: state.mode,
+						run: state.run
 					});
 
 					if (res && res.success) {

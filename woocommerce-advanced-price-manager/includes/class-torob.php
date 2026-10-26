@@ -208,7 +208,7 @@ class WAPM_Torob {
 		}
 
 		return array_merge(
-			[ 'at' => '', 'source' => '', 'matched' => 0, 'checked' => 0, 'unmatched' => 0, 'discovered' => 0, 'pages' => 0, 'structure_warning' => false ],
+			[ 'at' => '', 'source' => '', 'matched' => 0, 'checked' => 0, 'unmatched' => 0, 'discovered' => 0, 'pages' => 0, 'structure_warning' => false, 'run' => '' ],
 			is_array( $raw ) ? $raw : []
 		);
 	}
@@ -1059,7 +1059,18 @@ class WAPM_Torob {
 		}
 
 		// ثبت آمار همگام‌سازی + تشخیص تغییر ساختار صفحه‌ی ترب.
-		$previous      = self::get_last_sync();
+		$previous = self::get_last_sync();
+
+		// هر همگام‌سازی بوکمارکلتی چند درخواست است (هر ۱۵ محصول یکی). اگر آمار
+		// هر درخواست آمار قبلی را بازنویسی کند، کارت وضعیت فقط «آخرین دسته» را
+		// نشان می‌دهد (مثلاً ۱۲ تطبیق از ۱۰۰۰ محصول). پس شمارنده‌ها داخل یک
+		// «اجرا»ی مشخص (run) جمع می‌شوند.
+		$run      = sanitize_text_field( (string) ( $meta['run'] ?? '' ) );
+		$same_run = '' !== $run && $run === (string) ( $previous['run'] ?? '' );
+		$carry    = static function ( string $key ) use ( $previous, $same_run ): int {
+			return $same_run ? (int) ( $previous[ $key ] ?? 0 ) : 0;
+		};
+
 		$discovered    = isset( $meta['discovered'] ) ? (int) $meta['discovered'] : count( $items );
 		$pages         = isset( $meta['pages'] ) ? (int) $meta['pages'] : 0;
 		// اگر منبع صریحاً گزارش کند «صفحه باز شد ولی هیچ محصولی نداشت» یا صفحات
@@ -1071,12 +1082,13 @@ class WAPM_Torob {
 			[
 				'at'                => $checked,
 				'source'            => $source,
-				'matched'           => (int) $stats['matched'],
-				'checked'           => (int) $stats['checked'],
-				'unmatched'         => (int) $stats['unmatched'],
-				'ambiguous'         => (int) $stats['ambiguous'],
-				'skipped'           => (int) $stats['skipped'],
-				'no_sellers'        => (int) $stats['no_sellers'],
+				'run'               => $run,
+				'matched'           => $carry( 'matched' ) + (int) $stats['matched'],
+				'checked'           => $carry( 'checked' ) + (int) $stats['checked'],
+				'unmatched'         => $carry( 'unmatched' ) + (int) $stats['unmatched'],
+				'ambiguous'         => $carry( 'ambiguous' ) + (int) $stats['ambiguous'],
+				'skipped'           => $carry( 'skipped' ) + (int) $stats['skipped'],
+				'no_sellers'        => $carry( 'no_sellers' ) + (int) $stats['no_sellers'],
 				'discovered'        => $discovered,
 				'pages'             => $pages,
 				'version'           => sanitize_text_field( (string) ( $meta['version'] ?? '' ) ),
