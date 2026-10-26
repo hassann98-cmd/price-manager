@@ -246,7 +246,7 @@ class WAPM_List {
 		if ( $product->is_type( 'variable' ) ) {
 			$min = $product->get_variation_price( 'min', false, false );
 			$max = $product->get_variation_price( 'max', false, false );
-			if ( '' !== $min && '' !== $max && null !== $min && null !== $max ) {
+			if ( is_numeric( $min ) && is_numeric( $max ) ) {
 				$price_range = ( (float) $min === (float) $max )
 					? wp_strip_all_tags( wc_price( $min ) )
 					: wp_strip_all_tags( wc_price( $min ) ) . ' – ' . wp_strip_all_tags( wc_price( $max ) );

@@ -1,0 +1,362 @@
+<?php
+/**
+ * تست‌های واحد منطق قیمت‌گذاری — بدون نیاز به نصب وردپرس/ووکامرس/MySQL.
+ *
+ * اجرا:   php tests/run.php
+ * خروجی:  کد ۰ = همه تست‌ها موفق، کد ۱ = حداقل یک شکست.
+ *
+ * چه چیزی تست می‌شود: توابع خالص engine قیمت (محاسبه، گرد کردن، محدودیت، کف قیمت).
+ * چه چیزی تست نمی‌شود: هر چیزی که به دیتابیس/ووکامرس واقعی نیاز دارد
+ * (ذخیره‌ی محصول، لاگ، rollback، Ajax).
+ *
+ * توجه: این فایل بخشی از افزونه نیست و در پروداکشن بارگذاری نمی‌شود.
+ */
+
+declare( strict_types = 0 );
+
+if ( PHP_VERSION_ID < 80000 ) {
+	fwrite( STDERR, "این تست‌ها به PHP 8.0+ نیاز دارند (نسخه‌ی فعلی: " . PHP_VERSION . ").\n" );
+	exit( 1 );
+}
+
+define( 'ABSPATH', __DIR__ . '/' );
+
+/* -------------------------------------------------------------------------
+ * stub حداقلی وردپرس/ووکامرس
+ * ---------------------------------------------------------------------- */
+
+$GLOBALS['wapm_stub'] = [
+	'decimals' => 0,
+	'currency' => 'IRT',
+	'filters'  => [],
+];
+
+function wc_get_price_decimals() {
+	return (int) $GLOBALS['wapm_stub']['decimals'];
+}
+
+function wc_format_decimal( $number, $dp = false ) {
+	if ( '' === $number || null === $number ) {
+		return '';
+	}
+	return ( false === $dp ) ? (string) $number : number_format( (float) $number, (int) $dp, '.', '' );
+}
+
+function get_woocommerce_currency() {
+	return (string) $GLOBALS['wapm_stub']['currency'];
+}
+
+/**
+ * apply_filters: مقدارِ تست‌شده را برمی‌گرداند و آرگومان‌های اضافی را نادیده می‌گیرد.
+ */
+function apply_filters( $tag, $value ) {
+	return array_key_exists( $tag, $GLOBALS['wapm_stub']['filters'] )
+		? $GLOBALS['wapm_stub']['filters'][ $tag ]
+		: $value;
+}
+
+function __( $text, $domain = null ) {
+	return $text;
+}
+
+require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-price-engine.php';
+require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-logger.php';
+
+/* -------------------------------------------------------------------------
+ * چارچوب تست کوچک
+ * ---------------------------------------------------------------------- */
+
+$GLOBALS['wapm_tests'] = [ 'run' => 0, 'failed' => 0, 'failures' => [] ];
+
+function stub_reset( array $overrides = [] ): void {
+	$GLOBALS['wapm_stub'] = array_merge(
+		[ 'decimals' => 0, 'currency' => 'IRT', 'filters' => [] ],
+		$overrides
+	);
+}
+
+function test( string $label, callable $fn ): void {
+	$GLOBALS['wapm_tests']['run']++;
+	try {
+		$fn();
+	} catch ( Throwable $e ) {
+		$GLOBALS['wapm_tests']['failed']++;
+		$GLOBALS['wapm_tests']['failures'][] = $label . ' — استثنا: ' . $e->getMessage();
+	}
+}
+
+function ok( bool $cond, string $label, string $detail = '' ): void {
+	if ( $cond ) {
+		return;
+	}
+	$GLOBALS['wapm_tests']['failed']++;
+	$GLOBALS['wapm_tests']['failures'][] = $label . ( $detail ? ' — ' . $detail : '' );
+}
+
+function eq( $expected, $actual, string $label ): void {
+	if ( is_float( $expected ) || is_float( $actual ) ) {
+		ok( abs( (float) $expected - (float) $actual ) < 0.000001, $label, 'انتظار: ' . var_export( $expected, true ) . ' / نتیجه: ' . var_export( $actual, true ) );
+		return;
+	}
+	ok( $expected === $actual, $label, 'انتظار: ' . var_export( $expected, true ) . ' / نتیجه: ' . var_export( $actual, true ) );
+}
+
+/** ساخت تنظیمات کامل از ورودی خام */
+function settings( array $raw ): array {
+	return WAPM_Price_Engine::sanitize_settings( $raw );
+}
+
+/* -------------------------------------------------------------------------
+ * ۱) sanitize_settings
+ * ---------------------------------------------------------------------- */
+
+test( 'sanitize: مقادیر پیش‌فرض', function () {
+	stub_reset();
+	$s = settings( [] );
+	eq( 'percent', $s['mode'], 'mode پیش‌فرض' );
+	eq( 'increase', $s['direction'], 'direction پیش‌فرض' );
+	eq( 'regular', $s['price_target'], 'price_target پیش‌فرض' );
+	eq( 'variations', $s['variable_scope'], 'variable_scope پیش‌فرض' );
+	eq( 'independent', $s['sale_handling'], 'sale_handling پیش‌فرض' );
+	eq( 'none', $s['round_mode'], 'round_mode پیش‌فرض' );
+	eq( 0.0, $s['amount'], 'amount پیش‌فرض' );
+} );
+
+test( 'sanitize: مقادیر نامعتبر به پیش‌فرض برمی‌گردند', function () {
+	stub_reset();
+	$s = settings( [
+		'mode'           => 'hack',
+		'direction'      => 'sideways',
+		'price_target'   => 'all',
+		'variable_scope' => 'everything',
+		'round_mode'     => 'floor-ish',
+		'currency_unit'  => 'dollar',
+	] );
+	eq( 'percent', $s['mode'], 'mode نامعتبر' );
+	eq( 'increase', $s['direction'], 'direction نامعتبر' );
+	eq( 'regular', $s['price_target'], 'price_target نامعتبر' );
+	eq( 'variations', $s['variable_scope'], 'variable_scope نامعتبر' );
+	eq( 'none', $s['round_mode'], 'round_mode نامعتبر' );
+	eq( 'toman', $s['currency_unit'], 'currency_unit نامعتبر' );
+} );
+
+test( 'sanitize: اعداد منفی و رشته‌ای', function () {
+	stub_reset();
+	$s = settings( [ 'amount' => '-12.5', 'round_base' => '-50', 'min_price' => '-1', 'max_price' => '-1' ] );
+	eq( 12.5, $s['amount'], 'amount منفی → قدرمطلق' );
+	eq( 0.0, (float) $s['round_base'], 'round_base منفی → ۰' );
+	eq( 0.0, (float) $s['min_price'], 'min_price منفی → ۰' );
+	eq( 0.0, (float) $s['max_price'], 'max_price منفی → ۰' );
+} );
+
+test( 'sanitize: سازگاری با scope والدِ ذخیره‌شده', function () {
+	stub_reset();
+	// گزینه‌ی «فقط قیمت والد» از UI حذف شده، ولی داده‌ی قدیمی نباید بی‌صدا
+	// به «همه واریشن‌ها» تبدیل شود (وگرنه قانون قدیمی ناگهان قیمت‌ها را عوض می‌کند).
+	eq( 'parent', settings( [ 'variable_scope' => 'parent' ] )['variable_scope'], 'parent حفظ می‌شود' );
+} );
+
+/* -------------------------------------------------------------------------
+ * ۲) محاسبه‌ی درصدی
+ * ---------------------------------------------------------------------- */
+
+test( 'درصد: افزایش ۱۰٪', function () {
+	stub_reset();
+	$s = settings( [ 'mode' => 'percent', 'direction' => 'increase', 'amount' => 10 ] );
+	eq( 1100.0, WAPM_Price_Engine::calculate( '1000', $s ), '۱۰۰۰ + ۱۰٪' );
+} );
+
+test( 'درصد: کاهش ۱۰٪', function () {
+	stub_reset();
+	$s = settings( [ 'mode' => 'percent', 'direction' => 'decrease', 'amount' => 10 ] );
+	eq( 900.0, WAPM_Price_Engine::calculate( '1000', $s ), '۱۰۰۰ − ۱۰٪' );
+} );
+
+test( 'درصد: قیمت خالی → null', function () {
+	stub_reset();
+	$s = settings( [ 'amount' => 10 ] );
+	eq( null, WAPM_Price_Engine::calculate( '', $s ), 'قیمت خالی' );
+	eq( null, WAPM_Price_Engine::calculate( null, $s ), 'قیمت null' );
+} );
+
+/* -------------------------------------------------------------------------
+ * ۳) محافظ قیمت صفر (P0-4)
+ * ---------------------------------------------------------------------- */
+
+test( 'کف قیمت: کاهش ۱۰۰٪ محصول را رایگان نمی‌کند', function () {
+	stub_reset(); // تومان، ۰ رقم اعشار
+	$s = settings( [ 'mode' => 'percent', 'direction' => 'decrease', 'amount' => 100 ] );
+	$new = WAPM_Price_Engine::calculate( '1000000', $s );
+	eq( 1.0, $new, 'کاهش ۱۰۰٪ → ۱ (نه ۰)' );
+	ok( $new > 0, 'قیمت باید بزرگ‌تر از صفر بماند' );
+} );
+
+test( 'کف قیمت: کاهش بیش از ۱۰۰٪', function () {
+	stub_reset();
+	$s = settings( [ 'mode' => 'percent', 'direction' => 'decrease', 'amount' => 250 ] );
+	eq( 1.0, WAPM_Price_Engine::calculate( '5000', $s ), 'کاهش ۲۵۰٪ → کف' );
+} );
+
+test( 'کف قیمت: با ۲ رقم اعشار ۰.۰۱ است', function () {
+	stub_reset( [ 'decimals' => 2, 'currency' => 'USD' ] );
+	$s = settings( [ 'mode' => 'percent', 'direction' => 'decrease', 'amount' => 100 ] );
+	eq( 0.01, WAPM_Price_Engine::calculate( '49.99', $s ), 'کاهش ۱۰۰٪ با ۲ اعشار' );
+} );
+
+test( 'کف قیمت: فیلتر wapm_price_floor', function () {
+	stub_reset( [ 'filters' => [ 'wapm_price_floor' => 50000 ] ] );
+	$s = settings( [ 'mode' => 'percent', 'direction' => 'decrease', 'amount' => 100 ] );
+	eq( 50000.0, WAPM_Price_Engine::calculate( '1000000', $s ), 'کف سفارشی ۵۰٬۰۰۰' );
+} );
+
+test( 'کف قیمت: افزایش تحت‌تاثیر قرار نمی‌گیرد', function () {
+	stub_reset();
+	$s = settings( [ 'mode' => 'fixed', 'direction' => 'increase', 'amount' => 0 ] );
+	eq( 800.0, WAPM_Price_Engine::calculate( '800', $s ), 'افزایش صفر → همان قیمت' );
+} );
+
+/* -------------------------------------------------------------------------
+ * ۴) مبلغ ثابت و تبدیل واحد
+ * ---------------------------------------------------------------------- */
+
+test( 'مبلغ ثابت: واحد مطابق ارز فروشگاه (تومان)', function () {
+	stub_reset(); // فروشگاه IRT
+	$s = settings( [ 'mode' => 'fixed', 'direction' => 'increase', 'amount' => 15000, 'currency_unit' => 'toman' ] );
+	eq( 65000.0, WAPM_Price_Engine::calculate( '50000', $s ), '۵۰٬۰۰۰ + ۱۵٬۰۰۰' );
+} );
+
+test( 'مبلغ ثابت: ورودی ریال در فروشگاه تومانی (÷۱۰)', function () {
+	stub_reset(); // فروشگاه IRT
+	$s = settings( [ 'mode' => 'fixed', 'direction' => 'increase', 'amount' => 100000, 'currency_unit' => 'rial' ] );
+	eq( 60000.0, WAPM_Price_Engine::calculate( '50000', $s ), '۹۹٬۹۹۹ ریال ≈ ۱۰٬۰۰۰ تومان' );
+} );
+
+test( 'مبلغ ثابت: ورودی تومان در فروشگاه ریالی (×۱۰)', function () {
+	stub_reset( [ 'currency' => 'IRR' ] );
+	$s = settings( [ 'mode' => 'fixed', 'direction' => 'increase', 'amount' => 1000, 'currency_unit' => 'toman' ] );
+	eq( 510000.0, WAPM_Price_Engine::calculate( '500000', $s ), '۱٬۰۰۰ تومان = ۱۰٬۰۰۰ ریال' );
+} );
+
+test( 'مبلغ ثابت: کاهش بیش از قیمت → کف', function () {
+	stub_reset();
+	$s = settings( [ 'mode' => 'fixed', 'direction' => 'decrease', 'amount' => 100000, 'currency_unit' => 'toman' ] );
+	eq( 1.0, WAPM_Price_Engine::calculate( '30000', $s ), 'کاهش ۱۰۰٬۰۰۰ از ۳۰٬۰۰۰' );
+} );
+
+/* -------------------------------------------------------------------------
+ * ۵) گرد کردن
+ * ---------------------------------------------------------------------- */
+
+test( 'گرد کردن: نزدیک‌ترین مضرب ۱۰۰۰', function () {
+	stub_reset();
+	$s = settings( [ 'amount' => 0, 'round_mode' => 'nearest', 'round_base' => 1000 ] );
+	eq( 235000.0, WAPM_Price_Engine::calculate( '235430', $s ), '۲۳۵٬۴۳۰ → ۲۳۵٬۰۰۰' );
+} );
+
+test( 'گرد کردن: رو به بالا', function () {
+	stub_reset();
+	$s = settings( [ 'amount' => 0, 'round_mode' => 'up', 'round_base' => 1000 ] );
+	eq( 236000.0, WAPM_Price_Engine::calculate( '235001', $s ), '۲۳۵٬۰۰۱ → ۲۳۶٬۰۰۰' );
+} );
+
+test( 'گرد کردن: رو به پایین', function () {
+	stub_reset();
+	$s = settings( [ 'amount' => 0, 'round_mode' => 'down', 'round_base' => 1000 ] );
+	eq( 235000.0, WAPM_Price_Engine::calculate( '235999', $s ), '۲۳۵٬۹۹۹ → ۲۳۵٬۰۰۰' );
+} );
+
+test( 'گرد کردن: base صفر = بی‌اثر', function () {
+	stub_reset();
+	$s = settings( [ 'amount' => 0, 'round_mode' => 'up', 'round_base' => 0 ] );
+	eq( 235001.0, WAPM_Price_Engine::calculate( '235001', $s ), 'بدون گرد کردن' );
+} );
+
+/* -------------------------------------------------------------------------
+ * ۶) حداقل/حداکثر
+ * ---------------------------------------------------------------------- */
+
+test( 'محدودیت: حداقل قیمت', function () {
+	stub_reset();
+	$s = settings( [ 'mode' => 'percent', 'direction' => 'decrease', 'amount' => 50, 'min_price' => 800 ] );
+	eq( 800.0, WAPM_Price_Engine::calculate( '1000', $s ), '۵۰۰ → کف ۸۰۰' );
+} );
+
+test( 'محدودیت: حداکثر قیمت', function () {
+	stub_reset();
+	$s = settings( [ 'mode' => 'percent', 'direction' => 'increase', 'amount' => 100, 'max_price' => 1500 ] );
+	eq( 1500.0, WAPM_Price_Engine::calculate( '1000', $s ), '۲۰۰۰ → سقف ۱۵۰۰' );
+} );
+
+test( 'محدودیت: حداقل بر کف مطلق اولویت دارد', function () {
+	stub_reset();
+	$s = settings( [ 'mode' => 'percent', 'direction' => 'decrease', 'amount' => 100, 'min_price' => 5000 ] );
+	eq( 5000.0, WAPM_Price_Engine::calculate( '9000', $s ), 'min_price بزرگ‌تر از کف مطلق' );
+} );
+
+test( 'محدودیت: قیمت منفی هرگز', function () {
+	stub_reset();
+	$s = settings( [ 'mode' => 'percent', 'direction' => 'decrease', 'amount' => 150 ] );
+	$new = WAPM_Price_Engine::calculate( '100', $s );
+	ok( $new >= 0, 'قیمت منفی نشود', 'نتیجه: ' . var_export( $new, true ) );
+} );
+
+/* -------------------------------------------------------------------------
+ * ۷) اعتبارسنجی قیمت کوچک (رگرسیون: قیمت اجناس ارزان)
+ * ---------------------------------------------------------------------- */
+
+test( 'کاهش معقول روی محصول ارزان', function () {
+	stub_reset();
+	$s = settings( [ 'mode' => 'percent', 'direction' => 'decrease', 'amount' => 10 ] );
+	eq( 90000.0, WAPM_Price_Engine::calculate( '100000', $s ), '۱۰٪ کاهش عادی' );
+	eq( 90.0, WAPM_Price_Engine::calculate( '100', $s ), '۱۰٪ کاهش روی ۱۰۰' );
+} );
+
+/* -------------------------------------------------------------------------
+ * ۸) تشخیص تداخل در Rollback (P0-5)
+ *    WAPM_Logger::same_price() تصمیم می‌گیرد آیا قیمت فعلی همان چیزی است که
+ *    Batch نوشته بود یا نه؛ اگر false برگرداند، ردیف بازگردانی نمی‌شود.
+ * ---------------------------------------------------------------------- */
+
+$GLOBALS['wapm_same_price'] = ( new ReflectionMethod( 'WAPM_Logger', 'same_price' ) );
+$GLOBALS['wapm_same_price']->setAccessible( true );
+
+function same_price( string $a, string $b ): bool {
+	return $GLOBALS['wapm_same_price']->invoke( null, $a, $b );
+}
+
+test( 'تداخل: قیمت یکسان', function () {
+	stub_reset();
+	ok( same_price( '1200000', '1200000' ), 'رشته‌ی یکسان' );
+	ok( same_price( '1200000', '1200000.00' ), 'قالب اعشاری متفاوت ولی مقدار یکسان' );
+} );
+
+test( 'تداخل: قیمت عوض شده', function () {
+	stub_reset();
+	ok( ! same_price( '1200000', '1250000' ), 'قیمت جدیدتر → تداخل' );
+} );
+
+test( 'تداخل: حذف/افزودن قیمت ویژه', function () {
+	stub_reset();
+	ok( same_price( '', '' ), 'هر دو بدون قیمت' );
+	ok( ! same_price( '', '900000' ), 'قبلاً حذف شده بود، حالا قیمت دارد → تداخل' );
+	ok( ! same_price( '900000', '' ), 'قبلاً قیمت داشت، حالا حذف شده → تداخل' );
+} );
+
+/* -------------------------------------------------------------------------
+ * نتیجه
+ * ---------------------------------------------------------------------- */
+
+$total  = $GLOBALS['wapm_tests']['run'];
+$failed = $GLOBALS['wapm_tests']['failed'];
+
+if ( $failed ) {
+	echo "\n❌ {$failed} از {$total} تست شکست خورد:\n\n";
+	foreach ( $GLOBALS['wapm_tests']['failures'] as $f ) {
+		echo "  • {$f}\n";
+	}
+	echo "\n";
+	exit( 1 );
+}
+
+echo "✅ همه‌ی {$total} تست موفق بود.\n";
+exit( 0 );
