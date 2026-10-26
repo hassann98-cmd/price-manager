@@ -72,8 +72,29 @@ class WAPM_Price_Engine {
 
 		$new = self::round_price( $new, $s );
 		$new = self::clamp_price( $new, $s );
+		$new = round( $new, wc_get_price_decimals() );
 
-		return max( 0, round( $new, wc_get_price_decimals() ) );
+		// محافظ پایه: کاهش قیمت هرگز نباید محصول را رایگان (صفر) کند.
+		// قبلاً فقط max( 0, … ) بود، پس کاهش ۱۰۰٪ قیمت را صفر می‌کرد و محصول
+		// در فروشگاه رایگان می‌شد؛ در سفارش ثبت‌شده هم برگشت‌پذیر نیست.
+		if ( 'decrease' === $s['direction'] ) {
+			$new = max( self::price_floor(), $new );
+		}
+
+		return max( 0, $new );
+	}
+
+	/**
+	 * کف مطلق قیمت پس از کاهش.
+	 *
+	 * پیش‌فرض: کوچک‌ترین واحد معنادار ارز (۰ تومان ندارد → ۱؛ با ۲ رقم اعشار → ۰.۰۱).
+	 * با فیلتر `wapm_price_floor` قابل تغییر است (مثلاً کف ۱۰٬۰۰۰ تومان برای یک فروشگاه).
+	 */
+	public static function price_floor(): float {
+		$decimals = (int) wc_get_price_decimals();
+		$floor    = $decimals > 0 ? 1 / ( 10 ** $decimals ) : 1;
+
+		return (float) apply_filters( 'wapm_price_floor', $floor );
 	}
 
 	/**
@@ -108,7 +129,7 @@ class WAPM_Price_Engine {
 	 * پیش‌نمایش تغییرات یک محصول (بدون ذخیره).
 	 * برای محصول متغیر، طبق variable_scope والد/واریشن‌ها را باز می‌کند.
 	 *
-	 * @return array[] هر آیتم: id, parent_id, name, sku, type, price_type, old, new, percent
+	 * @return array[] هر آیتم: id, parent_id, name, sku, type, price_type, old, new, diff, percent, warn
 	 */
 	public static function is_excluded( WC_Product $product ): bool {
 		if ( 'yes' === $product->get_meta( '_wapm_exclude', true ) ) {
@@ -219,6 +240,10 @@ class WAPM_Price_Engine {
 			$new_f   = $change['new'];
 			$percent = ( null !== $new_f && $old_f > 0 ) ? round( ( ( $new_f - $old_f ) / $old_f ) * 100, 2 ) : 0;
 
+			// هشدار «افت شدید»: کاهش بیش از ۹۰٪ یعنی یا تنظیمات اشتباه است یا قیمت
+			// به کف مجاز خورده است. در پیش‌نمایش و Dry Run نمایش داده می‌شود.
+			$warn = ( null !== $new_f && $old_f > 0 && $new_f < $old_f && $new_f <= $old_f * 0.1 );
+
 			$rows[] = [
 				'id'         => $product->get_id(),
 				'parent_id'  => $product->get_parent_id(),
@@ -231,6 +256,7 @@ class WAPM_Price_Engine {
 				'new'        => $new_f, // null = حذف Sale
 				'diff'       => null !== $new_f ? round( $new_f - $old_f, wc_get_price_decimals() ) : -$old_f,
 				'percent'    => $percent,
+				'warn'       => $warn,
 			];
 		}
 

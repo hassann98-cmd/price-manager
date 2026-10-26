@@ -125,6 +125,11 @@
 	vertical-align: middle;
 }
 
+/* ردیف‌های پرخطر: افت بیش از ۹۰٪ یا رسیدن به کف قیمت */
+.wapm-preview-table tr.wapm-warn td {
+	background: #fffbeb;
+}
+
 .wapm-pagination .button {
 	margin-inline-end: 4px;
 }

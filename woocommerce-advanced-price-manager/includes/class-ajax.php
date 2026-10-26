@@ -262,6 +262,7 @@ class WAPM_Ajax {
 			'sum_diff'     => 0.0,
 			'max_increase' => 0.0,
 			'max_decrease' => 0.0,
+			'flagged'      => 0, // تعداد قیمت‌هایی که افت بیش از ۹۰٪ دارند (هشدار).
 		];
 
 		foreach ( $targets['ids'] as $pid ) {
@@ -275,6 +276,9 @@ class WAPM_Ajax {
 				if ( $row['parent_id'] > 0 && ! isset( $seen_variations[ $row['id'] ] ) ) {
 					$seen_variations[ $row['id'] ] = true;
 					$stats['variations']++;
+				}
+				if ( ! empty( $row['warn'] ) ) {
+					$stats['flagged']++;
 				}
 				$diff = (float) $row['diff'];
 				$stats['price_points']++;

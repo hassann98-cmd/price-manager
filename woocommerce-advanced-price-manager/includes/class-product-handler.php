@@ -70,8 +70,9 @@ class WAPM_Product_Handler {
 
 		switch ( $f['scope'] ) {
 			case 'selected':
-				$args['post__in']       = ! empty( $f['product_ids'] ) ? $f['product_ids'] : [ 0 ];
-				$args['posts_per_page'] = -1; // انتخابی‌ها معمولاً محدودند.
+				// توجه: «selected» از این مسیر کوئری نمی‌شود؛ در get_selected_page()
+				// با array_slice صفحه‌بندی می‌شود تا `paged` واقعاً اثر داشته باشد.
+				$args['post__in'] = ! empty( $f['product_ids'] ) ? $f['product_ids'] : [ 0 ];
 				break;
 
 			case 'category':
@@ -115,44 +116,107 @@ class WAPM_Product_Handler {
 	 * @return array{ids: int[], total: int}
 	 */
 	public static function get_target_ids( array $f, int $paged = 1, int $per_page = 25 ): array {
+		// دامنه‌ی «محصولات انتخابی»: مجموعه کوچک و صریح است، پس یک‌بار اعتبارسنجی و
+		// فیلتر می‌شود و بعد در PHP برش می‌خورد. با روش قبلی (posts_per_page = -1)
+		// هر صفحه همه‌ی محصولات انتخابی را برمی‌گرداند و `paged` هیچ اثری نداشت؛ نتیجه
+		// صفحه‌بندی بی‌پایان و شمارنده‌ی «۳٬۶۰۰ از ۳۰۰ محصول» بود.
+		if ( 'selected' === $f['scope'] ) {
+			return self::get_selected_page( $f, $paged, $per_page );
+		}
+
 		$query = new WP_Query( self::build_query_args( $f, $paged, $per_page ) );
 		$ids   = array_map( 'intval', $query->posts );
 
-		// فیلتر موجودی انبار (بعد از کوئری، چون _stock برای متغیرها روی واریشن است).
-		if ( 'none' !== $f['stock_filter'] && $f['stock_value'] > 0 ) {
-			$ids = array_values( array_filter( $ids, function ( $id ) use ( $f ) {
-				$product = wc_get_product( $id );
-				if ( ! $product ) {
-					return false;
-				}
-				$stock = $product->get_stock_quantity();
-				if ( null === $stock && $product->is_type( 'variable' ) ) {
-					$stock = 0;
-					foreach ( $product->get_children() as $vid ) {
-						$v = wc_get_product( $vid );
-						if ( $v && null !== $v->get_stock_quantity() ) {
-							$stock += (int) $v->get_stock_quantity();
-						}
-					}
-				}
-				if ( null === $stock ) {
-					return false;
-				}
-				return ( 'below' === $f['stock_filter'] ) ? $stock < $f['stock_value'] : $stock > $f['stock_value'];
-			} ) );
+		if ( self::has_stock_filter( $f ) ) {
+			$ids = self::filter_by_stock( $ids, $f );
 		}
 
 		return [
 			'ids'   => $ids,
-			'total' => (int) ( ( 'selected' === $f['scope'] ) ? count( $ids ) : $query->found_posts ),
+			'total' => (int) $query->found_posts,
 		];
+	}
+
+	/**
+	 * یک صفحه از محصولات انتخابی + تعداد کل (بعد از فیلتر موجودی).
+	 *
+	 * @return array{ids: int[], total: int}
+	 */
+	private static function get_selected_page( array $f, int $paged, int $per_page ): array {
+		$requested = array_values( array_unique( array_filter( array_map( 'absint', (array) ( $f['product_ids'] ?? [] ) ) ) ) );
+		if ( empty( $requested ) ) {
+			return [ 'ids' => [], 'total' => 0 ];
+		}
+
+		// فقط محصولات منتشرشده‌ی موجود نگه داشته می‌شوند تا شمارش/صفحه‌بندی با واقعیت بخواند.
+		$valid = get_posts( [
+			'post_type'      => 'product',
+			'post_status'    => 'publish',
+			'post__in'       => $requested,
+			'fields'         => 'ids',
+			'posts_per_page' => -1,
+			'orderby'        => 'ID',
+			'order'          => 'ASC',
+			'no_found_rows'  => true,
+		] );
+		$ids = array_map( 'intval', (array) $valid );
+		sort( $ids ); // ترتیب ثابت → صفحه‌بندی پایدار بین درخواست‌ها.
+
+		if ( self::has_stock_filter( $f ) ) {
+			$ids = self::filter_by_stock( $ids, $f );
+		}
+
+		$total  = count( $ids );
+		$offset = max( 0, ( max( 1, $paged ) - 1 ) * max( 1, $per_page ) );
+
+		return [
+			'ids'   => array_slice( $ids, $offset, max( 1, $per_page ) ),
+			'total' => $total,
+		];
+	}
+
+	private static function has_stock_filter( array $f ): bool {
+		return 'none' !== $f['stock_filter'] && $f['stock_value'] > 0;
+	}
+
+	/**
+	 * فیلتر موجودی انبار (بعد از کوئری، چون _stock برای متغیرها روی واریشن است).
+	 *
+	 * @param int[] $ids
+	 * @return int[]
+	 */
+	private static function filter_by_stock( array $ids, array $f ): array {
+		return array_values( array_filter( $ids, function ( $id ) use ( $f ) {
+			$product = wc_get_product( $id );
+			if ( ! $product ) {
+				return false;
+			}
+			$stock = $product->get_stock_quantity();
+			if ( null === $stock && $product->is_type( 'variable' ) ) {
+				$stock = 0;
+				foreach ( $product->get_children() as $vid ) {
+					$v = wc_get_product( $vid );
+					if ( $v && null !== $v->get_stock_quantity() ) {
+						$stock += (int) $v->get_stock_quantity();
+					}
+				}
+			}
+			if ( null === $stock ) {
+				return false;
+			}
+			return ( 'below' === $f['stock_filter'] ) ? $stock < $f['stock_value'] : $stock > $f['stock_value'];
+		} ) );
 	}
 
 	/**
 	 * شمارش کل محصولات متاثر (برای نمایش قبل از اجرا).
 	 */
 	public static function count_targets( array $f ): int {
-		if ( 'none' !== $f['stock_filter'] && $f['stock_value'] > 0 ) {
+		if ( 'selected' === $f['scope'] ) {
+			return self::get_selected_page( $f, 1, PHP_INT_MAX )['total'];
+		}
+
+		if ( self::has_stock_filter( $f ) ) {
 			// با فیلتر موجودی باید همه صفحات را بشماریم.
 			$count = 0;
 			$paged = 1;

@@ -16,7 +16,8 @@
 	var state = {
 		rules: initialData.rules || [],
 		schedules: initialData.schedules || [],
-		applying: false
+		applying: false,
+		previewWarnings: 0
 	};
 
 	/* ---------------- ابزار ---------------- */
@@ -190,7 +191,17 @@
 	/* ---------------- پیش‌نمایش ---------------- */
 
 	function renderPreview(data) {
-		var html = '<p><strong>' + fmt(data.total) + '</strong> محصول هدف — صفحه ' + fmt(data.paged) + ' از ' + fmt(data.pages) + '</p>';
+		// هشدارهای «افت شدید» — همان چیزی که در سمت سرور با warn علامت خورده است.
+		var warnRows = data.rows.filter(function (r) { return !!r.warn; });
+		state.previewWarnings = warnRows.length;
+
+		var html = '';
+		if (warnRows.length) {
+			html += '<div class="notice notice-warning inline" style="margin:8px 0"><p><strong>⚠ ' + fmt(warnRows.length) +
+				' قیمت افت بیش از ۹۰٪ دارد</strong> (یا به کف مجاز رسیده است). قبل از اعمال، ردیف‌های علامت‌خورده را بررسی کنید. ' +
+				'کاهش قیمت هرگز محصول را رایگان نمی‌کند.</p></div>';
+		}
+		html += '<p><strong>' + fmt(data.total) + '</strong> محصول هدف — صفحه ' + fmt(data.paged) + ' از ' + fmt(data.pages) + '</p>';
 		html += '<table class="widefat striped wapm-preview-table"><thead><tr>' +
 			'<th></th><th>محصول</th><th>SKU</th><th>نوع</th><th>نوع قیمت</th>' +
 			'<th>قیمت فعلی</th><th>قیمت جدید</th><th>تغییر</th><th>درصد</th></tr></thead><tbody>';
@@ -202,14 +213,14 @@
 		data.rows.forEach(function (r) {
 			var cls = (r.new !== null && r.new >= r.old) ? 'wapm-up' : 'wapm-down';
 			var sign = r.percent > 0 ? '+' : '';
-			html += '<tr>' +
+			html += '<tr' + (r.warn ? ' class="wapm-warn"' : '') + '>' +
 				'<td><img src="' + esc(r.image) + '" alt=""></td>' +
 				'<td>' + esc(r.name) + '</td>' +
 				'<td>' + esc(r.sku || '—') + '</td>' +
 				'<td>' + esc(r.type) + '</td>' +
 				'<td>' + (r.price_type === 'sale' ? WAPM.i18n.sale : WAPM.i18n.regular) + '</td>' +
 				'<td>' + fmt(r.old) + '</td>' +
-				'<td class="' + cls + '">' + (r.new === null ? 'حذف' : fmt(r.new)) + '</td>' +
+				'<td class="' + cls + '">' + (r.warn ? '⚠ ' : '') + (r.new === null ? 'حذف' : fmt(r.new)) + '</td>' +
 				'<td class="' + cls + '">' + fmt(r.diff) + '</td>' +
 				'<td class="' + cls + '">' + (r.new === null ? '—' : sign + r.percent + '%') + '</td>' +
 				'</tr>';
@@ -229,6 +240,7 @@
 	}
 
 	function loadPreview(paged) {
+		state.previewWarnings = 0;
 		$('#wapm-dryrun-area').hide();
 		$('#wapm-preview-area').html('<p>' + esc(WAPM.i18n.loading) + '</p>');
 		ajax('preview', {
@@ -250,7 +262,7 @@
 
 	$('#wapm-dryrun-btn').on('click', function () {
 		var $btn = $(this).prop('disabled', true);
-		var totals = { products: 0, variations: 0, price_points: 0, sum_diff: 0, max_increase: 0, max_decrease: 0 };
+		var totals = { products: 0, variations: 0, price_points: 0, sum_diff: 0, max_increase: 0, max_decrease: 0, flagged: 0 };
 		var filters = JSON.stringify(readFilters('main'));
 		var settings = JSON.stringify(readSettings('main'));
 
@@ -270,6 +282,7 @@
 				totals.variations += s.variations;
 				totals.price_points += s.price_points;
 				totals.sum_diff += s.sum_diff;
+				totals.flagged += (s.flagged || 0);
 				totals.max_increase = Math.max(totals.max_increase, s.max_increase);
 				totals.max_decrease = Math.min(totals.max_decrease, s.max_decrease);
 
@@ -278,6 +291,8 @@
 					return;
 				}
 
+				state.previewWarnings = totals.flagged;
+
 				var html = '<h3>گزارش Dry Run (هیچ تغییری ذخیره نشد)</h3><div class="wapm-stats">' +
 					'<div class="wapm-stat"><b>' + fmt(totals.products) + '</b><small>محصول</small></div>' +
 					'<div class="wapm-stat"><b>' + fmt(totals.variations) + '</b><small>واریشن</small></div>' +
@@ -285,7 +300,12 @@
 					'<div class="wapm-stat"><b>' + fmt(Math.round(totals.sum_diff)) + '</b><small>مجموع تغییر قیمت</small></div>' +
 					'<div class="wapm-stat"><b>' + fmt(Math.round(totals.max_increase)) + '</b><small>بیشترین افزایش</small></div>' +
 					'<div class="wapm-stat"><b>' + fmt(Math.round(totals.max_decrease)) + '</b><small>بیشترین کاهش</small></div>' +
+					(totals.flagged ? '<div class="wapm-stat" style="background:#fcf9e8;border-color:#f5e6ab"><b style="color:#996800">' + fmt(totals.flagged) + '</b><small>⚠ افت بیش از ۹۰٪</small></div>' : '') +
 					'</div>';
+				if (totals.flagged) {
+					html += '<div class="notice notice-warning inline"><p>⚠ ' + fmt(totals.flagged) +
+						' قیمت افت بیش از ۹۰٪ دارد. کاهش قیمت هرگز محصول را رایگان نمی‌کند، اما این تعداد قیمت پرخطر است — تنظیمات را بازبینی کنید.</p></div>';
+				}
 				$('#wapm-dryrun-area').html(html);
 				$btn.prop('disabled', false);
 			}).fail(function () {
@@ -363,8 +383,11 @@
 
 		ajax('count_targets', { filters: JSON.stringify(filters) }).done(function (res) {
 			var count = res.success ? res.data.count : 0;
-			if (!count) { window.alert(WAPM.i18n.no_targets); return; }
-			if (!window.confirm(WAPM.i18n.confirm_apply.replace('%d', count))) { return; }
+				if (!count) { window.alert(WAPM.i18n.no_targets); return; }
+				if (!window.confirm(WAPM.i18n.confirm_apply.replace('%d', count))) { return; }
+				// اگر در پیش‌نمایش، قیمت‌های پرخطر (افت بیش از ۹۰٪) دیده شده، یک تایید
+				// صریح دیگر بگیر تا اعمال، ناخواسته نباشد.
+				if (state.previewWarnings > 0 && !window.confirm(WAPM.i18n.confirm_warn.replace('%d', state.previewWarnings))) { return; }
 
 			state.applying = true;
 			runBatchLoop({
