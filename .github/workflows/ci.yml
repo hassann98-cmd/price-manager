@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  php:
+    name: PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.0', '8.3']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: نصب PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, json
+          coverage: none
+
+      - name: لینت همه‌ی فایل‌های PHP
+        run: |
+          set -euo pipefail
+          failed=0
+          while IFS= read -r -d '' file; do
+            if ! php -l "$file" > /dev/null; then
+              echo "::error file=$file::syntax error"
+              failed=1
+            fi
+          done < <(find woocommerce-advanced-price-manager tests -name '*.php' -print0)
+          exit "$failed"
+
+      - name: تست‌های واحد
+        if: matrix.php == '8.3'
+        run: php tests/run.php
+
+  js:
+    name: JavaScript
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: بررسی سینتکس
+        run: |
+          set -euo pipefail
+          for file in woocommerce-advanced-price-manager/assets/js/*.js; do
+            node --check "$file"
+            echo "ok: $file"
+          done
+
+  packaging:
+    name: ترجمه و بسته‌ی نصب
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: POT تازه است؟
+        run: python3 tools/make-pot.py --check
+      - name: zip با سورس هم‌خوان است؟
+        run: python3 tools/build-zip.py --check
