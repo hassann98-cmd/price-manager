@@ -991,7 +991,11 @@ class WAPM_Torob {
 		$shop_name = self::normalize( self::get_shop_name() );
 		$checked   = current_time( 'mysql' );
 
+		// انقضای لیست تطبیق‌نیافته، یک بار در ابتدای هر همگام‌سازی (بدون کرون جدا).
+		$pruned = self::prune_unmatched();
+
 		$stats = [
+			'pruned'        => $pruned, // ردیف‌های کهنه‌ی لیست تطبیق‌نیافته که حذف شدند
 			'matched'       => 0,
 			'checked'       => 0,
 			'unmatched'     => 0,
@@ -1372,6 +1376,59 @@ class WAPM_Torob {
 	public static function unmatched(): array {
 		$list = get_option( self::OPTION_UNMATCHED, [] );
 		return is_array( $list ) ? $list : [];
+	}
+
+	/**
+	 * حذف ردیف‌های کهنه‌ی لیست تطبیق‌نیافته.
+	 *
+	 * چرا: تطبیق بر اساس نام است و بعضی محصولات ترب هرگز به محصول ما وصل
+	 * نمی‌شوند. بدون انقضا، لیست به سقف می‌رسد و ردیف‌های تازه‌تر بیرون
+	 * می‌مانند (سقف حجم آپشن). پیش‌فرض ۳۰ روز است و با فیلتر
+	 * `wapm_torob_unmatched_ttl_days` عوض می‌شود.
+	 *
+	 * @param array<int,array> $list
+	 * @return array{list:array<int,array>,removed:int}
+	 */
+	public static function prune_unmatched_list( array $list, int $now, int $ttl_days ): array {
+		if ( $ttl_days <= 0 || ! $list ) {
+			return [ 'list' => $list, 'removed' => 0 ];
+		}
+
+		$cutoff  = $now - ( $ttl_days * DAY_IN_SECONDS );
+		$kept    = [];
+		$removed = 0;
+
+		foreach ( $list as $row ) {
+			// مبنای انقضا «آخرین باری که دیده شد» است، نه اولین بار؛ اگر ترب هنوز
+			// همان کاندید را پیشنهاد می‌دهد، ردیف زنده می‌ماند.
+			$seen = (int) strtotime( (string) ( $row['seen'] ?? '' ) );
+			if ( $seen > 0 && $seen < $cutoff ) {
+				$removed++;
+				continue;
+			}
+			$kept[] = $row;
+		}
+
+		return [ 'list' => $kept, 'removed' => $removed ];
+	}
+
+	/**
+	 * اجرای انقضای لیست روی آپشن (نوشتن فقط وقتی چیزی حذف شد).
+	 */
+	public static function prune_unmatched( int $now = 0 ): int {
+		$list = self::unmatched();
+		if ( ! $list ) {
+			return 0;
+		}
+
+		$ttl    = (int) apply_filters( 'wapm_torob_unmatched_ttl_days', 30 );
+		$result = self::prune_unmatched_list( $list, $now > 0 ? $now : time(), $ttl );
+
+		if ( $result['removed'] > 0 ) {
+			update_option( self::OPTION_UNMATCHED, $result['list'], false );
+		}
+
+		return (int) $result['removed'];
 	}
 
 	private static function add_unmatched( array $entry ): void {

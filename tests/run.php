@@ -1811,6 +1811,26 @@ test( 'CSV مقایسه‌ی ترب: اکشن، ستون‌ها و فیلتره�
 	ok( false !== strpos( $view, 'wapm-torob-export-btn' ), 'دکمه در تب CSV هست' );
 } );
 
+test( 'لیست تطبیق‌نیافته: ردیف‌های کهنه منقضی می‌شوند', function () {
+	$now  = strtotime( '2024-06-01 12:00:00' );
+	$list = [
+		[ 'prk' => 'new', 'seen' => '2024-05-31 12:00:00' ],  // ۱ روز پیش → می‌ماند
+		[ 'prk' => 'old', 'seen' => '2024-04-01 12:00:00' ],  // ۶۱ روز پیش → حذف
+		[ 'prk' => 'nodate', 'seen' => '' ],                    // بی‌تاریخ → نمی‌شود گفت کهنه است
+	];
+
+	$result = WAPM_Torob::prune_unmatched_list( $list, $now, 30 );
+
+	eq( 1, $result['removed'], 'یک ردیف حذف شد' );
+	eq( [ 'new', 'nodate' ], array_column( $result['list'], 'prk' ), 'ردیف‌های زنده ماندند' );
+
+	$off = WAPM_Torob::prune_unmatched_list( $list, $now, 0 );
+	eq( 0, $off['removed'], 'انقضای خاموش = بدون حذف' );
+	eq( $list, $off['list'], 'لیست دست‌نخورده' );
+
+	eq( [ 'list' => [], 'removed' => 0 ], WAPM_Torob::prune_unmatched_list( [], $now, 30 ), 'لیست خالی' );
+} );
+
 test( 'پرچم‌ها: ناسازگاری فید و واحد مشکوک (همان چیزی که ستون نشان می‌دهد)', function () {
 	$same = WAPM_Torob::price_flags( 1000000, 1000000, 1 );
 	eq( false, $same['mismatch'], 'قیمت یکسان = بدون ناسازگاری' );
