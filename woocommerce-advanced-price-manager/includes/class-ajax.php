@@ -39,6 +39,7 @@ class WAPM_Ajax {
 			'torob_import_feed',
 			'torob_find_shops',
 			'torob_verify_shop',
+			'torob_probe',
 			'torob_sync_catalog',
 			'torob_refresh_product',
 			'torob_align',
@@ -1136,6 +1137,28 @@ class WAPM_Ajax {
 		wp_send_json_success( array_merge( $this->torob_stats_payload(), [
 			'shop'  => $info,
 			'state' => WAPM_Torob_Api::state(),
+		] ) );
+	}
+
+	/**
+	 * آزمون ساختار ترب (۱ درخواست) — قبل از همگام‌سازی کامل صدا زده می‌شود.
+	 */
+	public function torob_probe(): void {
+		$this->guard();
+
+		$result = WAPM_Torob_Api::probe();
+
+		if ( is_wp_error( $result ) ) {
+			wp_send_json_error( [
+				'message' => $result->get_error_message(),
+				'code'    => $result->get_error_code(),
+				'state'   => WAPM_Torob_Api::state(),
+			] );
+		}
+
+		wp_send_json_success( array_merge( $result, [
+			'api'   => WAPM_Torob_Api::state(),
+			'shop'  => WAPM_Torob::get_shop_name(),
 		] ) );
 	}
 

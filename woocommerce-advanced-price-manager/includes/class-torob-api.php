@@ -359,10 +359,78 @@ class WAPM_Torob_Api {
 		$has_more = ! empty( $data['next'] ) && ! empty( $raw );
 
 		return [
-			'items'    => $items,
-			'count'    => (int) ( $data['count'] ?? 0 ),
-			'page'     => max( 0, $page ),
-			'has_more' => $has_more,
+			'items'     => $items,
+			'count'     => (int) ( $data['count'] ?? 0 ),
+			'raw_count' => count( $raw ), // برای تشخیص «ساختار عوض شده» در probe
+			'page'      => max( 0, $page ),
+			'has_more'  => $has_more,
+		];
+	}
+
+	/**
+	 * آزمون ساختار ترب قبل از همگام‌سازی کامل (۱ درخواست).
+	 *
+	 * چرا: اگر ترب ساختار پاسخ را عوض کند، همگام‌سازی کامل صفحه‌به‌صفحه اجرا
+	 * می‌شود، بودجه‌ی روزانه مصرف می‌شود و آخرش معلوم می‌شود «هیچ محصولی پیدا
+	 * نشد». یک درخواست کوچک قبل از شروع، همان را در ۲ ثانیه می‌گوید.
+	 *
+	 * @return array|WP_Error خروجی judge_probe()
+	 */
+	public static function probe( int $shop_id = 0 ) {
+		$shop_id = $shop_id > 0 ? $shop_id : (int) WAPM_Torob::get_shop_id();
+
+		if ( $shop_id <= 0 ) {
+			return new WP_Error( 'torob_shop_id', __( 'شناسه‌ی فروشگاه تنظیم نشده است.', 'wapm' ) );
+		}
+
+		$result = self::shop_products( $shop_id, 0, 5 );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		return self::judge_probe( $result );
+	}
+
+	/**
+	 * داوری درباره‌ی یک صفحه‌ی خوانده‌شده (بدون HTTP، قابل تست).
+	 *
+	 * سه حالت ممکن است و باید از هم جدا شوند:
+	 *  - `ok`        : حداقل یک کارت سالم خوانده شد.
+	 *  - `structure` : ترب ردیف داد ولی هیچ‌کدام قابل خواندن نبود (کلیدها عوض شده‌اند).
+	 *  - `empty`     : فروشگاه واقعاً در ترب محصولی ندارد.
+	 *
+	 * @param array $result خروجی parse_shop_products()
+	 * @return array{ok:bool,reason:string,samples:int,count:int,label:string}
+	 */
+	public static function judge_probe( array $result ): array {
+		$samples = count( (array) ( $result['items'] ?? [] ) );
+		$count   = (int) ( $result['count'] ?? 0 );
+		$raw     = (int) ( $result['raw_count'] ?? $samples );
+
+		if ( $samples > 0 ) {
+			return [
+				'ok'      => true,
+				'reason'  => 'ok',
+				'samples' => $samples,
+				'count'   => $count,
+				'label'   => sprintf(
+					/* translators: %d: number of products */
+					__( 'ساختار ترب سالم است (%d محصول خوانده شد).', 'wapm' ),
+					$samples
+				),
+			];
+		}
+
+		$structure = ( $raw > 0 || $count > 0 );
+
+		return [
+			'ok'      => false,
+			'reason'  => $structure ? 'structure' : 'empty',
+			'samples' => 0,
+			'count'   => $count,
+			'label'   => $structure
+				? __( 'پاسخ ترب قابل خواندن نیست — احتمالاً ساختار پاسخ عوض شده است. همگام‌سازی شروع نشد.', 'wapm' )
+				: __( 'کاتالوگ فروشگاه در ترب خالی است (یا محصولی برای این فروشگاه ثبت نشده).', 'wapm' ),
 		];
 	}
 

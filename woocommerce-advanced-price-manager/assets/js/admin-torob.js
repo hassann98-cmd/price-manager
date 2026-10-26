@@ -342,13 +342,39 @@
 	$('#wapm-torob-catalog-sync').on('click', function () {
 		if (catalogRun.running) { return; }
 
-		catalogRun = { stop: false, running: true, synced: 0, timer: 0 };
+		var $btn = $(this).prop('disabled', true);
+		var $out = $('#wapm-torob-catalog-result').html('<p>' + esc('در حال آزمون ساختار ترب…') + '</p>');
 
-		$(this).prop('disabled', true);
-		$('#wapm-torob-catalog-stop').show();
-		$('#wapm-torob-catalog-result').empty();
+		// ۱ درخواست کوچک قبل از شروع: اگر ساختار ترب عوض شده باشد، همگام‌سازی
+		// کامل صفحه‌به‌صفحه و مصرف بودجه بی‌فایده است.
+		ajax('torob_probe', {}).done(function (res) {
+			if (!res.success) {
+				renderApiState(res.data && res.data.state);
+				$btn.prop('disabled', false);
+				$out.html('<div class="notice notice-error inline"><p>' +
+					esc((res.data && res.data.message) || WAPM.i18n.error) + '</p></div>');
+				return;
+			}
 
-		syncCatalogPage(0);
+			renderApiState(res.data.api);
+
+			if (!res.data.ok) {
+				$btn.prop('disabled', false);
+				$out.html('<div class="notice notice-warning inline"><p>' + esc(res.data.label) + '</p></div>');
+				wapmToast(res.data.label, 'warning', { ttl: 12000 });
+				return;
+			}
+
+			catalogRun = { stop: false, running: true, synced: 0, timer: 0 };
+			$btn.prop('disabled', true);
+			$('#wapm-torob-catalog-stop').show();
+			$out.html('<p>' + esc(res.data.label) + '</p>');
+
+			syncCatalogPage(0);
+		}).fail(function () {
+			$btn.prop('disabled', false);
+			$out.html('<div class="notice notice-error inline"><p>' + esc(WAPM.i18n.error) + '</p></div>');
+		});
 	});
 
 	$('#wapm-torob-catalog-stop').on('click', function () {

@@ -1811,6 +1811,40 @@ test( 'CSV مقایسه‌ی ترب: اکشن، ستون‌ها و فیلتره�
 	ok( false !== strpos( $view, 'wapm-torob-export-btn' ), 'دکمه در تب CSV هست' );
 } );
 
+test( 'آزمون ساختار ترب: سه حالت ok / structure / empty', function () {
+	$ok = WAPM_Torob_Api::judge_probe( [ 'items' => [ [ 'prk' => 'a' ] ], 'count' => 5, 'raw_count' => 5 ] );
+	eq( true, $ok['ok'], 'کارت سالم = آماده' );
+	eq( 'ok', $ok['reason'], 'دلیل ok' );
+	eq( 1, $ok['samples'], 'تعداد نمونه' );
+
+	$structure = WAPM_Torob_Api::judge_probe( [ 'items' => [], 'count' => 5, 'raw_count' => 5 ] );
+	eq( false, $structure['ok'], 'ردیف هست ولی خوانده نمی‌شود' );
+	eq( 'structure', $structure['reason'], 'ساختار عوض شده' );
+
+	$empty = WAPM_Torob_Api::judge_probe( [ 'items' => [], 'count' => 0, 'raw_count' => 0 ] );
+	eq( false, $empty['ok'], 'خالی' );
+	eq( 'empty', $empty['reason'], 'فروشگاه خالی' );
+
+	// count مثبت ولی هیچ ردیفی نیامده هم نشانه‌ی تغییر ساختار است.
+	eq( 'structure', WAPM_Torob_Api::judge_probe( [ 'items' => [], 'count' => 12, 'raw_count' => 0 ] )['reason'], 'count بدون ردیف' );
+} );
+
+test( 'آزمون ساختار ترب: parse_shop_products تعداد ردیف خام را برمی‌گرداند', function () {
+	$data = [
+		'count'   => 2,
+		'results' => [
+			[ 'prk' => 'p1', 'name1' => 'محصول یک', 'price' => 100000 ],
+			[ 'name1' => 'بی‌شناسه' ], // کارت بدون prk دور ریخته می‌شود
+		],
+	];
+
+	$parsed = WAPM_Torob_Api::parse_shop_products( $data, 0 );
+
+	eq( 1, count( $parsed['items'] ), 'فقط کارت سالم' );
+	eq( 2, $parsed['raw_count'], 'ردیف خام برای probe' );
+	eq( false, $parsed['has_more'], 'بدون next = آخرین صفحه' );
+} );
+
 test( '«چند رقیب زیر قیمت ما» از فروشنده‌های ذخیره‌شده', function () {
 	$sellers = [
 		[ 'price' => 900000, 'unreliable' => false ],
