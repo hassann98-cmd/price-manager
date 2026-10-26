@@ -73,6 +73,7 @@ final class WAPM_Plugin {
 		require_once WAPM_PATH . 'includes/class-admin.php';
 
 		WAPM_Logger::maybe_upgrade();
+		WAPM_Torob::hooks();
 		new WAPM_Scheduler();
 		new WAPM_Ajax();
 
