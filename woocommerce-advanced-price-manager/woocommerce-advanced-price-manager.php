@@ -65,6 +65,7 @@ final class WAPM_Plugin {
 		require_once WAPM_PATH . 'includes/class-product-handler.php';
 		require_once WAPM_PATH . 'includes/class-list.php';
 		require_once WAPM_PATH . 'includes/class-torob.php';
+		require_once WAPM_PATH . 'includes/class-torob-api.php';
 		require_once WAPM_PATH . 'includes/class-rollback.php';
 		require_once WAPM_PATH . 'includes/class-csv-handler.php';
 		require_once WAPM_PATH . 'includes/class-rules.php';
