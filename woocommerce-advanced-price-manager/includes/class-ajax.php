@@ -29,6 +29,8 @@ class WAPM_Ajax {
 			'torob_link',
 			'torob_unlink',
 			'torob_ignore_unmatched',
+			'torob_link_bulk',
+			'torob_ignore_bulk',
 			'torob_clear_unmatched',
 			'torob_import_feed',
 			'torob_find_shops',
@@ -604,32 +606,73 @@ class WAPM_Ajax {
 	public function torob_get_unmatched(): void {
 		$this->guard();
 
+		$page     = max( 1, absint( $_POST['page'] ?? 1 ) );
+		$per_page = min( 100, max( 5, absint( $_POST['per_page'] ?? 20 ) ) );
+		$q        = sanitize_text_field( wp_unslash( $_POST['q'] ?? '' ) );
+		$only     = sanitize_key( wp_unslash( $_POST['only'] ?? 'all' ) );
+		$sort     = sanitize_key( wp_unslash( $_POST['sort'] ?? 'newest' ) );
+
+		$filtered = WAPM_Torob::filter_unmatched( WAPM_Torob::unmatched(), $q, $only, $sort );
+
+		$total = (int) $filtered['total'];
+		$pages = max( 1, (int) ceil( $total / $per_page ) );
+		$page  = min( $page, $pages );
+
+		$slice = array_slice( $filtered['rows'], ( $page - 1 ) * $per_page, $per_page );
+
 		$rows = [];
-		foreach ( WAPM_Torob::unmatched() as $row ) {
-			$candidate = 0;
-			if ( ! empty( $row['candidate'] ) ) {
-				$candidate = (int) $row['candidate'];
-			}
+		foreach ( $slice as $row ) {
+			$candidate         = (int) ( $row['candidate'] ?? 0 );
 			$candidate_product = $candidate ? wc_get_product( $candidate ) : null;
+			$their_price       = isset( $row['price'] ) && '' !== $row['price'] ? (float) $row['price'] : null;
+			$our_price         = $candidate_product ? (float) $candidate_product->get_price() : null;
+			if ( '' === $our_price || null === $our_price || $our_price <= 0 ) {
+				$our_price = null;
+			}
+
+			// چه چیزی به تصمیم کمک می‌کند؟ «اگر این دو یکی باشند، قیمت ما چقدر با
+			// ارزان‌ترین رقیب فاصله دارد؟» اختلاف غیرمنطقی (مثلاً ۵ برابر) نشانه‌ی
+			// تطبیق اشتباه است، نه فرصت قیمت‌گذاری.
+			$diff = ( null !== $our_price && null !== $their_price && $their_price > 0 )
+				? round( ( ( $our_price - $their_price ) / $their_price ) * 100, 1 )
+				: null;
 
 			$rows[] = [
-				'prk'        => (string) ( $row['prk'] ?? '' ),
-				'name'       => (string) ( $row['name'] ?? '' ),
-				'price'      => isset( $row['price'] ) && '' !== $row['price'] ? (float) $row['price'] : null,
-				'sellers'    => (int) ( $row['sellers'] ?? 0 ),
-				'seen'       => (string) ( $row['seen'] ?? '' ),
-				'seen_i18n'  => ! empty( $row['seen'] ) ? date_i18n( 'Y/m/d H:i', strtotime( (string) $row['seen'] ) ) : '',
-				'how'        => (string) ( $row['how'] ?? '' ),
-				'score'      => (float) ( $row['score'] ?? 0 ),
-				'candidate'  => $candidate_product ? [
-					'id'   => $candidate_product->get_id(),
-					'text' => $candidate_product->get_name() . ( $candidate_product->get_sku() ? ' (SKU: ' . $candidate_product->get_sku() . ')' : '' ),
+				'prk'         => (string) ( $row['prk'] ?? '' ),
+				'name'        => (string) ( $row['name'] ?? '' ),
+				'price'       => $their_price,
+				'sellers'     => (int) ( $row['sellers'] ?? 0 ),
+				'seen'        => (string) ( $row['seen'] ?? '' ),
+				'seen_i18n'   => ! empty( $row['seen'] ) ? date_i18n( 'Y/m/d H:i', strtotime( (string) $row['seen'] ) ) : '',
+				'how'         => (string) ( $row['how'] ?? '' ),
+				'how_label'   => WAPM_Torob::match_reason_label( $row ),
+				'score'       => (float) ( $row['score'] ?? 0 ),
+				'confidence'  => (int) round( (float) ( $row['score'] ?? 0 ) * 100 ),
+				'candidate'   => $candidate_product ? [
+					'id'         => $candidate_product->get_id(),
+					'text'       => $candidate_product->get_name() . ( $candidate_product->get_sku() ? ' (SKU: ' . $candidate_product->get_sku() . ')' : '' ),
+					'price'      => $our_price,
+					'sku'        => (string) $candidate_product->get_sku(),
+					'type'       => (string) $candidate_product->get_type(),
+					'diff_pct'   => $diff,
+					'suspect'    => ( null !== $diff && ( $diff > 60 || $diff < -60 ) ),
 				] : null,
-				'url'        => 'https://torob.com/p/' . rawurlencode( (string) ( $row['prk'] ?? '' ) ) . '/',
+				'url'         => 'https://torob.com/p/' . rawurlencode( (string) ( $row['prk'] ?? '' ) ) . '/',
 			];
 		}
 
-		wp_send_json_success( [ 'rows' => $rows, 'total' => count( $rows ) ] );
+		wp_send_json_success( [
+			'rows'     => $rows,
+			'total'    => $total,
+			'all'      => (int) $filtered['counts']['all'],
+			'counts'   => $filtered['counts'],
+			'page'     => $page,
+			'pages'    => $pages,
+			'per_page' => $per_page,
+			'q'        => $q,
+			'only'     => $only,
+			'sort'     => $sort,
+		] );
 	}
 
 	/**
@@ -680,6 +723,113 @@ class WAPM_Ajax {
 		$this->guard();
 		WAPM_Torob::remove_unmatched_by_prk( preg_replace( '/[^A-Za-z0-9_-]/', '', (string) wp_unslash( $_POST['prk'] ?? '' ) ) );
 		wp_send_json_success( $this->torob_stats_payload() );
+	}
+
+	/**
+	 * تأیید گروهی تطبیق‌ها (صف تأیید تطبیق).
+	 *
+	 * ورودی: `pairs` = JSON آرایه‌ای از {prk, product_id}. سقف ۵۰ جفت در هر
+	 * درخواست تا یک کلیک، درخواست ادمین را طولانی نکند؛ کلاینت خودش دسته‌بندی
+	 * می‌کند و پیشرفتش را نشان می‌دهد.
+	 *
+	 * نکته‌ی امنیتی: این مسیر از `link_product` می‌گذرد (همان اعتبارسنجی اتصال
+	 * دستی)، پس prk نامعتبر یا واریشن رد می‌شود و اتصال قبلی محصول دیگر هم
+	 * جابه‌جا نمی‌شود مگر خودش دوباره وصل شود.
+	 */
+	public function torob_link_bulk(): void {
+		$this->guard();
+
+		$pairs = json_decode( (string) wp_unslash( $_POST['pairs'] ?? '[]' ), true );
+		if ( ! is_array( $pairs ) || ! $pairs ) {
+			wp_send_json_error( [ 'message' => __( 'هیچ ردیفی برای اتصال انتخاب نشده است.', 'wapm' ) ] );
+		}
+
+		$pairs = array_slice( $pairs, 0, 50 );
+
+		$linked  = 0;
+		$failed  = 0;
+		$errors  = [];
+
+		foreach ( $pairs as $pair ) {
+			if ( ! is_array( $pair ) ) {
+				$failed++;
+				continue;
+			}
+
+			$product_id = absint( $pair['product_id'] ?? 0 );
+			$prk        = preg_replace( '/[^A-Za-z0-9_-]/', '', (string) ( $pair['prk'] ?? '' ) );
+			$name       = sanitize_text_field( (string) ( $pair['name'] ?? '' ) );
+
+			if ( ! $product_id || '' === $prk ) {
+				$failed++;
+				continue;
+			}
+
+			if ( WAPM_Torob::link_product( $product_id, $prk, $name ) ) {
+				$linked++;
+				continue;
+			}
+
+			$failed++;
+			if ( count( $errors ) < 5 ) {
+				$product = wc_get_product( $product_id );
+				$errors[] = $product
+					? sprintf(
+						/* translators: %s: product name */
+						__( '«%s» وصل نشد (واریشن یا شناسه‌ی نامعتبر).', 'wapm' ),
+						$product->get_name()
+					)
+					: sprintf(
+						/* translators: %d: product id */
+						__( 'محصول #%d پیدا نشد.', 'wapm' ),
+						$product_id
+					);
+			}
+		}
+
+		wp_send_json_success( [
+			'linked'   => $linked,
+			'failed'   => $failed,
+			'errors'   => $errors,
+			'matched'  => WAPM_Torob::count_matched(),
+			'unmatched_total' => count( WAPM_Torob::unmatched() ),
+			'stats'    => $this->torob_stats_payload(),
+			'message'  => $failed
+				? sprintf(
+					/* translators: 1: linked, 2: failed */
+					__( '%1$d محصول به ترب وصل شد؛ %2$d مورد وصل نشد.', 'wapm' ),
+					$linked,
+					$failed
+				)
+				: sprintf(
+					/* translators: %d: linked */
+					__( '%d محصول به ترب وصل شد.', 'wapm' ),
+					$linked
+				),
+		] );
+	}
+
+	/**
+	 * نادیده‌گرفتن گروهی ردیف‌های تطبیق‌نیافته (یک نوشتن آپشن، نه یکی برای هر ردیف).
+	 */
+	public function torob_ignore_bulk(): void {
+		$this->guard();
+
+		$prks = json_decode( (string) wp_unslash( $_POST['prks'] ?? '[]' ), true );
+		if ( ! is_array( $prks ) || ! $prks ) {
+			wp_send_json_error( [ 'message' => __( 'هیچ ردیفی انتخاب نشده است.', 'wapm' ) ] );
+		}
+
+		$removed = WAPM_Torob::remove_unmatched_by_prks( array_slice( $prks, 0, 200 ) );
+
+		wp_send_json_success( array_merge( $this->torob_stats_payload(), [
+			'removed' => $removed,
+			'message' => sprintf(
+				/* translators: %d: removed rows */
+				__( '%d ردیف از لیست تطبیق‌نیافته‌ها حذف شد.', 'wapm' ),
+				$removed
+			),
+		] ) );
 	}
 
 	public function torob_clear_unmatched(): void {

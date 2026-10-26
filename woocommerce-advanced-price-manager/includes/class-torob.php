@@ -1285,8 +1285,150 @@ class WAPM_Torob {
 	}
 
 	public static function remove_unmatched_by_prk( string $prk ): void {
-		$list = array_values( array_filter( self::unmatched(), fn( $r ) => ( $r['prk'] ?? '' ) !== $prk ) );
-		update_option( self::OPTION_UNMATCHED, $list, false );
+		self::remove_unmatched_by_prks( [ $prk ] );
+	}
+
+	/**
+	 * حذف چند ردیف با یک نوشتنِ آپشن (صف تأیید تطبیق «چند مورد را رد کن»).
+	 *
+	 * @param string[] $prks
+	 * @return int تعداد ردیف‌های حذف‌شده
+	 */
+	public static function remove_unmatched_by_prks( array $prks ): int {
+		$prks = array_values( array_unique( array_filter( array_map(
+			static fn( $p ) => preg_replace( '/[^A-Za-z0-9_-]/', '', (string) $p ),
+			$prks
+		) ) ) );
+
+		if ( ! $prks ) {
+			return 0;
+		}
+
+		$before = self::unmatched();
+		$set    = array_flip( $prks );
+		$after  = array_values( array_filter(
+			$before,
+			static fn( $r ) => ! isset( $set[ (string) ( $r['prk'] ?? '' ) ] )
+		) );
+
+		$removed = count( $before ) - count( $after );
+		if ( $removed > 0 ) {
+			update_option( self::OPTION_UNMATCHED, $after, false );
+		}
+
+		return $removed;
+	}
+
+	/**
+	 * فیلتر/جستجوی خالص روی لیست تطبیق‌نیافته‌ها (بدون دیتابیس — قابل تست).
+	 *
+	 * بدون فیلتر، این لیست فقط یک انبار است: کاربر مجبور است ۵۰۰ ردیف را با
+	 * چشم بگردد. این تابع همان کاری را می‌کند که «صف تأیید» لازم دارد:
+	 * جدا کردن ردیف‌های دارای کاندید، جستجو روی نام/prk و مرتب‌سازی.
+	 *
+	 * @param array  $list  خروجی unmatched()
+	 * @param string $q     جستجو (نام یا prk)
+	 * @param string $only  all|candidate|no_candidate|ambiguous|variation|occupied|weak
+	 * @param string $sort  newest|oldest|score
+	 * @return array{rows:array,counts:array,total:int}
+	 */
+	public static function filter_unmatched( array $list, string $q = '', string $only = 'all', string $sort = 'newest' ): array {
+		$q     = trim( $q );
+		$q_norm = '' !== $q ? self::normalize( $q ) : '';
+		$q_prk = preg_replace( '/[^A-Za-z0-9_-]/', '', $q );
+		$only  = in_array( $only, [ 'all', 'candidate', 'no_candidate', 'ambiguous', 'variation', 'occupied', 'weak' ], true ) ? $only : 'all';
+
+		$counts = [ 'all' => 0, 'candidate' => 0, 'no_candidate' => 0, 'variation' => 0, 'occupied' => 0 ];
+		$rows   = [];
+
+		foreach ( $list as $row ) {
+			if ( ! is_array( $row ) ) {
+				continue;
+			}
+
+			$counts['all']++;
+			$candidate = (int) ( $row['candidate'] ?? 0 );
+			$how       = (string) ( $row['how'] ?? '' );
+
+			if ( $candidate > 0 ) {
+				$counts['candidate']++;
+			} else {
+				$counts['no_candidate']++;
+			}
+			if ( 'variation' === $how ) {
+				$counts['variation']++;
+			}
+			if ( 'occupied' === $how ) {
+				$counts['occupied']++;
+			}
+
+			if ( 'candidate' === $only && $candidate < 1 ) {
+				continue;
+			}
+			if ( 'no_candidate' === $only && $candidate > 0 ) {
+				continue;
+			}
+			if ( in_array( $only, [ 'ambiguous', 'variation', 'occupied', 'weak' ], true ) && $how !== $only ) {
+				continue;
+			}
+
+			if ( '' !== $q ) {
+				$hit = false;
+				if ( '' !== $q_prk && false !== strpos( (string) ( $row['prk'] ?? '' ), $q_prk ) ) {
+					$hit = true;
+				}
+				if ( ! $hit && '' !== $q_norm && '' !== self::normalize( (string) ( $row['name'] ?? '' ) ) ) {
+					$hit = false !== mb_strpos( self::normalize( (string) $row['name'] ), $q_norm );
+				}
+				if ( ! $hit ) {
+					continue;
+				}
+			}
+
+			$rows[] = $row;
+		}
+
+		$ts = static fn( $r ) => (int) strtotime( (string) ( $r['seen'] ?? '' ) );
+		if ( 'score' === $sort ) {
+			usort( $rows, static fn( $a, $b ) => (float) ( $b['score'] ?? 0 ) <=> (float) ( $a['score'] ?? 0 ) );
+		} elseif ( 'oldest' === $sort ) {
+			usort( $rows, static fn( $a, $b ) => $ts( $a ) <=> $ts( $b ) );
+		} else {
+			usort( $rows, static fn( $a, $b ) => $ts( $b ) <=> $ts( $a ) );
+		}
+
+		return [ 'rows' => $rows, 'counts' => $counts, 'total' => count( $rows ) ];
+	}
+
+	/**
+	 * برچسب فارسیِ دلیل تطبیق‌نشدن (در PHP تا JS و API یک زبان داشته باشند).
+	 */
+	public static function match_reason_label( array $row ): string {
+		$candidate = (int) ( $row['candidate'] ?? 0 );
+		$score     = (float) ( $row['score'] ?? 0 );
+		$how       = (string) ( $row['how'] ?? '' );
+
+		if ( 'variation' === $how ) {
+			return __( 'واریشن هم‌نام شد — ترب در سطح والد مقایسه می‌کند', 'wapm' );
+		}
+		if ( 'occupied' === $how ) {
+			return __( 'همین عنوان در ووکامرس به محصول دیگری در ترب وصل است', 'wapm' );
+		}
+		if ( 'no_match' === $how ) {
+			return __( 'هیچ محصول مشابهی پیدا نشد', 'wapm' );
+		}
+		if ( 'sku_mismatch' === $how ) {
+			return __( 'کد/SKU پیدا شد ولی نام نمی‌خواند', 'wapm' );
+		}
+		if ( $candidate > 0 ) {
+			return sprintf(
+				/* translators: %s: similarity percentage */
+				__( 'نام مشابه چند محصول — شباهت %s٪', 'wapm' ),
+				number_format_i18n( $score > 0 ? round( $score * 100 ) : 0 )
+			);
+		}
+
+		return __( 'به‌طور خودکار تطبیق نخورد', 'wapm' );
 	}
 
 	public static function clear_unmatched(): void {

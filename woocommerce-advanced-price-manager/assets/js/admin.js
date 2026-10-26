@@ -2621,41 +2621,175 @@
 		});
 	});
 
-	/* ---- ۵) تطبیق‌نیافته‌ها ---- */
+	/* ---- ۵) صف تأیید تطبیق (تطبیق‌نیافته‌ها) ---- */
 
-	function torobHowLabel(row) {
-		if (row.candidate) {
-			return 'مبهم — نام مشابه چند محصول' + (row.score ? ' (شباهت ' + Math.round(row.score * 100) + '٪)' : '');
+	/**
+	 * چرا صف؟ تطبیق ترب بر اساس «نام» است و همیشه درصدی مبهم می‌ماند. قبلاً این
+	 * ردیف‌ها یک لیست ۵۰۰ ردیفی بود که کاربر باید تک‌تک با چشم می‌گشت. الان:
+	 * فیلتر «با کاندید / بدون کاندید»، جستجو، صفحه‌بندی، انتخاب گروهی و
+	 * نمایش «قیمت ووکامرس در برابر قیمت ترب» تا تطبیق اشتباه چشم بخورد.
+	 */
+	var unmatchedState = {
+		page: 1,
+		per_page: 20,
+		q: '',
+		only: 'all',
+		sort: 'newest',
+		total: 0,
+		pages: 1,
+		loading: false,
+		running: false,
+		queued: false
+	};
+
+	var onlyLabels = {
+		all: 'همه',
+		candidate: 'با کاندید',
+		no_candidate: 'بدون کاندید',
+		variation: 'واریشن',
+		occupied: 'وصل‌شده به دیگری'
+	};
+
+	function diffPillHtml(cand) {
+		if (!cand) { return ''; }
+
+		var out = '';
+		if (cand.price !== null && cand.price !== undefined) {
+			out += '<div class="wapm-review__diff">قیمت ووکامرس: <b>' + fmt(cand.price) + '</b>';
+
+			if (cand.diff_pct !== null && cand.diff_pct !== undefined) {
+				var d = Number(cand.diff_pct);
+				var cls = d > 0 ? 'wapm-pill--pricier' : (d < 0 ? 'wapm-pill--cheaper' : 'wapm-pill--equal');
+				var txt = d > 0
+					? 'ما ' + fmt(Math.abs(d)) + '٪ گران‌تر'
+					: (d < 0 ? 'ما ' + fmt(Math.abs(d)) + '٪ ارزان‌تر' : 'برابر');
+				out += ' <span class="wapm-pill ' + cls + '">' + esc(txt) + '</span>';
+			}
+			out += '</div>';
+
+			if (cand.suspect) {
+				out += '<div class="wapm-review__warn">اختلاف بیش از ۶۰٪ — پیش از اتصال، محصول ترب را باز کنید.</div>';
+			}
 		}
-		if (row.how === 'variation') { return 'واریشن هم‌نام شد — ترب در سطح محصول والد مقایسه می‌کند'; }
-		if (row.how === 'occupied') { return 'همین عنوان در ووکامرس به محصول دیگری در ترب وصل است — دستی بررسی کنید'; }
-		if (row.how === 'no_match') { return 'هیچ محصول مشابهی پیدا نشد'; }
-		if (row.how === 'sku_mismatch') { return 'کد/SKU پیدا شد ولی نام نمی‌خواند'; }
-		return 'به‌طور خودکار تطبیق نخورد';
+		return out;
+	}
+
+	function unmatchedCounts(counts) {
+		counts = counts || {};
+		var chips = '';
+		['all', 'candidate', 'no_candidate', 'variation', 'occupied'].forEach(function (key) {
+			if (key !== 'all' && !counts[key]) { return; }
+			chips += '<button type="button" class="wapm-chip' + (unmatchedState.only === key ? ' is-active' : '') +
+				'" data-only="' + key + '">' + esc(onlyLabels[key]) +
+				' <b>' + fmt(counts[key] || 0) + '</b></button>';
+		});
+		return '<div class="wapm-review__chips">' + chips + '</div>';
+	}
+
+	function renderUnmatched(data) {
+		var rows = data.rows || [];
+		unmatchedState.total = data.total || 0;
+		unmatchedState.page  = data.page || 1;
+		unmatchedState.pages = data.pages || 1;
+
+		if (!data.all) {
+			return '<div class="wapm-empty">' +
+				'<div class="wapm-empty__icon" aria-hidden="true">✓</div>' +
+				'<p class="wapm-empty__title">همه‌ی محصولات ترب تطبیق خوردند.</p>' +
+				'<p class="description">اگر باز هم «تطبیق‌نیافته» دیدید، از بوکمارکلت/فید تازه‌سازی کنید.</p>' +
+				'</div>';
+		}
+
+		var html = '<div class="wapm-review">';
+
+		/* نوار فیلتر */
+		html += '<div class="wapm-review__filters">' +
+			'<div class="wapm-review__search">' +
+				'<input type="search" id="wapm-torob-unmatched-q" value="' + esc(data.q || '') + '" ' +
+					'placeholder="جستجوی نام یا شناسه‌ی ترب…" aria-label="جستجو در تطبیق‌نیافته‌ها">' +
+			'</div>' +
+			unmatchedCounts(data.counts) +
+			'<div class="wapm-review__sort">' +
+				'<label for="wapm-torob-unmatched-sort">ترتیب</label>' +
+				'<select id="wapm-torob-unmatched-sort">' +
+					'<option value="newest"' + (data.sort === 'newest' ? ' selected' : '') + '>تازه‌ترین</option>' +
+					'<option value="oldest"' + (data.sort === 'oldest' ? ' selected' : '') + '>قدیمی‌ترین</option>' +
+					'<option value="score"' + (data.sort === 'score' ? ' selected' : '') + '>بیشترین شباهت</option>' +
+				'</select>' +
+			'</div>' +
+		'</div>';
+
+		/* نوار عملیات گروهی */
+		html += '<div class="wapm-bulkbar" id="wapm-torob-review-bar">' +
+			'<label class="wapm-bulkbar__all"><input type="checkbox" id="wapm-torob-pick-all"> همه‌ی این صفحه</label>' +
+			'<span class="wapm-bulkbar__count" id="wapm-torob-pick-count">۰ انتخاب</span>' +
+			'<div class="wapm-bulkbar__actions">' +
+				'<button type="button" class="button button-primary" id="wapm-torob-link-selected" disabled>اتصال انتخاب‌شده‌ها</button>' +
+				'<button type="button" class="button" id="wapm-torob-ignore-selected" disabled>نادیده‌گرفتن</button>' +
+			'</div>' +
+		'</div>';
+
+		if (!rows.length) {
+			html += '<div class="wapm-empty"><p class="wapm-empty__title">با این فیلتر چیزی پیدا نشد.</p>' +
+				'<p class="description">فیلتر را روی «همه» بگذارید یا عبارت جستجو را کوتاه‌تر کنید.</p></div>';
+		} else {
+			html += '<table class="widefat striped wapm-review__table"><thead><tr>' +
+				'<th class="wapm-review__check"><span class="screen-reader-text">انتخاب</span></th>' +
+				'<th>محصول ترب</th><th>ارزان‌ترین رقیب</th><th>محصول ووکامرس</th><th class="wapm-review__actions">اقدام</th>' +
+				'</tr></thead><tbody>';
+
+			for (var i = 0; i < rows.length; i++) { html += renderUnmatchedRow(rows[i]); }
+			html += '</tbody></table>';
+		}
+
+		/* صفحه‌بندی */
+		if (data.pages > 1) {
+			html += '<div class="wapm-review__pager">' +
+				'<button type="button" class="button" data-page="' + (data.page - 1) + '"' + (data.page <= 1 ? ' disabled' : '') + '>قبلی</button>' +
+				'<span>صفحه‌ی <b>' + fmt(data.page) + '</b> از ' + fmt(data.pages) +
+					' — ' + fmt(data.total) + ' ردیف</span>' +
+				'<button type="button" class="button" data-page="' + (data.page + 1) + '"' + (data.page >= data.pages ? ' disabled' : '') + '>بعدی</button>' +
+			'</div>';
+		}
+
+		return html + '</div>';
 	}
 
 	function renderUnmatchedRow(row) {
+		var cand = row.candidate;
 		var html = '<tr data-prk="' + esc(row.prk) + '">';
 
-		html += '<td style="width:34%"><div style="font-weight:700">' + esc(row.name || '—') + '</div>' +
-			'<div style="font-size:11px;color:#64748b">' + esc(torobHowLabel(row)) + '</div>' +
-			'<div style="font-size:11px;color:#94a3b8;margin-top:2px">' +
-			(row.sellers ? fmt(row.sellers) + ' فروشنده • ' : '') +
-			'آخرین مشاهده: ' + esc(row.seen_i18n || '—') +
-			'</div></td>';
+		html += '<td class="wapm-review__check"><input type="checkbox" class="wapm-torob-pick" ' +
+			'aria-label="انتخاب ' + esc(row.name || row.prk) + '"></td>';
 
-		html += '<td style="width:12%">' + (row.price !== null && row.price !== undefined ? fmt(row.price) : '—') + '</td>';
+		html += '<td>' +
+			'<div class="wapm-review__name">' + esc(row.name || '—') + '</div>' +
+			'<div class="wapm-review__why"><span class="wapm-pill ' + (cand ? 'wapm-pill--info' : 'wapm-pill--muted') + '">' +
+				esc(row.how_label || '') + '</span></div>' +
+			'<div class="wapm-review__meta">' +
+				(row.sellers ? fmt(row.sellers) + ' فروشنده • ' : '') +
+				'آخرین مشاهده: ' + esc(row.seen_i18n || '—') +
+				' • <a href="' + esc(row.url) + '" target="_blank" rel="noopener">ترب ↗</a>' +
+			'</div>' +
+		'</td>';
 
-		html += '<td style="width:32%">' +
-			'<select class="wapm-torob-product-select" style="width:100%" data-prk="' + esc(row.prk) + '" data-name="' + esc(row.name || '') + '">' +
-			(row.candidate ? '<option value="' + row.candidate.id + '" selected>' + esc(row.candidate.text) + '</option>' : '') +
-			'</select></td>';
+		html += '<td class="wapm-review__price">' +
+			(row.price !== null && row.price !== undefined ? fmt(row.price) : '—') + '</td>';
 
-		html += '<td style="width:22%;white-space:nowrap">' +
+		html += '<td>' +
+			'<div class="wapm-review__pick">' +
+				'<select class="wapm-torob-product-select" data-prk="' + esc(row.prk) + '" ' +
+					'data-name="' + esc(row.name || '') + '" data-theirs="' + (row.price || '') + '">' +
+					(cand ? '<option value="' + cand.id + '" selected>' + esc(cand.text) + '</option>' : '') +
+				'</select>' +
+			'</div>' +
+			'<div class="wapm-review__match">' + diffPillHtml(cand) + '</div>' +
+		'</td>';
+
+		html += '<td class="wapm-review__actions">' +
 			'<button type="button" class="button button-primary wapm-torob-link">اتصال</button> ' +
-			'<button type="button" class="button wapm-torob-ignore" title="این مورد را نادیده بگیر">نادیده‌گرفتن</button> ' +
-			'<a href="' + esc(row.url) + '" target="_blank" rel="noopener" class="button">ترب</a>' +
-			'</td>';
+			'<button type="button" class="button wapm-torob-ignore" title="این مورد را از لیست بردار">نادیده‌گرفتن</button>' +
+		'</td>';
 
 		return html + '</tr>';
 	}
@@ -2687,58 +2821,262 @@
 			if ($sel.find('option:selected').length) {
 				$sel.trigger('change.select2');
 			}
+
+			// انتخاب دستی: «قیمت ووکامرس» و هشدار اختلاف را همان‌جا نشان بده تا
+			// کاربر پیش از اتصال ببیند انتخابش منطقی است یا نه.
+			$sel.on('select2:select', function (e) {
+				var data = (e.params && e.params.data) || {};
+				var $tr  = $sel.closest('tr');
+				var $box = $tr.find('.wapm-review__match');
+
+				if (data.price === undefined || data.price === null) {
+					$box.empty();
+					return;
+				}
+
+				var theirs = parseFloat($tr.find('.wapm-torob-product-select').data('theirs'));
+				var ours   = parseFloat(data.price);
+				var diff   = (theirs > 0 && ours > 0) ? ((ours - theirs) / theirs) * 100 : null;
+
+				$box.html(diffPillHtml({
+					price: ours,
+					diff_pct: diff === null ? null : Math.round(diff * 10) / 10,
+					suspect: diff !== null && (diff > 60 || diff < -60)
+				}));
+			});
 		});
 	}
 
-	function loadTorobUnmatched() {
+	function pickedRows($area) {
+		var rows = [];
+		$area.find('.wapm-torob-pick:checked').each(function () {
+			var $tr  = $(this).closest('tr');
+			var $sel = $tr.find('.wapm-torob-product-select');
+			rows.push({
+				prk: String($tr.data('prk') || ''),
+				product_id: parseInt($sel.val(), 10) || 0,
+				name: String($tr.find('.wapm-review__name').text() || '')
+			});
+		});
+		return rows;
+	}
+
+	function updateBulkBar($area) {
+		var picked = $area.find('.wapm-torob-pick:checked').length;
+		var all    = $area.find('.wapm-torob-pick').length;
+
+		$('#wapm-torob-pick-count').text(fmt(picked) + ' انتخاب');
+		$('#wapm-torob-link-selected, #wapm-torob-ignore-selected').prop('disabled', picked === 0);
+		$('#wapm-torob-pick-all').prop('checked', all > 0 && picked === all);
+		$('#wapm-torob-review-bar').toggleClass('is-active', picked > 0);
+	}
+
+	function loadTorobUnmatched(opts) {
 		var $area = $('#wapm-torob-unmatched-area');
 		if (!$area.length) { return; }
 
-		$area.html('<p>' + esc(WAPM.i18n.loading) + '</p>');
+		// اگر کاربر سریع فیلتر را عوض کند، درخواست قبلی را دور نمی‌ریزیم ولی
+		// آخرین حالت را هم از دست نمی‌دهیم: بعد از پایان، یک‌بار دیگر می‌خوانیم.
+		if (unmatchedState.loading) {
+			unmatchedState.queued = true;
+			return;
+		}
 
-		ajax('torob_get_unmatched').done(function (res) {
+		opts = opts || {};
+		if (opts.reset) { unmatchedState.page = 1; }
+
+		unmatchedState.loading = true;
+		$area.addClass('is-busy');
+
+		if (!$area.children().length) {
+			$area.html('<p class="description">' + esc(WAPM.i18n.loading) + '</p>');
+		}
+
+		ajax('torob_get_unmatched', {
+			page: unmatchedState.page,
+			per_page: unmatchedState.per_page,
+			q: unmatchedState.q,
+			only: unmatchedState.only,
+			sort: unmatchedState.sort
+		}).done(function (res) {
 			if (!res.success) {
 				$area.html('<div class="notice notice-error inline"><p>' + esc(WAPM.i18n.error) + '</p></div>');
 				return;
 			}
 
-			var rows = res.data.rows || [];
-			$('#wapm-torob-unmatched-count').text(fmt(res.data.total || 0));
-
-			if (!rows.length) {
-				$area.html('<p class="description">همه‌ی محصولات ترب تطبیق خوردند. 🎉</p>');
-				return;
-			}
-
-			var html = '<table class="widefat striped"><thead><tr>' +
-				'<th>محصول ترب</th><th>قیمت</th><th>محصول ووکامرس</th><th></th>' +
-				'</tr></thead><tbody>';
-
-			for (var i = 0; i < rows.length; i++) { html += renderUnmatchedRow(rows[i]); }
-			html += '</tbody></table>';
-
-			$area.html(html);
+			$('#wapm-torob-unmatched-count').text(fmt(res.data.all || 0));
+			$area.html(renderUnmatched(res.data));
 			initUnmatchedSelectors($area);
+			updateBulkBar($area);
 		}).fail(function () {
 			$area.html('<div class="notice notice-error inline"><p>' + esc(WAPM.i18n.error) + '</p></div>');
+		}).always(function () {
+			unmatchedState.loading = false;
+			$area.removeClass('is-busy');
+			if (unmatchedState.queued) {
+				unmatchedState.queued = false;
+				loadTorobUnmatched({});
+			}
 		});
 	}
 
-	$('#wapm-torob-unmatched-refresh').on('click', loadTorobUnmatched);
+	$('#wapm-torob-unmatched-refresh').on('click', function () { loadTorobUnmatched({ reset: true }); });
+
+	/* فیلتر، جستجو، ترتیب، صفحه‌بندی — همه از delegation تا بعد از هر رندر کار کنند */
+	var searchTimer = null;
+
+	$(document).on('input', '#wapm-torob-unmatched-q', function () {
+		var value = $.trim($(this).val());
+		clearTimeout(searchTimer);
+		searchTimer = setTimeout(function () {
+			unmatchedState.q = value;
+			loadTorobUnmatched({ reset: true });
+		}, 350);
+	});
+
+	$(document).on('click', '.wapm-review__chips .wapm-chip', function () {
+		unmatchedState.only = String($(this).data('only') || 'all');
+		loadTorobUnmatched({ reset: true });
+	});
+
+	$(document).on('change', '#wapm-torob-unmatched-sort', function () {
+		unmatchedState.sort = String($(this).val() || 'newest');
+		loadTorobUnmatched({ reset: true });
+	});
+
+	$(document).on('click', '.wapm-review__pager .button', function () {
+		var page = parseInt($(this).data('page'), 10);
+		if (!page || $(this).prop('disabled')) { return; }
+		unmatchedState.page = page;
+		loadTorobUnmatched({});
+	});
+
+	/* انتخاب */
+	$(document).on('change', '#wapm-torob-pick-all', function () {
+		var $area = $('#wapm-torob-unmatched-area');
+		$area.find('.wapm-torob-pick').prop('checked', $(this).prop('checked'));
+		updateBulkBar($area);
+	});
+
+	$(document).on('change', '.wapm-torob-pick, .wapm-torob-product-select', function () {
+		updateBulkBar($('#wapm-torob-unmatched-area'));
+	});
+
+	/* اتصال گروهی — دسته‌های ۲۰تایی تا هر درخواست کوتاه بماند */
+	$(document).on('click', '#wapm-torob-link-selected', function () {
+		if (unmatchedState.running) { return; }
+
+		var $area = $('#wapm-torob-unmatched-area');
+		var $btn  = $(this);
+		var rows  = pickedRows($area).filter(function (r) { return r.product_id > 0; });
+
+		if (!rows.length) {
+			wapmToast('برای هر ردیف اول محصول ووکامرس را انتخاب کنید.', 'warning');
+			return;
+		}
+
+		var skipped = $area.find('.wapm-torob-pick:checked').length - rows.length;
+		var chunks  = [];
+		for (var i = 0; i < rows.length; i += 20) { chunks.push(rows.slice(i, i + 20)); }
+
+		unmatchedState.running = true;
+		var original = $btn.text();
+		var linked   = 0;
+		var failed   = 0;
+		var errors   = [];
+		var index    = 0;
+
+		$btn.prop('disabled', true);
+
+		function runNext() {
+			if (index >= chunks.length) {
+				unmatchedState.running = false;
+				$btn.prop('disabled', false).text(original);
+
+				var msg = fmt(linked) + ' محصول وصل شد';
+				if (failed) { msg += ' — ' + fmt(failed) + ' مورد وصل نشد'; }
+				if (skipped) { msg += ' — ' + fmt(skipped) + ' ردیف بدون انتخاب محصول رد شد'; }
+				wapmToast(msg + '.', failed ? 'warning' : 'success', { ttl: failed ? 12000 : 5000 });
+
+				if (errors.length) {
+					wapmToast(errors.slice(0, 3).join(' '), 'error', { ttl: 15000 });
+				}
+
+				loadTorobUnmatched({});
+				refreshListIfLoaded();
+				return;
+			}
+
+			$btn.text('در حال اتصال… ' + fmt(Math.min(index * 20 + chunks[index].length, rows.length)) + '/' + fmt(rows.length));
+
+			ajax('torob_link_bulk', { pairs: JSON.stringify(chunks[index]) }).done(function (res) {
+				if (res.success) {
+					linked += res.data.linked || 0;
+					failed += res.data.failed || 0;
+					if (res.data.errors) { errors = errors.concat(res.data.errors); }
+					if (res.data.stats) { applyTorobStats(res.data.stats); }
+				} else {
+					failed += chunks[index].length;
+					errors.push((res.data && res.data.message) || WAPM.i18n.error);
+				}
+				index++;
+				runNext();
+			}).fail(function () {
+				failed += chunks[index].length;
+				errors.push(WAPM.i18n.error);
+				index++;
+				runNext();
+			});
+		}
+
+		runNext();
+	});
+
+	/* نادیده‌گرفتن گروهی — یک درخواست (یک نوشتن آپشن) */
+	$(document).on('click', '#wapm-torob-ignore-selected', function () {
+		if (unmatchedState.running) { return; }
+
+		var $area = $('#wapm-torob-unmatched-area');
+		var prks  = pickedRows($area).map(function (r) { return r.prk; });
+		if (!prks.length) { return; }
+
+		if (!window.confirm(fmt(prks.length) + ' ردیف از لیست تطبیق‌نیافته‌ها حذف شود؟ (داده‌ی محصولات متصل‌شده دست نمی‌خورد)')) {
+			return;
+		}
+
+		var $btn = $(this).prop('disabled', true);
+		unmatchedState.running = true;
+
+		ajax('torob_ignore_bulk', { prks: JSON.stringify(prks) }).done(function (res) {
+			if (!res.success) {
+				wapmToast((res.data && res.data.message) || WAPM.i18n.error, 'error');
+				return;
+			}
+			applyTorobStats(res.data);
+			wapmToast(res.data.message || 'حذف شد.', 'success');
+			loadTorobUnmatched({});
+		}).fail(function () {
+			wapmToast(WAPM.i18n.error, 'error');
+		}).always(function () {
+			unmatchedState.running = false;
+			$btn.prop('disabled', false);
+		});
+	});
 
 	$('#wapm-torob-unmatched-clear').on('click', function () {
 		if (!window.confirm('کل لیست تطبیق‌نیافته‌ها پاک شود؟ (داده‌ی محصولات متصل‌شده دست نمی‌خورد)')) { return; }
 		var $btn = $(this).prop('disabled', true);
 		ajax('torob_clear_unmatched', {}).done(function (res) {
 			if (res.success) { applyTorobStats(res.data); }
-			loadTorobUnmatched();
+			loadTorobUnmatched({ reset: true });
 		}).always(function () { $btn.prop('disabled', false); });
 	});
 
+	/* اتصال تک‌ردیفی (از داخل صف یا هر جای دیگری) */
 	$(document).on('click', '.wapm-torob-link', function () {
 		var $btn = $(this).prop('disabled', true);
-		var $tr = $btn.closest('tr');
-		var prk = $tr.data('prk');
+		var $tr  = $btn.closest('tr');
+		var prk  = $tr.data('prk');
 		var $sel = $tr.find('.wapm-torob-product-select');
 		var productId = $sel.val();
 
@@ -2758,8 +3096,18 @@
 				return;
 			}
 			applyTorobStats(res.data.stats);
-			$tr.fadeOut(200, function () { $(this).remove(); });
 			if (res.data.row) { updateRowInDom(res.data.row); }
+
+			// ردیف را از صف بردار و اگر صفحه خالی شد، صفحه‌ی قبل را بیاور.
+			$tr.fadeOut(150, function () {
+				$(this).remove();
+				var $area = $('#wapm-torob-unmatched-area');
+				updateBulkBar($area);
+				if (!$area.find('.wapm-torob-pick').length) {
+					unmatchedState.page = Math.max(1, unmatchedState.page - 1);
+					loadTorobUnmatched({});
+				}
+			});
 		}).fail(function () {
 			wapmToast(WAPM.i18n.error, 'error');
 		}).always(function () { $btn.prop('disabled', false); });
@@ -2767,12 +3115,20 @@
 
 	$(document).on('click', '.wapm-torob-ignore', function () {
 		var $btn = $(this).prop('disabled', true);
-		var $tr = $btn.closest('tr');
+		var $tr  = $btn.closest('tr');
+
 		ajax('torob_ignore_unmatched', { prk: $tr.data('prk') }).done(function (res) {
-			if (res.success) {
-				applyTorobStats(res.data);
-				$tr.fadeOut(200, function () { $(this).remove(); });
-			}
+			if (!res.success) { return; }
+			applyTorobStats(res.data);
+			$tr.fadeOut(150, function () {
+				$(this).remove();
+				var $area = $('#wapm-torob-unmatched-area');
+				updateBulkBar($area);
+				if (!$area.find('.wapm-torob-pick').length) {
+					unmatchedState.page = Math.max(1, unmatchedState.page - 1);
+					loadTorobUnmatched({});
+				}
+			});
 		}).always(function () { $btn.prop('disabled', false); });
 	});
 

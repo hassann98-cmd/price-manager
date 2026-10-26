@@ -1226,3 +1226,240 @@
 #wapm-list-root .overflow-auto::-webkit-scrollbar-thumb:hover {
 	background: var(--wapm-brand-300);
 }
+
+/* ==========================================================================
+   صف تأیید تطبیق ترب
+   --------------------------------------------------------------------------
+   هدف: از یک لیست ۵۰۰ ردیفی که باید با چشم گشته شود، به یک صف قابل‌کار
+   تبدیل شود: فیلتر، جستجو، انتخاب گروهی و «قیمت ما در برابر قیمت ترب».
+   ========================================================================== */
+
+.wapm-review {
+	border: 1px solid var(--wapm-line);
+	border-radius: var(--wapm-radius);
+	background: #fff;
+	overflow: hidden;
+}
+
+.wapm-review__filters {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px;
+	padding: 10px 12px;
+	background: #fbfaff;
+	border-bottom: 1px solid var(--wapm-line);
+}
+
+.wapm-review__search {
+	flex: 1 1 220px;
+	min-width: 180px;
+}
+
+.wapm-review__search input[type="search"] {
+	width: 100%;
+	margin: 0;
+	border-radius: var(--wapm-radius-sm);
+	border-color: var(--wapm-line);
+	font-size: 12.5px;
+	min-height: 32px;
+}
+
+.wapm-review__chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.wapm-review__chips .wapm-chip {
+	cursor: pointer;
+	font-family: inherit;
+	transition: background var(--wapm-speed) ease, border-color var(--wapm-speed) ease;
+}
+
+.wapm-review__chips .wapm-chip:hover {
+	border-color: var(--wapm-brand-300);
+	background: var(--wapm-brand-50);
+}
+
+.wapm-review__chips .wapm-chip.is-active {
+	background: var(--wapm-brand-600);
+	border-color: var(--wapm-brand-600);
+	color: #fff;
+}
+
+.wapm-review__chips .wapm-chip.is-active b {
+	color: #fff;
+}
+
+.wapm-review__sort {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 11.5px;
+	font-weight: 700;
+	color: var(--wapm-ink-500);
+}
+
+.wapm-review__sort select {
+	font-size: 12px;
+	min-height: 30px;
+	margin: 0;
+}
+
+/* نوار عملیات گروهی صف — همیشه دیده می‌شود، فقط با انتخاب فعال می‌شود */
+#wapm-torob-review-bar.wapm-bulkbar {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 8px 12px;
+	background: #fff;
+	border-bottom: 1px solid var(--wapm-line-soft);
+	font-size: 12px;
+}
+
+#wapm-torob-review-bar.wapm-bulkbar.is-active {
+	background: linear-gradient(90deg, var(--wapm-brand-50), #eef4ff);
+	border-bottom-color: var(--wapm-brand-100);
+}
+
+.wapm-bulkbar__all {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-weight: 700;
+	color: var(--wapm-ink-600);
+	white-space: nowrap;
+}
+
+.wapm-bulkbar__all input {
+	margin: 0;
+}
+
+.wapm-bulkbar__actions {
+	margin-inline-start: auto;
+	display: flex;
+	gap: 6px;
+}
+
+.wapm-review__table thead th {
+	white-space: nowrap;
+}
+
+.wapm-review__table tbody td {
+	vertical-align: top;
+}
+
+.wapm-review__check {
+	width: 34px;
+	text-align: center;
+}
+
+.wapm-review__check input {
+	margin: 0;
+}
+
+.wapm-review__name {
+	font-weight: 800;
+	color: var(--wapm-ink-900);
+	font-size: 12.5px;
+	line-height: 1.7;
+}
+
+.wapm-review__why {
+	margin-top: 4px;
+}
+
+.wapm-review__meta {
+	margin-top: 4px;
+	font-size: 10.5px;
+	color: var(--wapm-ink-400);
+	font-weight: 600;
+}
+
+.wapm-review__meta a {
+	color: var(--wapm-brand-700);
+	text-decoration: none;
+	font-weight: 800;
+}
+
+.wapm-review__price {
+	white-space: nowrap;
+	font-weight: 800;
+	color: var(--wapm-ink-800);
+}
+
+.wapm-review__pick {
+	margin-bottom: 2px;
+}
+
+.wapm-review__match:empty {
+	display: none;
+}
+
+.wapm-review__diff {
+	margin-top: 6px;
+	font-size: 10.5px;
+	color: var(--wapm-ink-500);
+	font-weight: 700;
+}
+
+.wapm-review__warn {
+	margin-top: 4px;
+	padding: 4px 8px;
+	border-radius: var(--wapm-radius-sm);
+	background: var(--wapm-warn-50);
+	border: 1px solid #fedf89;
+	color: var(--wapm-warn-600);
+	font-size: 10.5px;
+	font-weight: 800;
+	line-height: 1.6;
+}
+
+.wapm-review__actions {
+	white-space: nowrap;
+	text-align: end;
+}
+
+.wapm-review__pager {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	padding: 10px 12px;
+	background: #fbfaff;
+	border-top: 1px solid var(--wapm-line);
+	font-size: 11.5px;
+	font-weight: 700;
+	color: var(--wapm-ink-500);
+}
+
+.wapm-review.is-busy,
+#wapm-torob-unmatched-area.is-busy {
+	opacity: 0.6;
+	pointer-events: none;
+	transition: opacity var(--wapm-speed) ease;
+}
+
+.wapm-empty__icon {
+	font-size: 26px;
+	line-height: 1;
+	color: var(--wapm-ok-600);
+	margin-bottom: 6px;
+}
+
+.wapm-empty__title {
+	margin: 0 0 4px;
+	font-size: 13px;
+	font-weight: 900;
+	color: var(--wapm-ink-700);
+}
+
+/* روی موبایل، ستون «محصول ووکامرس» زیر نام می‌رود (جدول فقط اسکرول افقی شود) */
+.wapm-review__table {
+	min-width: 720px;
+}
+
+.wapm-review {
+	overflow-x: auto;
+}

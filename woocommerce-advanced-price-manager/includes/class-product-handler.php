@@ -335,8 +335,11 @@ class WAPM_Product_Handler {
 			}
 			$sku       = $product->get_sku();
 			$results[] = [
-				'id'   => $id,
-				'text' => $product->get_name() . ( $sku ? " (SKU: {$sku})" : '' ),
+				'id'    => $id,
+				'text'  => $product->get_name() . ( $sku ? " (SKU: {$sku})" : '' ),
+				// قیمت برای تصمیم‌گیری در صف تأیید تطبیق: کاربر پیش از اتصال
+				// می‌بیند این محصول چقدر با قیمت ترب فاصله دارد.
+				'price' => (float) $product->get_price() > 0 ? (float) $product->get_price() : null,
 			];
 			if ( count( $results ) >= $limit ) {
 				break;

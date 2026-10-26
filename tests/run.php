@@ -73,6 +73,10 @@ function absint( $v ) {
 	return abs( (int) $v );
 }
 
+function number_format_i18n( $number, $decimals = 0 ) {
+	return number_format( (float) $number, (int) $decimals );
+}
+
 function get_option( $key, $default = false ) {
 	return $GLOBALS['wapm_options'][ $key ] ?? $default;
 }
@@ -1080,6 +1084,99 @@ test( 'ترب/unit_suspect: نسبت ~۱۰ علامت واحد اشتباه اس
 test( 'ترب/unit_suspect: قیمت صفر/منفی محافظ را فعال نمی‌کند', function () {
 	ok( ! WAPM_Torob::unit_suspect( 0, 1_000_000 ), 'قیمت ما صفر' );
 	ok( ! WAPM_Torob::unit_suspect( 1_000_000, 0 ), 'قیمت ترب صفر' );
+} );
+
+/* -------------------------------------------------------------------------
+ * ۱۴) ترب — صف تأیید تطبیق
+ * ---------------------------------------------------------------------- */
+
+function unmatched_rows(): array {
+	return [
+		[
+			'name' => 'گوشی سامسونگ A55 128', 'prk' => 'aaa111', 'candidate' => 12,
+			'score' => 0.93, 'how' => 'ambiguous', 'sellers' => 4, 'price' => 9000000,
+			'seen' => '2026-10-20 10:00:00',
+		],
+		[
+			'name' => 'لپ تاپ ایسوس VivoBook', 'prk' => 'bbb222', 'candidate' => 0,
+			'score' => 0.0, 'how' => 'no_match', 'sellers' => 0, 'price' => null,
+			'seen' => '2026-10-22 10:00:00',
+		],
+		[
+			'name' => 'کفش نایک زنانه', 'prk' => 'ccc333', 'candidate' => 30,
+			'score' => 1.0, 'how' => 'variation', 'sellers' => 2, 'price' => 2500000,
+			'seen' => '2026-10-24 10:00:00',
+		],
+		[
+			'name' => 'هدفون سونی', 'prk' => 'ddd444', 'candidate' => 40,
+			'score' => 1.0, 'how' => 'occupied', 'sellers' => 0, 'price' => null,
+			'seen' => '2026-10-19 10:00:00',
+		],
+	];
+}
+
+test( 'ترب/صف: شمارش دسته‌ها درست است', function () {
+	$r = WAPM_Torob::filter_unmatched( unmatched_rows() );
+	eq( 4, $r['counts']['all'], 'همه' );
+	eq( 3, $r['counts']['candidate'], 'با کاندید' );
+	eq( 1, $r['counts']['no_candidate'], 'بدون کاندید' );
+	eq( 1, $r['counts']['variation'], 'واریشن' );
+	eq( 1, $r['counts']['occupied'], 'وصل‌شده به دیگری' );
+} );
+
+test( 'ترب/صف: فیلتر «با کاندید» و «بدون کاندید»', function () {
+	$with = WAPM_Torob::filter_unmatched( unmatched_rows(), '', 'candidate' );
+	eq( 3, $with['total'], 'سه ردیف با کاندید' );
+
+	$without = WAPM_Torob::filter_unmatched( unmatched_rows(), '', 'no_candidate' );
+	eq( 1, $without['total'], 'یک ردیف بدون کاندید' );
+	eq( 'bbb222', $without['rows'][0]['prk'], 'همان ردیف لپ‌تاپ' );
+} );
+
+test( 'ترب/صف: فیلتر واریشن/occupied', function () {
+	$v = WAPM_Torob::filter_unmatched( unmatched_rows(), '', 'variation' );
+	eq( 1, $v['total'], 'یک واریشن' );
+	eq( 'ccc333', $v['rows'][0]['prk'], 'prk درست' );
+
+	$o = WAPM_Torob::filter_unmatched( unmatched_rows(), '', 'occupied' );
+	eq( 1, $o['total'], 'یک مورد اشتغال' );
+} );
+
+test( 'ترب/صف: جستجو روی نام (نیم‌فاصله/حروف) و prk', function () {
+	eq( 1, WAPM_Torob::filter_unmatched( unmatched_rows(), 'ایسوس' )['total'], 'نام' );
+	eq( 1, WAPM_Torob::filter_unmatched( unmatched_rows(), 'aaa111' )['total'], 'قسمتی از prk' );
+	eq( 1, WAPM_Torob::filter_unmatched( unmatched_rows(), 'لپ‌تاپ' )['total'], 'با نیم‌فاصله' );
+	eq( 0, WAPM_Torob::filter_unmatched( unmatched_rows(), 'یخچال' )['total'], 'بی‌نتیجه' );
+} );
+
+test( 'ترب/صف: ترتیب تازه‌ترین/قدیمی‌ترین/شباهت', function () {
+	$newest = WAPM_Torob::filter_unmatched( unmatched_rows(), '', 'all', 'newest' );
+	eq( 'ccc333', $newest['rows'][0]['prk'], 'تازه‌ترین اول' );
+
+	$oldest = WAPM_Torob::filter_unmatched( unmatched_rows(), '', 'all', 'oldest' );
+	eq( 'ddd444', $oldest['rows'][0]['prk'], 'قدیمی‌ترین اول' );
+
+	$score = WAPM_Torob::filter_unmatched( unmatched_rows(), '', 'all', 'score' );
+	eq( 1.0, (float) $score['rows'][0]['score'], 'بیشترین شباهت اول' );
+} );
+
+test( 'ترب/صف: مقدار نامعتبر only/sort سقوط نمی‌کند', function () {
+	$r = WAPM_Torob::filter_unmatched( unmatched_rows(), '', 'چیز-نامعتبر', 'نامعتبر' );
+	eq( 4, $r['total'], 'همه‌ی ردیف‌ها' );
+} );
+
+test( 'ترب/صف: حذف گروهی با یک نوشتن و prk تکراری/نامعتبر', function () {
+	$GLOBALS['wapm_options'][ WAPM_Torob::OPTION_UNMATCHED ] = unmatched_rows();
+	eq( 2, WAPM_Torob::remove_unmatched_by_prks( [ 'aaa111', 'bbb222', 'aaa111' ] ), 'دو ردیف یکتا' );
+	eq( 2, count( WAPM_Torob::unmatched() ), 'دو ردیف ماند' );
+	eq( 'ccc333', WAPM_Torob::unmatched()[0]['prk'], 'ردیف درست حذف شد' );
+	eq( 0, WAPM_Torob::remove_unmatched_by_prks( [ 'نامعتبر!', '' ] ), 'ورودی نامعتبر' );
+} );
+
+test( 'ترب/صف: برچسب دلیل تطبیق‌نشدن', function () {
+	eq( 'واریشن هم‌نام شد — ترب در سطح والد مقایسه می‌کند', WAPM_Torob::match_reason_label( [ 'how' => 'variation' ] ), 'واریشن' );
+	ok( false !== mb_strpos( WAPM_Torob::match_reason_label( [ 'candidate' => 5, 'score' => 0.934 ] ), '93' ), 'درصد شباهت در متن' );
+	eq( 'هیچ محصول مشابهی پیدا نشد', WAPM_Torob::match_reason_label( [ 'how' => 'no_match' ] ), 'بدون تطبیق' );
 } );
 
 /* -------------------------------------------------------------------------
