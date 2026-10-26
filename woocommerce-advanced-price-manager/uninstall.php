@@ -50,8 +50,12 @@ function wapm_uninstall_site(): void {
 
 	$keep = wapm_uninstall_keep_data();
 
-	// ۱) کرون — در هر حالت باید برود، وگرنه بعد از حذف افزونه یک هوک بی‌صاحب
-	//    ساعت‌به‌ساعت اجرا می‌شود.
+	// ۱) زمان‌بندی — در هر حالت باید برود، وگرنه بعد از حذف افزونه یک هوک
+	//    بی‌صاحب ساعت‌به‌ساعت اجرا می‌شود. هر دو مسیر پاک می‌شود: Action
+	//    Scheduler (اگر ووکامرس لودش کرده باشد) و WP-Cron.
+	if ( function_exists( 'as_unschedule_all_actions' ) ) {
+		as_unschedule_all_actions( 'wapm_run_schedules', [], 'wapm' );
+	}
 	wp_clear_scheduled_hook( 'wapm_run_schedules' );
 
 	// ۲) transientهای ثابت.
@@ -92,6 +96,8 @@ function wapm_uninstall_site(): void {
 		'wapm_rules',
 		'wapm_schedules',
 		'wapm_schedules_lock',
+		// موتور زمان‌بندی (Action Scheduler / wp-cron).
+		'wapm_queue_engine',
 		// ترب — تنظیمات و آمار.
 		'wapm_torob_settings',
 		'wapm_torob_shop_id',

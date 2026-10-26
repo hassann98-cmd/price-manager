@@ -73,6 +73,31 @@ function absint( $v ) {
 	return abs( (int) $v );
 }
 
+/** دفتر زمان‌بندی‌های WP-Cron در تست. */
+$GLOBALS['wapm_cron'] = [];
+
+function wp_schedule_event( $timestamp, $recurrence, $hook, $args = [] ) {
+	$GLOBALS['wapm_cron'][ $hook ] = (object) [
+		'hook'       => $hook,
+		'timestamp'  => (int) $timestamp,
+		'recurrence' => $recurrence,
+	];
+	return true;
+}
+
+function wp_next_scheduled( $hook, $args = [] ) {
+	return isset( $GLOBALS['wapm_cron'][ $hook ] ) ? (int) $GLOBALS['wapm_cron'][ $hook ]->timestamp : false;
+}
+
+function wp_clear_scheduled_hook( $hook, $args = [] ) {
+	unset( $GLOBALS['wapm_cron'][ $hook ] );
+	return 0;
+}
+
+function wp_date( $format, $timestamp = null ) {
+	return gmdate( $format, null === $timestamp ? time() : (int) $timestamp );
+}
+
 function admin_url( $path = '' ) {
 	return 'https://example.test/wp-admin/' . ltrim( (string) $path, '/' );
 }
@@ -165,6 +190,7 @@ require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-to
 require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-torob-api.php';
 require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-stock.php';
 require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-list.php';
+require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-queue.php';
 
 /* -------------------------------------------------------------------------
  * چارچوب تست کوچک
@@ -1333,6 +1359,52 @@ test( 'موجودی/expand_ids: انتخاب همه‌ی نتایج هم از ه
 /* -------------------------------------------------------------------------
  * ۱۶) فیلترهای ذخیره‌شده‌ی لیست
  * ---------------------------------------------------------------------- */
+
+test( 'صف: بدون Action Scheduler به wp-cron برمی‌گردد و idempotent است', function () {
+	stub_reset();
+	$GLOBALS['wapm_cron'] = [];
+
+	eq( false, WAPM_Queue::uses_action_scheduler(), 'در این محیط AS نیست' );
+	eq( 0, WAPM_Queue::next_run(), 'شروع بدون زمان‌بندی' );
+
+	eq( true, WAPM_Queue::schedule_hourly(), 'بار اول ساخته می‌شود' );
+	$first = WAPM_Queue::next_run();
+	ok( $first > time(), 'زمان آینده', (string) $first );
+
+	// فراخوانی دوباره (مثلاً هر بار لود افزونه) نباید زمان‌بندی دوم بسازد.
+	eq( false, WAPM_Queue::schedule_hourly(), 'بار دوم کاری نمی‌کند' );
+	eq( $first, WAPM_Queue::next_run(), 'همان زمان قبلی' );
+
+	$state = WAPM_Queue::state();
+	eq( 'wp-cron', $state['engine'], 'موتور' );
+	eq( 'WP-Cron', $state['label'], 'برچسب' );
+	ok( false !== strpos( $state['next_label'], 'اجرای بعدی' ), 'برچسب زمان', $state['next_label'] );
+
+	WAPM_Queue::unschedule_all();
+	eq( 0, WAPM_Queue::next_run(), 'پاک شد' );
+	eq( 'زمان‌بندی فعالی وجود ندارد.', WAPM_Queue::state()['next_label'], 'پیام بدون زمان‌بندی' );
+} );
+
+test( 'صف: مهاجرت از wp-cron به AS، بقایای مسیر قدیمی را پاک می‌کند', function () {
+	stub_reset();
+	$GLOBALS['wapm_cron'] = [];
+
+	// وضعیت نسخه‌ی قبلی: زمان‌بندی wp-cron هست و گزینه‌ی موتور ثبت نشده.
+	wp_schedule_event( time() + 300, 'hourly', 'wapm_run_schedules' );
+	ok( WAPM_Queue::next_run() > 0, 'زمان‌بندی قدیمی هست' );
+
+	// در این محیط AS وجود ندارد؛ پس مهاجرت نباید زمان‌بندی موجود را حذف کند
+	// (وگرنه کار زمان‌بندی‌شده گم می‌شود).
+	WAPM_Queue::maybe_migrate();
+
+	ok( WAPM_Queue::next_run() > 0, 'زمان‌بندی باقی می‌ماند' );
+	eq( 'wp-cron', (string) get_option( 'wapm_queue_engine' ), 'موتور ثبت شد' );
+
+	// بار دوم: گزینه ثبت شده و زمان‌بندی هست → هیچ تغییری لازم نیست.
+	$before = WAPM_Queue::next_run();
+	WAPM_Queue::maybe_migrate();
+	eq( $before, WAPM_Queue::next_run(), 'بی‌اثر' );
+} );
 
 test( 'لیست: پاسخ «کپی محصول» وضعیت پیش‌نویس را توضیح می‌دهد (P1-8)', function () {
 	stub_reset();

@@ -70,12 +70,15 @@ final class WAPM_Plugin {
 		require_once WAPM_PATH . 'includes/class-rollback.php';
 		require_once WAPM_PATH . 'includes/class-csv-handler.php';
 		require_once WAPM_PATH . 'includes/class-rules.php';
+		require_once WAPM_PATH . 'includes/class-queue.php';
 		require_once WAPM_PATH . 'includes/class-scheduler.php';
 		require_once WAPM_PATH . 'includes/class-ajax.php';
 		require_once WAPM_PATH . 'includes/class-admin.php';
 
 		WAPM_Logger::maybe_upgrade();
 		WAPM_Stock::maybe_upgrade();
+		// زمان‌بندی: Action Scheduler اگر ووکامرس آن را همراه دارد، وگرنه wp-cron.
+		WAPM_Queue::maybe_migrate();
 		WAPM_Torob::hooks();
 		new WAPM_Scheduler();
 		new WAPM_Ajax();
@@ -90,14 +93,14 @@ final class WAPM_Plugin {
 		WAPM_Logger::create_table();
 		require_once WAPM_PATH . 'includes/class-stock.php';
 		WAPM_Stock::create_table();
-		if ( ! wp_next_scheduled( 'wapm_run_schedules' ) ) {
-			wp_schedule_event( time() + 60, 'hourly', 'wapm_run_schedules' );
-		}
+		require_once WAPM_PATH . 'includes/class-queue.php';
+		WAPM_Queue::schedule_hourly();
 	}
 
 	public function deactivate(): void {
-		// تنظیمات، قوانین و تاریخچه حفظ می‌شوند؛ فقط کرون پاک می‌شود.
-		wp_clear_scheduled_hook( 'wapm_run_schedules' );
+		// تنظیمات، قوانین و تاریخچه حفظ می‌شوند؛ فقط زمان‌بندی پاک می‌شود.
+		require_once WAPM_PATH . 'includes/class-queue.php';
+		WAPM_Queue::unschedule_all();
 	}
 }
 
