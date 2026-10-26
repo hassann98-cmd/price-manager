@@ -457,6 +457,14 @@
 		if (t.sellers) {
 			facts.push(['تعداد فروشنده‌ها', fmt(t.sellers)]);
 		}
+		if (t.sellers_below !== null && t.sellers_below !== undefined) {
+			facts.push([
+				'رقیب زیر قیمت ما',
+				Number(t.sellers_below) > 0
+					? '<span style="color:#b42318">' + fmt(t.sellers_below) + ' نفر</span>'
+					: '<span style="color:#067647">هیچ‌کدام</span>'
+			]);
+		}
 		facts.push(['تازگی داده‌ی ترب', call('torobAgeLabel', t.age_days)]);
 
 		if (t.history_change) {

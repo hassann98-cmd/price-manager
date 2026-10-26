@@ -195,6 +195,13 @@
 			html += '<div style="font-size:9px;color:#94a3b8;font-weight:700">' + fmt(t.sellers) + ' فروشنده</div>';
 		}
 
+		// «چند رقیب زیر قیمت ما» — تصمیم را از «درصد با یک رقیب» به «چند نفر
+		// ارزان‌ترند» می‌برد. صفر یعنی ارزان‌ترینیم و نمایش لازم ندارد.
+		if (t.sellers_below > 0) {
+			html += '<div style="font-size:9px;font-weight:800;color:#b42318" title="از ' + fmt(t.sellers_stored) + ' فروشنده‌ی ذخیره‌شده، ' + fmt(t.sellers_below) + ' نفر ارزان‌تر از شما هستند">' +
+				fmt(t.sellers_below) + ' رقیب ارزان‌تر</div>';
+		}
+
 		if (t.status === 'none') {
 			// وصل است ولی هنوز قیمت رقیبی گرفته نشده (مثلاً فقط کاتالوگ همگام شده).
 			html += '<div style="font-size:9px;color:#64748b">قیمت رقیب ندارد — «بررسی الان» را بزنید</div>';

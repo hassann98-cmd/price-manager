@@ -1811,6 +1811,31 @@ test( 'CSV مقایسه‌ی ترب: اکشن، ستون‌ها و فیلتره�
 	ok( false !== strpos( $view, 'wapm-torob-export-btn' ), 'دکمه در تب CSV هست' );
 } );
 
+test( '«چند رقیب زیر قیمت ما» از فروشنده‌های ذخیره‌شده', function () {
+	$sellers = [
+		[ 'price' => 900000, 'unreliable' => false ],
+		[ 'price' => 1000000, 'unreliable' => false ], // برابر با قیمت ما → «زیر» نیست
+		[ 'price' => 800000, 'unreliable' => true ],    // قیمت مشکوک → شمرده نمی‌شود
+		[ 'price' => 1100000, 'unreliable' => false ],
+	];
+
+	$result = WAPM_Torob::sellers_below( $sellers, 1000000 );
+
+	eq( 1, $result['below'], 'یک رقیب واقعاً ارزان‌تر' );
+	eq( 3, $result['stored'], 'قیمت مشکوک در شمارش نیست' );
+	eq( 900000.0, $result['cheapest'], 'ارزان‌ترین زیر قیمت ما' );
+
+	$none = WAPM_Torob::sellers_below( $sellers, 500000 );
+	eq( 0, $none['below'], 'اگر از همه ارزان‌تریم، صفر' );
+	eq( null, $none['cheapest'], 'بدون ارزان‌تر' );
+
+	$unknown = WAPM_Torob::sellers_below( $sellers, 0 );
+	eq( 0, $unknown['below'], 'قیمت نامعلوم = بدون شمارش' );
+	eq( 3, $unknown['stored'], 'ولی فروشنده‌ها شناخته می‌شوند' );
+
+	eq( [ 'below' => 0, 'stored' => 0, 'cheapest' => null ], WAPM_Torob::sellers_below( [], 1000 ), 'لیست خالی' );
+} );
+
 test( 'لیست تطبیق‌نیافته: ردیف‌های کهنه منقضی می‌شوند', function () {
 	$now  = strtotime( '2024-06-01 12:00:00' );
 	$list = [

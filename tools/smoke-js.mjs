@@ -83,6 +83,8 @@ const row = {
 		diff_pct: 20,
 		age_days: 1,
 		sellers: 3,
+		sellers_below: 2,
+		sellers_stored: 12,
 		our_price_wc: 120000,
 		fresh_days: 3,
 		link: 'manual',
@@ -304,6 +306,8 @@ try {
 	$('#wapm-list-tbody .wapm-torob-align').first().trigger('click');
 	ok($('#wapm-align-drawer').hasClass('is-open'), 'کشوی هم‌تراز باز شد');
 	ok(String($('#wapm-ad-facts').text()).indexOf('ارزان‌ترین رقیب') !== -1, 'وضعیت فعلی در کشو نشان داده شد');
+	ok(String($('#wapm-ad-facts').text()).indexOf('رقیب زیر قیمت ما') !== -1, 'شمارش رقیب‌های ارزان‌تر در کشو');
+	ok(String($('#wapm-list-tbody .wapm-torob-align').closest('td').text()).indexOf('رقیب ارزان‌تر') !== -1, 'شمارش در ستون ترب');
 	ok($('#wapm-ad-facts svg path').length === 1, 'نمودار روند رقیب رسم شد');
 	ok(String($('#wapm-list-tbody .wapm-torob-align').closest('td').text()).indexOf('ارزان‌تر') !== -1, 'روند در ستون ترب هم دیده می‌شود');
 

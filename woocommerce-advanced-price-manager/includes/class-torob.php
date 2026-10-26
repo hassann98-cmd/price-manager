@@ -1647,6 +1647,46 @@ class WAPM_Torob {
 	}
 
 	/**
+	 * چند فروشنده‌ی ذخیره‌شده زیر قیمت ما هستند؟
+	 *
+	 * داده از `META_SELLERS_LIST` می‌آید (۱۲ فروشنده‌ی ارزان‌ترین که در هر
+	 * همگام‌سازی ذخیره می‌شود) — تا امروز این داده ذخیره می‌شد و استفاده
+	 * نمی‌شد. «تعداد رقیب زیر قیمت ما» یک عدد تصمیم‌ساز است که درصد اختلاف با
+	 * یک رقیب آن را نمی‌گوید.
+	 *
+	 * فروشنده‌های «قیمت مشکوک» (`unreliable`) شمرده نمی‌شوند؛ همان قاعده‌ای که
+	 * ارزان‌ترین رقیب را تعیین می‌کند.
+	 *
+	 * @param array<int,array> $sellers خروجی META_SELLERS_LIST
+	 * @return array{below:int,stored:int,cheapest:float|null}
+	 */
+	public static function sellers_below( array $sellers, float $our_price ): array {
+		$below    = 0;
+		$stored   = 0;
+		$cheapest = null;
+
+		foreach ( $sellers as $seller ) {
+			if ( ! is_array( $seller ) || ! isset( $seller['price'] ) ) {
+				continue;
+			}
+
+			$price = (float) $seller['price'];
+			if ( $price <= 0 || ! empty( $seller['unreliable'] ) ) {
+				continue;
+			}
+
+			$stored++;
+
+			if ( $our_price > 0 && $price < $our_price ) {
+				$below++;
+				$cheapest = ( null === $cheapest ) ? $price : min( $cheapest, $price );
+			}
+		}
+
+		return [ 'below' => $below, 'stored' => $stored, 'cheapest' => $cheapest ];
+	}
+
+	/**
 	 * تاریخچه‌ی قیمت رقیب (قدیمی → جدید).
 	 *
 	 * @return array<int, array{t:string,p:float}>
@@ -1777,6 +1817,9 @@ class WAPM_Torob {
 		// تاریخچه‌ی قیمت رقیب — فقط ۳۰ نقطه‌ی آخر، برای نمایش روند در لیست/کشو.
 		$history = self::get_price_history( $product_id );
 
+		// چند رقیب از لیست ذخیره‌شده زیر قیمت ما هستند (۰ = ارزان‌ترینیم).
+		$below = self::sellers_below( is_array( $sellers_list ) ? $sellers_list : [], (float) $our_price );
+
 		return [
 			'prk'            => $prk,
 			'url'            => (string) get_post_meta( $product_id, self::META_URL, true ),
@@ -1788,6 +1831,8 @@ class WAPM_Torob {
 			'our_price_wc'     => $our_price,
 			'sellers'        => (int) get_post_meta( $product_id, self::META_SELLERS, true ),
 			'sellers_list'   => is_array( $sellers_list ) ? $sellers_list : [],
+			'sellers_below'  => (int) $below['below'],
+			'sellers_stored' => (int) $below['stored'],
 			'checked_at'     => $checked,
 			'age_days'       => $age_days,
 			'our_checked_at' => $our_checked,
