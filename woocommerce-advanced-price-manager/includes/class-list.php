@@ -31,6 +31,18 @@ class WAPM_List {
 			'stock_max'    => ( isset( $raw['stock_max'] ) && '' !== $raw['stock_max'] ) ? max( 0, (int) $raw['stock_max'] ) : null,
 			'product_type' => in_array( $raw['product_type'] ?? '', [ 'simple', 'variable' ], true ) ? $raw['product_type'] : '',
 			'on_sale'      => ! empty( $raw['on_sale'] ),
+
+			// فیلتر و مرتب‌سازی ترب
+			'torob_status' => in_array(
+				$raw['torob_status'] ?? '',
+				[ 'any', 'none', 'pricier', 'cheaper', 'equal', 'no_competitor', 'needs_shop_id', 'no_price', 'stale', 'fresh' ],
+				true
+			) ? $raw['torob_status'] : '',
+			'orderby'      => in_array(
+				$raw['orderby'] ?? '',
+				[ 'id_desc', 'name_asc', 'price_asc', 'price_desc', 'torob_diff_desc', 'torob_diff_asc', 'torob_asc' ],
+				true
+			) ? $raw['orderby'] : 'id_desc',
 		];
 	}
 
@@ -49,6 +61,30 @@ class WAPM_List {
 			'orderby'        => 'ID',
 			'order'          => 'DESC',
 		];
+
+		switch ( $f['orderby'] ) {
+			case 'name_asc':
+				$args['orderby'] = 'title';
+				$args['order']   = 'ASC';
+				break;
+
+			case 'price_asc':
+			case 'price_desc':
+				// همه‌ی محصولات منتشرشده _price دارند؛ این مرتب‌سازی عنصری حذف نمی‌کند.
+				$args['meta_key'] = '_price';
+				$args['orderby']  = 'meta_value_num';
+				$args['order']    = ( 'price_asc' === $f['orderby'] ) ? 'ASC' : 'DESC';
+				break;
+
+			case 'torob_diff_desc':
+			case 'torob_diff_asc':
+			case 'torob_asc':
+				// فقط محصولات دارای داده‌ی ترب (این مرتب‌سازی عمداً فیلترکننده است).
+				$args['meta_key'] = WAPM_Torob::META_DIFF_PCT;
+				$args['orderby']  = 'meta_value_num';
+				$args['order']    = ( 'torob_diff_asc' === $f['orderby'] ) ? 'ASC' : 'DESC';
+				break;
+		}
 
 		$post_in = null;
 
@@ -144,6 +180,11 @@ class WAPM_List {
 				$q['compare'] = '<=';
 			}
 			$meta_query[] = $q;
+		}
+
+		$torob_clause = WAPM_Torob::meta_clause( $f['torob_status'] );
+		if ( null !== $torob_clause ) {
+			$meta_query[] = $torob_clause;
 		}
 
 		if ( $meta_query ) {
@@ -279,8 +320,23 @@ class WAPM_List {
 			'view_url'           => $product->get_permalink(),
 			'can_duplicate'      => ! $is_variation,
 			'can_edit_terms'     => ! $is_variation,
-			'torob'              => ( ! $is_variation && class_exists( 'WAPM_Torob' ) ) ? WAPM_Torob::get_row_data( $product->get_id() ) : null,
+			// قیمت مؤثر (برای محصول متغیر = کمینه‌ی واریشن‌ها) همان چیزی است که ترب
+			// به‌عنوان قیمت ما نشان می‌دهد؛ مقایسه بر همین مبنا انجام می‌شود.
+			'torob'              => ( ! $is_variation && class_exists( 'WAPM_Torob' ) )
+				? WAPM_Torob::get_row_data( $product->get_id(), (float) $product->get_price() )
+				: null,
 		];
+	}
+
+	/**
+	 * ردیف یک محصول برای پاسخ Ajax (build_row داخلی است).
+	 */
+	public static function build_row_for_ajax( WC_Product $product ): array {
+		$parent = null;
+		if ( $product->is_type( 'variation' ) ) {
+			$parent = wc_get_product( $product->get_parent_id() );
+		}
+		return self::build_row( $product, $parent );
 	}
 
 	/**

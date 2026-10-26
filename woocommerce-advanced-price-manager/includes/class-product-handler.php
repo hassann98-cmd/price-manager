@@ -50,6 +50,13 @@ class WAPM_Product_Handler {
 			'attribute_ids' => array_map( 'absint', (array) ( $raw['attribute_ids'] ?? [] ) ),
 			'stock_filter'  => in_array( $raw['stock_filter'] ?? '', [ 'none', 'below', 'above' ], true ) ? $raw['stock_filter'] : 'none',
 			'stock_value'   => max( 0, intval( $raw['stock_value'] ?? 0 ) ),
+
+			// فیلتر «وضعیت ترب» — مثلاً «همه‌ی محصولاتی که از رقیب گران‌ترند».
+			'torob_status'  => in_array(
+				$raw['torob_status'] ?? '',
+				[ 'any', 'none', 'pricier', 'cheaper', 'equal', 'no_competitor', 'needs_shop_id', 'no_price', 'stale', 'fresh' ],
+				true
+			) ? $raw['torob_status'] : '',
 		];
 	}
 
@@ -105,6 +112,13 @@ class WAPM_Product_Handler {
 					] ];
 				}
 				break;
+		}
+
+		if ( class_exists( 'WAPM_Torob' ) ) {
+			$torob_clause = WAPM_Torob::meta_clause( $f['torob_status'] ?? '' );
+			if ( null !== $torob_clause ) {
+				$args['meta_query'] = [ $torob_clause ];
+			}
 		}
 
 		return $args;
@@ -164,6 +178,14 @@ class WAPM_Product_Handler {
 
 		if ( self::has_stock_filter( $f ) ) {
 			$ids = self::filter_by_stock( $ids, $f );
+		}
+
+		// مجموعه‌ی انتخابی کوچک است؛ فیلتر ترب در PHP ارزان‌تر از کوئری دوم است.
+		if ( class_exists( 'WAPM_Torob' ) && ! empty( $f['torob_status'] ) ) {
+			$ids = array_values( array_filter(
+				$ids,
+				fn( $id ) => WAPM_Torob::matches_status( (int) $id, (string) $f['torob_status'] )
+			) );
 		}
 
 		$total  = count( $ids );

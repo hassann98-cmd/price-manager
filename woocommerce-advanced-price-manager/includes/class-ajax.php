@@ -24,6 +24,13 @@ class WAPM_Ajax {
 			'bulk_action',
 			'torob_save_settings',
 			'torob_regenerate_token',
+			'torob_stats',
+			'torob_get_unmatched',
+			'torob_link',
+			'torob_unlink',
+			'torob_ignore_unmatched',
+			'torob_clear_unmatched',
+			'torob_import_feed',
 			'count_targets',
 			'preview',
 			'dry_run',
@@ -47,6 +54,11 @@ class WAPM_Ajax {
 		// بدون لاگین (nopriv) هم در دسترس باشد؛ احراز هویتش با توکن اختصاصی است، نه nonce.
 		add_action( 'wp_ajax_wapm_torob_bookmarklet_sync', [ $this, 'torob_bookmarklet_sync' ] );
 		add_action( 'wp_ajax_nopriv_wapm_torob_bookmarklet_sync', [ $this, 'torob_bookmarklet_sync' ] );
+
+		// اکشن عمومی ورود داده از هر منبعی (بوکمارکلت جدید / فید / اسکریپت بیرونی).
+		// نام قدیمی بالا برای بوکمارکلت‌هایی که قبلاً ساخته شده‌اند حفظ شده است.
+		add_action( 'wp_ajax_wapm_torob_ingest', [ $this, 'torob_ingest' ] );
+		add_action( 'wp_ajax_nopriv_wapm_torob_ingest', [ $this, 'torob_ingest' ] );
 	}
 
 	/**
@@ -189,8 +201,17 @@ class WAPM_Ajax {
 
 	public function torob_save_settings(): void {
 		$this->guard();
-		WAPM_Torob::save_shop_id( sanitize_text_field( wp_unslash( $_POST['shop_id'] ?? '' ) ) );
-		wp_send_json_success( [ 'shop_id' => WAPM_Torob::get_shop_id() ] );
+
+		WAPM_Torob::save_settings( [
+			'shop_id'       => wp_unslash( $_POST['shop_id'] ?? '' ),
+			'shop_name'     => wp_unslash( $_POST['shop_name'] ?? '' ),
+			'fresh_days'    => $_POST['fresh_days'] ?? null,
+			'tolerance_pct' => $_POST['tolerance_pct'] ?? null,
+		] );
+
+		wp_send_json_success( array_merge( $this->torob_stats_payload(), [
+			'can_identify_shop' => WAPM_Torob::can_identify_shop(),
+		] ) );
 	}
 
 	public function torob_regenerate_token(): void {
@@ -199,11 +220,159 @@ class WAPM_Ajax {
 	}
 
 	/**
-	 * دریافت داده از Bookmarklet (اجراشده در مرورگر خود ادمین، روی torob.com).
-	 * این تنها اکشن این افزونه است که از دامنه‌ی دیگری (torob.com) و بدون سشن ادمین
-	 * صدا زده می‌شود — پس به‌جای nonce/current_user_can با یک توکن اختصاصی احراز هویت می‌شود.
+	 * آمار کلی ترب (برای به‌روزرسانی کارت وضعیت بدون رفرش صفحه).
 	 */
-	public function torob_bookmarklet_sync(): void {
+	public function torob_stats(): void {
+		$this->guard();
+		wp_send_json_success( $this->torob_stats_payload() );
+	}
+
+	private function torob_stats_payload(): array {
+		$last = WAPM_Torob::get_last_sync();
+
+		return [
+			'matched'           => WAPM_Torob::count_matched(),
+			'unmatched'         => count( WAPM_Torob::unmatched() ),
+			'last_sync'         => $last,
+			'settings'          => WAPM_Torob::settings(),
+			'shop_id'           => WAPM_Torob::get_shop_id(),
+			'can_identify_shop' => WAPM_Torob::can_identify_shop(),
+		];
+	}
+
+	/**
+	 * لیست محصولات تطبیق‌نیافته (برای اتصال دستی).
+	 */
+	public function torob_get_unmatched(): void {
+		$this->guard();
+
+		$rows = [];
+		foreach ( WAPM_Torob::unmatched() as $row ) {
+			$candidate = 0;
+			if ( ! empty( $row['candidate'] ) ) {
+				$candidate = (int) $row['candidate'];
+			}
+			$candidate_product = $candidate ? wc_get_product( $candidate ) : null;
+
+			$rows[] = [
+				'prk'        => (string) ( $row['prk'] ?? '' ),
+				'name'       => (string) ( $row['name'] ?? '' ),
+				'price'      => isset( $row['price'] ) && '' !== $row['price'] ? (float) $row['price'] : null,
+				'sellers'    => (int) ( $row['sellers'] ?? 0 ),
+				'seen'       => (string) ( $row['seen'] ?? '' ),
+				'seen_i18n'  => ! empty( $row['seen'] ) ? date_i18n( 'Y/m/d H:i', strtotime( (string) $row['seen'] ) ) : '',
+				'how'        => (string) ( $row['how'] ?? '' ),
+				'score'      => (float) ( $row['score'] ?? 0 ),
+				'candidate'  => $candidate_product ? [
+					'id'   => $candidate_product->get_id(),
+					'text' => $candidate_product->get_name() . ( $candidate_product->get_sku() ? ' (SKU: ' . $candidate_product->get_sku() . ')' : '' ),
+				] : null,
+				'url'        => 'https://torob.com/p/' . rawurlencode( (string) ( $row['prk'] ?? '' ) ) . '/',
+			];
+		}
+
+		wp_send_json_success( [ 'rows' => $rows, 'total' => count( $rows ) ] );
+	}
+
+	/**
+	 * اتصال دستی یک محصول به یک محصول ترب.
+	 */
+	public function torob_link(): void {
+		$this->guard();
+
+		$product_id = absint( $_POST['product_id'] ?? 0 );
+		$prk        = preg_replace( '/[^A-Za-z0-9_-]/', '', (string) wp_unslash( $_POST['prk'] ?? '' ) );
+		$name       = sanitize_text_field( wp_unslash( $_POST['name'] ?? '' ) );
+
+		if ( ! $product_id || '' === $prk ) {
+			wp_send_json_error( [ 'message' => __( 'اطلاعات اتصال کامل نیست.', 'wapm' ) ] );
+		}
+
+		if ( ! WAPM_Torob::link_product( $product_id, $prk, $name ) ) {
+			wp_send_json_error( [ 'message' => __( 'اتصال انجام نشد؛ محصول یا شناسه معتبر نیست.', 'wapm' ) ] );
+		}
+
+		$product = wc_get_product( $product_id );
+		wp_send_json_success( [
+			'message' => __( 'محصول به ترب متصل شد.', 'wapm' ),
+			'row'     => $product ? WAPM_List::build_row_for_ajax( $product ) : null,
+			'stats'   => $this->torob_stats_payload(),
+		] );
+	}
+
+	public function torob_unlink(): void {
+		$this->guard();
+
+		$product_id = absint( $_POST['product_id'] ?? 0 );
+		if ( ! $product_id ) {
+			wp_send_json_error( [ 'message' => __( 'محصول نامعتبر است.', 'wapm' ) ] );
+		}
+
+		WAPM_Torob::unlink_product( $product_id );
+
+		$product = wc_get_product( $product_id );
+		wp_send_json_success( [
+			'message' => __( 'اتصال محصول به ترب حذف شد.', 'wapm' ),
+			'row'     => $product ? WAPM_List::build_row_for_ajax( $product ) : null,
+			'stats'   => $this->torob_stats_payload(),
+		] );
+	}
+
+	public function torob_ignore_unmatched(): void {
+		$this->guard();
+		WAPM_Torob::remove_unmatched_by_prk( preg_replace( '/[^A-Za-z0-9_-]/', '', (string) wp_unslash( $_POST['prk'] ?? '' ) ) );
+		wp_send_json_success( $this->torob_stats_payload() );
+	}
+
+	public function torob_clear_unmatched(): void {
+		$this->guard();
+		WAPM_Torob::clear_unmatched();
+		wp_send_json_success( $this->torob_stats_payload() );
+	}
+
+	/**
+	 * ورود داده از فایل CSV (فید پنل ترب یا هر منبعی).
+	 */
+	public function torob_import_feed(): void {
+		$this->guard();
+
+		if ( empty( $_FILES['feed_file']['tmp_name'] ) ) {
+			wp_send_json_error( [ 'message' => __( 'فایلی انتخاب نشده است.', 'wapm' ) ] );
+		}
+		if ( ! empty( $_FILES['feed_file']['error'] ) ) {
+			wp_send_json_error( [ 'message' => __( 'خطا در آپلود فایل.', 'wapm' ) ] );
+		}
+		if ( ! is_uploaded_file( $_FILES['feed_file']['tmp_name'] ) ) {
+			wp_send_json_error( [ 'message' => __( 'فایل آپلودشده معتبر نیست.', 'wapm' ) ], 400 );
+		}
+
+		$check = wp_check_filetype( sanitize_file_name( wp_unslash( $_FILES['feed_file']['name'] ) ), [ 'csv' => 'text/csv' ] );
+		if ( 'csv' !== $check['ext'] ) {
+			wp_send_json_error( [ 'message' => __( 'فقط فایل CSV مجاز است.', 'wapm' ) ] );
+		}
+
+		$result = WAPM_Torob::import_csv( $_FILES['feed_file']['tmp_name'] );
+		if ( ! empty( $result['error'] ) ) {
+			wp_send_json_error( [ 'message' => $result['error'] ] );
+		}
+
+		wp_send_json_success( [
+			'message' => sprintf(
+				/* translators: 1: rows in file, 2: matched, 3: unmatched */
+				__( '%1$d ردیف خوانده شد — %2$d محصول تطبیق خورد، %3$d تطبیق نخورد.', 'wapm' ),
+				$result['items'],
+				(int) ( $result['stats']['matched'] ?? 0 ),
+				(int) ( $result['stats']['unmatched'] ?? 0 )
+			),
+			'stats'   => $this->torob_stats_payload(),
+		] );
+	}
+
+	/**
+	 * ورود داده از منابع بیرونی (بوکمارکلت/فید/اسکریپت) — بدون سشن ادمین.
+	 * احراز هویت با توکن اختصاصی + محدودیت نرخ + سقف حجم.
+	 */
+	public function torob_ingest(): void {
 		if ( isset( $_SERVER['HTTP_ORIGIN'] ) && 'https://torob.com' === $_SERVER['HTTP_ORIGIN'] ) {
 			header( 'Access-Control-Allow-Origin: https://torob.com' );
 		}
@@ -215,12 +384,46 @@ class WAPM_Ajax {
 			wp_send_json_error( [ 'message' => 'توکن نامعتبر است.' ], 403 );
 		}
 
-		$items = json_decode( wp_unslash( $_POST['items'] ?? '[]' ), true );
+		// محدودیت نرخ: نشت توکن نباید به یک حمله‌ی نوشتن بی‌پایان تبدیل شود.
+		$rate_key = 'wapm_torob_rl_' . substr( hash( 'sha256', $token ), 0, 12 );
+		$hits     = (int) get_transient( $rate_key );
+		if ( $hits >= 60 ) {
+			wp_send_json_error( [ 'message' => 'تعداد درخواست‌ها بیش از حد مجاز است؛ یک دقیقه بعد تلاش کنید.' ], 429 );
+		}
+		set_transient( $rate_key, $hits + 1, MINUTE_IN_SECONDS );
+
+		$raw_items = wp_unslash( $_POST['items'] ?? '[]' );
+		if ( strlen( (string) $raw_items ) > 3 * MB_IN_BYTES ) {
+			wp_send_json_error( [ 'message' => 'حجم داده بیش از حد مجاز است.' ], 413 );
+		}
+
+		$items = json_decode( (string) $raw_items, true );
 		if ( ! is_array( $items ) ) {
 			wp_send_json_error( [ 'message' => 'داده نامعتبر است.' ] );
 		}
 
-		wp_send_json_success( WAPM_Torob::ingest_bookmarklet_batch( $items ) );
+		$source = sanitize_key( wp_unslash( $_POST['source'] ?? 'bookmarklet' ) );
+		if ( ! in_array( $source, [ 'bookmarklet', 'feed', 'api' ], true ) ) {
+			$source = 'api';
+		}
+
+		$meta = json_decode( (string) wp_unslash( $_POST['meta'] ?? '{}' ), true );
+		$meta = is_array( $meta ) ? $meta : [];
+
+		$stats = WAPM_Torob::ingest( $items, $source, $meta );
+
+		wp_send_json_success( array_merge( $stats, [
+			'unmatched_total' => count( WAPM_Torob::unmatched() ),
+			'matched_total'   => WAPM_Torob::count_matched(),
+		] ) );
+	}
+
+	/**
+	 * سازگاری: بوکمارکلت‌های نسخه‌ی قبل همین اکشن را صدا می‌زنند.
+	 */
+	public function torob_bookmarklet_sync(): void {
+		$_POST['source'] = 'bookmarklet';
+		$this->torob_ingest();
 	}
 
 	/* ---------- شمارش و پیش‌نمایش ---------- */
@@ -265,18 +468,30 @@ class WAPM_Ajax {
 
 		$targets = WAPM_Product_Handler::get_target_ids( $filters, $paged, $per_page );
 
+		$is_torob = WAPM_Price_Engine::uses_torob( $settings );
+
 		$stats = [
-			'products'     => 0,
-			'variations'   => 0,
-			'price_points' => 0,
-			'sum_diff'     => 0.0,
-			'max_increase' => 0.0,
-			'max_decrease' => 0.0,
-			'flagged'      => 0, // تعداد قیمت‌هایی که افت بیش از ۹۰٪ دارند (هشدار).
+			'products'      => 0,
+			'variations'    => 0,
+			'price_points'  => 0,
+			'sum_diff'      => 0.0,
+			'max_increase'  => 0.0,
+			'max_decrease'  => 0.0,
+			'flagged'       => 0, // تعداد قیمت‌هایی که افت بیش از ۹۰٪ دارند (هشدار).
+			'torob_skipped' => 0, // در حالت ترب: محصولاتی که داده‌ی تازه/شرط لازم را ندارند.
 		];
 
 		foreach ( $targets['ids'] as $pid ) {
 			$rows = WAPM_Price_Engine::preview_product( $pid, $settings );
+
+			if ( $is_torob ) {
+				$product = wc_get_product( $pid );
+				$ctx     = $product ? WAPM_Price_Engine::torob_context( $product, $settings ) : null;
+				if ( null === $ctx || ! empty( $ctx['skip'] ) ) {
+					$stats['torob_skipped']++;
+				}
+			}
+
 			if ( empty( $rows ) ) {
 				continue;
 			}

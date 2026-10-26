@@ -21,7 +21,19 @@ class WAPM_Price_Engine {
 		$currency  = in_array( $raw['currency_unit'] ?? '', [ 'toman', 'rial' ], true ) ? $raw['currency_unit'] : 'toman';
 		$sale_mode = in_array( $raw['sale_handling'] ?? '', [ 'independent', 'keep_discount', 'remove_sale' ], true ) ? $raw['sale_handling'] : 'independent';
 
+		// منبع تعیین قیمت: دستی (درصد/مبلغ) یا ترب (نسبت به ارزان‌ترین رقیب).
+		$source       = in_array( $raw['source'] ?? '', [ 'manual', 'torob' ], true ) ? $raw['source'] : 'manual';
+		$undercut     = in_array( $raw['torob_undercut_mode'] ?? '', [ 'percent', 'fixed' ], true ) ? $raw['torob_undercut_mode'] : 'percent';
+		$torob_cur    = in_array( $raw['torob_currency_unit'] ?? '', [ 'toman', 'rial' ], true ) ? $raw['torob_currency_unit'] : 'toman';
+
+		// مقدار پیش‌فرض «زیربرش» فقط وقتی اعمال می‌شود که کلید ارسال نشده باشد؛
+		// صفرِ عمدی کاربر باید صفر بماند.
+		$torob_undercut = array_key_exists( 'torob_undercut', $raw )
+			? max( 0, floatval( $raw['torob_undercut'] ) )
+			: 1.0;
+
 		return [
+			'source'         => $source,
 			'sale_handling'  => $sale_mode,
 			'mode'           => $mode,
 			'direction'      => $direction,
@@ -33,7 +45,22 @@ class WAPM_Price_Engine {
 			'min_price'      => max( 0, floatval( $raw['min_price'] ?? 0 ) ),
 			'max_price'      => max( 0, floatval( $raw['max_price'] ?? 0 ) ),
 			'currency_unit'  => $currency,
+
+			// تنظیمات حالت ترب
+			'torob_undercut_mode'   => $undercut,
+			'torob_undercut'        => $torob_undercut,
+			'torob_currency_unit'   => $torob_cur,
+			'torob_min_gap_pct'     => array_key_exists( 'torob_min_gap_pct', $raw ) ? max( 0, floatval( $raw['torob_min_gap_pct'] ) ) : 1.0,
+			'torob_only_if_pricier' => ! array_key_exists( 'torob_only_if_pricier', $raw ) || ! empty( $raw['torob_only_if_pricier'] ),
+			'torob_max_age'         => max( 0, intval( $raw['torob_max_age'] ?? 0 ) ),
 		];
+	}
+
+	/**
+	 * آیا این تنظیمات از داده‌ی ترب استفاده می‌کند؟
+	 */
+	public static function uses_torob( array $s ): bool {
+		return 'torob' === ( $s['source'] ?? 'manual' );
 	}
 
 	/**
@@ -48,6 +75,13 @@ class WAPM_Price_Engine {
 			return 1;
 		}
 		return ( 'rial' === $input_unit ) ? 0.1 : 10; // ریال→تومان یا تومان→ریال
+	}
+
+	/**
+	 * تبدیل مبلغ ورودی (تومان/ریال) به واحد فروشگاه.
+	 */
+	public static function to_store_unit( float $amount, string $unit ): float {
+		return $amount * self::unit_factor( $unit );
 	}
 
 	/**
@@ -98,9 +132,111 @@ class WAPM_Price_Engine {
 	}
 
 	/**
-	 * گرد کردن قیمت بر اساس تنظیمات مدیر (مثلاً مضرب 1000).
+	 * قیمت هدف بر اساس ترب: کمی کمتر از ارزان‌ترین رقیب.
+	 *
+	 * تابع خالص (بدون ووکامرس) تا قابل تست باشد.
+	 *
+	 * @param float $competitor_min ارزان‌ترین قیمت رقیب (بدون قیمت خودمان)
+	 * @return float|null null یعنی قیمت هدف قابل محاسبه نیست
 	 */
-	private static function round_price( float $price, array $s ): float {
+	public static function torob_target_price( float $competitor_min, array $s ): ?float {
+		if ( $competitor_min <= 0 ) {
+			return null;
+		}
+
+		$undercut = ( 'percent' === ( $s['torob_undercut_mode'] ?? 'percent' ) )
+			? $competitor_min * ( (float) ( $s['torob_undercut'] ?? 0 ) / 100 )
+			: self::to_store_unit( (float) ( $s['torob_undercut'] ?? 0 ), (string) ( $s['torob_currency_unit'] ?? 'toman' ) );
+
+		$target = $competitor_min - $undercut;
+		$target = self::round_price( $target, $s );
+		$target = self::clamp_price( $target, $s );
+		$target = max( self::price_floor(), round( $target, wc_get_price_decimals() ) );
+
+		return $target > 0 ? $target : null;
+	}
+
+	/**
+	 * زمینه‌ی ترب برای یک محصول: قیمت هدف، قیمت مرجع (چیزی که ترب نشان می‌دهد)
+	 * و ضریبی که باید روی قیمت‌ها اعمال شود.
+	 *
+	 * برای محصول متغیر، ترب کمینه‌ی قیمت واریشن‌ها را نشان می‌دهد؛ بنابراین ضریب
+	 * طوری ساخته می‌شود که کمینه‌ی واریشن‌ها برابر قیمت هدف شود و فاصله‌ی نسبی
+	 * بین واریشن‌ها حفظ شود.
+	 *
+	 * @return array{competitor:float,target:float,ref:float,factor:float,checked_at:string,age_days:int,skip:?string}|null
+	 */
+	public static function torob_context( WC_Product $product, array $s ): ?array {
+		if ( ! self::uses_torob( $s ) || ! class_exists( 'WAPM_Torob' ) ) {
+			return null;
+		}
+
+		$ref_id = $product->is_type( 'variation' ) ? (int) $product->get_parent_id() : (int) $product->get_id();
+		$data   = WAPM_Torob::get_target_reference( $ref_id, (int) ( $s['torob_max_age'] ?? 0 ) );
+
+		if ( ! $data || $data['competitor_min'] <= 0 ) {
+			return null; // بدون داده‌ی تازه‌ی ترب، قیمتی تغییر نمی‌کند.
+		}
+
+		$competitor = (float) $data['competitor_min'];
+		$target     = self::torob_target_price( $competitor, $s );
+		if ( null === $target ) {
+			return null;
+		}
+
+		// قیمت مرجع = چیزی که ترب به‌عنوان قیمت ما نشان می‌دهد.
+		if ( $product->is_type( 'variable' ) ) {
+			$ref = (float) $product->get_variation_price( 'min', false, false );
+			if ( $ref <= 0 ) {
+				$ref = (float) $product->get_price( 'edit' );
+			}
+			$ref_id_for_ctx = (int) $product->get_id();
+		} else {
+			$ref = (float) $product->get_price( 'edit' );
+			$ref_id_for_ctx = (int) $ref_id;
+		}
+
+		if ( $ref <= 0 ) {
+			return null;
+		}
+
+		$ctx = [
+			'competitor' => $competitor,
+			'target'     => $target,
+			'ref'        => $ref,
+			'factor'     => $target / $ref,
+			'checked_at' => (string) $data['checked_at'],
+			'age_days'   => (int) $data['age_days'],
+			'prk'        => (string) $data['prk'],
+			'skip'       => null,
+		];
+
+		// «فقط اگر از رقیب گران‌تریم» — پیش‌فرض روشن است تا با یک اجرا قیمت‌ها
+		// بی‌دلیل بالا نروند.
+		if ( ! empty( $s['torob_only_if_pricier'] ) && $ref <= $competitor ) {
+			$ctx['skip'] = 'already_cheaper';
+			return $ctx;
+		}
+
+		// تغییر ناچیز ارزش ریسک را ندارد.
+		$gap = abs( $target - $ref ) / $ref * 100;
+		if ( $gap < (float) ( $s['torob_min_gap_pct'] ?? 0 ) ) {
+			$ctx['skip'] = 'small_gap';
+			return $ctx;
+		}
+
+		// محافظ سلامت: داده‌ی اشتباه نباید قیمت را چند برابر کند.
+		if ( $ctx['factor'] > 10 || $ctx['factor'] < 0.1 ) {
+			$ctx['skip'] = 'sanity';
+			return $ctx;
+		}
+
+		return $ctx;
+	}
+
+	/**
+	 * گرد کردن قیمت بر اساس تنظیمات مدیر (مثلاً مضرب 1000).
+	 */	private static function round_price( float $price, array $s ): float {
 		if ( 'none' === $s['round_mode'] || $s['round_base'] <= 0 ) {
 			return $price;
 		}
@@ -151,22 +287,31 @@ class WAPM_Price_Engine {
 			return [];
 		}
 
+		// در حالت ترب، بدون داده‌ی تازه هیچ تغییری پیشنهاد نمی‌شود.
+		$ctx = null;
+		if ( self::uses_torob( $s ) ) {
+			$ctx = self::torob_context( $product, $s );
+			if ( null === $ctx || ! empty( $ctx['skip'] ) ) {
+				return [];
+			}
+		}
+
 		$rows = [];
 
 		if ( $product->is_type( 'variable' ) ) {
 			if ( in_array( $s['variable_scope'], [ 'parent', 'both' ], true ) ) {
-				$rows = array_merge( $rows, self::preview_single( $product, $s, __( 'متغیر (والد)', 'wapm' ) ) );
+				$rows = array_merge( $rows, self::preview_single( $product, $s, __( 'متغیر (والد)', 'wapm' ), $ctx ) );
 			}
 			if ( in_array( $s['variable_scope'], [ 'variations', 'both' ], true ) ) {
 				foreach ( $product->get_children() as $vid ) {
 					$variation = wc_get_product( $vid );
 					if ( $variation ) {
-						$rows = array_merge( $rows, self::preview_single( $variation, $s, __( 'واریشن', 'wapm' ) ) );
+						$rows = array_merge( $rows, self::preview_single( $variation, $s, __( 'واریشن', 'wapm' ), $ctx ) );
 					}
 				}
 			}
 		} else {
-			$rows = self::preview_single( $product, $s, __( 'ساده', 'wapm' ) );
+			$rows = self::preview_single( $product, $s, __( 'ساده', 'wapm' ), $ctx );
 		}
 
 		return $rows;
@@ -177,11 +322,19 @@ class WAPM_Price_Engine {
 	 *
 	 * @return array[] هر آیتم: price_type, old, new
 	 */
-	private static function compute_changes( WC_Product $product, array $s ): array {
+	private static function compute_changes( WC_Product $product, array $s, ?array $ctx = null ): array {
 		$changes  = [];
 		$regular  = $product->get_regular_price( 'edit' );
 		$sale     = $product->get_sale_price( 'edit' );
 		$has_sale = ( '' !== $sale && null !== $sale );
+
+		// حالت ترب: هدف، «قیمت مؤثر برابر قیمت هدف» است؛ نه درصد/مبلغ روی قیمت.
+		if ( self::uses_torob( $s ) ) {
+			if ( null === $ctx || ! empty( $ctx['skip'] ) ) {
+				return [];
+			}
+			return self::compute_torob_changes( $product, $s, $ctx );
+		}
 
 		// حالت ۱: حفظ درصد تخفیف — فقط Regular تغییر می‌کند و Sale متناسب بازمحاسبه می‌شود.
 		if ( 'keep_discount' === $s['sale_handling'] && $has_sale && '' !== $regular ) {
@@ -226,7 +379,65 @@ class WAPM_Price_Engine {
 		return $changes;
 	}
 
-	private static function preview_single( WC_Product $product, array $s, string $type_label ): array {
+	/**
+	 * تغییرات در حالت «منبع: ترب».
+	 *
+	 * منطق: قیمت مؤثر (آنچه ترب نشان می‌دهد) باید برابر قیمت هدف شود. برای حفظ
+	 * درصد تخفیف، هم قیمت اصلی و هم قیمت ویژه با همان ضریب مقیاس می‌شوند. برای
+	 * محصول متغیر، کمینه‌ی واریشن‌ها به قیمت هدف می‌رسد و فاصله‌ی نسبی واریشن‌ها
+	 * حفظ می‌شود.
+	 *
+	 * توجه: در این حالت `price_target` و `sale_handling` نادیده گرفته می‌شوند
+	 * (در UI هم همین توضیح داده شده است).
+	 *
+	 * @return array[] هر آیتم: price_type, old, new
+	 */
+	private static function compute_torob_changes( WC_Product $product, array $s, array $ctx ): array {
+		$regular = $product->get_regular_price( 'edit' );
+		$sale    = $product->get_sale_price( 'edit' );
+		$factor  = (float) $ctx['factor'];
+		$dec     = wc_get_price_decimals();
+
+		if ( $factor <= 0 ) {
+			return [];
+		}
+
+		$floor = self::price_floor();
+
+		$scale = static function ( float $value ) use ( $factor, $s, $floor, $dec ): float {
+			$new = self::round_price( $value * $factor, $s );
+			$new = self::clamp_price( $new, $s );
+			return max( $floor, round( $new, $dec ) );
+		};
+
+		$changes     = [];
+		$new_regular = null;
+
+		if ( '' !== $regular && null !== $regular && (float) $regular > 0 ) {
+			$new_regular = $scale( (float) $regular );
+			if ( abs( $new_regular - (float) $regular ) > 0.000001 ) {
+				$changes[] = [ 'price_type' => 'regular', 'old' => (float) $regular, 'new' => $new_regular ];
+			} else {
+				$new_regular = (float) $regular;
+			}
+		}
+
+		if ( '' !== $sale && null !== $sale && (float) $sale > 0 ) {
+			$new_sale   = $scale( (float) $sale );
+			$check_base = null !== $new_regular ? $new_regular : (float) $regular;
+
+			// قیمت ویژه باید از قیمت اصلی کمتر بماند؛ اگر گرد کردن این را شکست،
+			// تغییر قیمت ویژه انجام نمی‌شود (به‌جای ساختن قیمت عجیب).
+			$valid = ( $check_base <= 0 || $new_sale < $check_base ) && abs( $new_sale - (float) $sale ) > 0.000001;
+			if ( $valid ) {
+				$changes[] = [ 'price_type' => 'sale', 'old' => (float) $sale, 'new' => $new_sale ];
+			}
+		}
+
+		return $changes;
+	}
+
+	private static function preview_single( WC_Product $product, array $s, string $type_label, ?array $ctx = null ): array {
 		if ( self::is_excluded( $product ) ) {
 			return [];
 		}
@@ -235,7 +446,17 @@ class WAPM_Price_Engine {
 		$image_id = $product->get_image_id() ?: ( $product->get_parent_id() ? get_post_thumbnail_id( $product->get_parent_id() ) : 0 );
 		$image    = $image_id ? wp_get_attachment_image_url( $image_id, 'thumbnail' ) : wc_placeholder_img_src( 'thumbnail' );
 
-		foreach ( self::compute_changes( $product, $s ) as $change ) {
+		$torob_meta = [];
+		if ( null !== $ctx ) {
+			$torob_meta = [
+				'torob_competitor'   => (float) $ctx['competitor'],
+				'torob_target'       => (float) $ctx['target'],
+				'torob_checked_at'   => (string) $ctx['checked_at'],
+				'torob_age_days'     => (int) $ctx['age_days'],
+			];
+		}
+
+		foreach ( self::compute_changes( $product, $s, $ctx ) as $change ) {
 			$old_f   = $change['old'];
 			$new_f   = $change['new'];
 			$percent = ( null !== $new_f && $old_f > 0 ) ? round( ( ( $new_f - $old_f ) / $old_f ) * 100, 2 ) : 0;
@@ -257,7 +478,7 @@ class WAPM_Price_Engine {
 				'diff'       => null !== $new_f ? round( $new_f - $old_f, wc_get_price_decimals() ) : -$old_f,
 				'percent'    => $percent,
 				'warn'       => $warn,
-			];
+			] + $torob_meta;
 		}
 
 		return $rows;
@@ -274,29 +495,38 @@ class WAPM_Price_Engine {
 			return 0;
 		}
 
+		// همان زمینه‌ای که پیش‌نمایش ساخته می‌شود تا نتیجه‌ی اجرا با پیش‌نمایش بخواند.
+		$ctx = null;
+		if ( self::uses_torob( $s ) ) {
+			$ctx = self::torob_context( $product, $s );
+			if ( null === $ctx || ! empty( $ctx['skip'] ) ) {
+				return 0;
+			}
+		}
+
 		$changed = 0;
 
 		if ( $product->is_type( 'variable' ) ) {
 			if ( in_array( $s['variable_scope'], [ 'parent', 'both' ], true ) ) {
-				$changed += self::apply_single( $product, $s, $batch_id, $operation );
+				$changed += self::apply_single( $product, $s, $batch_id, $operation, $ctx );
 			}
 			if ( in_array( $s['variable_scope'], [ 'variations', 'both' ], true ) ) {
 				foreach ( $product->get_children() as $vid ) {
 					$variation = wc_get_product( $vid );
 					if ( $variation ) {
-						$changed += self::apply_single( $variation, $s, $batch_id, $operation );
+						$changed += self::apply_single( $variation, $s, $batch_id, $operation, $ctx );
 					}
 				}
 			}
 			WC_Product_Variable::sync( $product->get_id() );
 		} else {
-			$changed += self::apply_single( $product, $s, $batch_id, $operation );
+			$changed += self::apply_single( $product, $s, $batch_id, $operation, $ctx );
 		}
 
 		return $changed;
 	}
 
-	private static function apply_single( WC_Product $product, array $s, string $batch_id, string $operation ): int {
+	private static function apply_single( WC_Product $product, array $s, string $batch_id, string $operation, ?array $ctx = null ): int {
 		if ( self::is_excluded( $product ) ) {
 			return 0;
 		}
@@ -310,7 +540,7 @@ class WAPM_Price_Engine {
 		$dirty   = false;
 
 		// اول Regular اعمال می‌شود تا مقایسه Sale با Regular جدید انجام شود.
-		$changes = self::compute_changes( $product, $s );
+		$changes = self::compute_changes( $product, $s, $ctx );
 		usort( $changes, fn( $a, $b ) => ( 'regular' === $a['price_type'] ? 0 : 1 ) <=> ( 'regular' === $b['price_type'] ? 0 : 1 ) );
 
 		foreach ( $changes as $change ) {
