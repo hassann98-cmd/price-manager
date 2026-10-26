@@ -1,0 +1,52 @@
+name: Release
+
+# ساخت و پیوست بسته‌ی نصب به Release.
+#
+# چرا این‌جا: فایل `price-manager.zip` داخل مخزن نگه داشته می‌شود، ولی دانلود
+# مستقیم از صفحه‌ی Releases برای کاربر راحت‌تر است (و GitHub آن را شمارش/امضا
+# می‌کند). این workflow همان zip ساخته‌شده از سورس تگ را می‌سازد، با فایل
+# کامیت‌شده مقایسه می‌کند و در صورت تطابق پیوست می‌کند.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'تگ نسخه (مثلاً v1.1.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  asset:
+    name: پیوست بسته‌ی نصب
+    runs-on: ubuntu-latest
+    steps:
+      - name: تعیین تگ
+        id: tag
+        run: echo "name=${{ inputs.tag || github.ref_name }}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.tag.outputs.name }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: zip با سورس هم‌خوان است؟
+        run: python3 tools/build-zip.py --check
+
+      - name: پیوست به Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.tag.outputs.name }}
+        run: |
+          set -euo pipefail
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --title "$TAG" --generate-notes
+          fi
+          gh release upload "$TAG" price-manager.zip --clobber
+          gh release view "$TAG" --json assets --jq '.assets[].name'
