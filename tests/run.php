@@ -916,6 +916,25 @@ test( 'ترب/API: صفحه‌ی بعدی کاتالوگ با next تعیین م
 	eq( 0, count( $empty['items'] ), 'بدون آیتم' );
 } );
 
+test( 'ترب/API: سقف بودجه‌ی روزانه یک بار خوانده می‌شود', function () {
+	stub_reset();
+
+	eq( 60, WAPM_Torob_Api::daily_budget(), 'سقف پیش‌فرض' );
+
+	update_option( 'wapm_torob_api_budget', [ 'date' => gmdate( 'Y-m-d' ), 'count' => 5 ], false );
+	$state = WAPM_Torob_Api::state();
+
+	eq( 60, $state['budget'], 'سقف' );
+	eq( 5, $state['used'], 'مصرف امروز' );
+	eq( 55, $state['left'], 'باقی‌مانده' );
+	eq( 0, $state['minutes_left'], 'بدون کول‌داون' );
+	eq( false, $state['blocked'], 'بلاک نیست' );
+
+	// شمارنده‌ی دیروز نباید امروز حساب شود.
+	update_option( 'wapm_torob_api_budget', [ 'date' => '2000-01-01', 'count' => 59 ], false );
+	eq( 60, WAPM_Torob_Api::state()['left'], 'بودجه‌ی دیروز ریست می‌شود' );
+} );
+
 /* -------------------------------------------------------------------------
  * ۱۳) ترب — تصمیم‌گیری با پرچم‌های موجودی/اعتبار
  * ---------------------------------------------------------------------- */

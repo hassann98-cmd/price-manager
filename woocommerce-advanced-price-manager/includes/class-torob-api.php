@@ -63,15 +63,24 @@ class WAPM_Torob_Api {
 
 		$used = (int) ( $budget['count'] ?? 0 );
 
+		// فیلتر فقط یک بار خوانده می‌شود؛ وگرنه اگر پیاده‌سازی فیلتر پویا باشد
+		// (شمارنده/زمان)، «سقف» و «باقی‌مانده» در یک پاسخ با هم نمی‌خواندند.
+		$max = self::daily_budget();
+
 		return [
 			'blocked'      => $left > 0,
 			'minutes_left' => $left > 0 ? (int) ceil( $left / 60 ) : 0,
 			'used'         => $used,
-			'budget'       => (int) apply_filters( 'wapm_torob_api_daily_budget', self::DAILY_BUDGET ),
-			'left'         => max( 0, (int) apply_filters( 'wapm_torob_api_daily_budget', self::DAILY_BUDGET ) - $used ),
+			'budget'       => $max,
+			'left'         => max( 0, $max - $used ),
 			'last_call'    => (int) get_option( self::OPT_LAST_CALL, 0 ),
 			'min_interval' => self::min_interval(),
 		];
+	}
+
+	/** سقف درخواست روزانه (قابل تغییر با فیلتر). */
+	public static function daily_budget(): int {
+		return max( 1, (int) apply_filters( 'wapm_torob_api_daily_budget', self::DAILY_BUDGET ) );
 	}
 
 	private static function min_interval(): int {
