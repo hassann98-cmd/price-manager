@@ -3374,7 +3374,16 @@
 		return rows;
 	}
 
-	function updateBulkBar($area) {
+	/**
+	 * نوار عملیات صف تأیید تطبیق.
+	 *
+	 * نام قبلی این تابع `updateBulkBar` بود — همان نام نوار انتخاب محصولات.
+	 * چون هر دو در یک IIFE و یک scope تعریف شده بودند، اعلان دوم (همین‌جا)
+	 * اعلان اول را سایه می‌انداخت و انتخاب ردیف‌های لیست محصولات در
+	 * `$area.find` روی undefined خطا می‌داد: شمارنده‌ی انتخاب و دکمه‌های نوار
+	 * عملیات به‌روز نمی‌شدند.
+	 */
+	function updateUnmatchedBar($area) {
 		var picked = $area.find('.wapm-torob-pick:checked').length;
 		var all    = $area.find('.wapm-torob-pick').length;
 
@@ -3420,7 +3429,7 @@
 			$('#wapm-torob-unmatched-count').text(fmt(res.data.all || 0));
 			$area.html(renderUnmatched(res.data));
 			initUnmatchedSelectors($area);
-			updateBulkBar($area);
+			updateUnmatchedBar($area);
 		}).fail(function () {
 			$area.html('<div class="notice notice-error inline"><p>' + esc(WAPM.i18n.error) + '</p></div>');
 		}).always(function () {
@@ -3468,11 +3477,11 @@
 	$(document).on('change', '#wapm-torob-pick-all', function () {
 		var $area = $('#wapm-torob-unmatched-area');
 		$area.find('.wapm-torob-pick').prop('checked', $(this).prop('checked'));
-		updateBulkBar($area);
+		updateUnmatchedBar($area);
 	});
 
 	$(document).on('change', '.wapm-torob-pick, .wapm-torob-product-select', function () {
-		updateBulkBar($('#wapm-torob-unmatched-area'));
+		updateUnmatchedBar($('#wapm-torob-unmatched-area'));
 	});
 
 	/* اتصال گروهی — دسته‌های ۲۰تایی تا هر درخواست کوتاه بماند */
@@ -3615,7 +3624,7 @@
 			$tr.fadeOut(150, function () {
 				$(this).remove();
 				var $area = $('#wapm-torob-unmatched-area');
-				updateBulkBar($area);
+				updateUnmatchedBar($area);
 				if (!$area.find('.wapm-torob-pick').length) {
 					unmatchedState.page = Math.max(1, unmatchedState.page - 1);
 					loadTorobUnmatched({});
@@ -3636,7 +3645,7 @@
 			$tr.fadeOut(150, function () {
 				$(this).remove();
 				var $area = $('#wapm-torob-unmatched-area');
-				updateBulkBar($area);
+				updateUnmatchedBar($area);
 				if (!$area.find('.wapm-torob-pick').length) {
 					unmatchedState.page = Math.max(1, unmatchedState.page - 1);
 					loadTorobUnmatched({});

@@ -56,6 +56,9 @@ jobs:
             echo "ok: $file"
           done
 
+      - name: اعلان تکراری در اسکریپت‌ها
+        run: node tools/lint-js.mjs
+
   packaging:
     name: ترجمه، CSS و بسته‌ی نصب
     runs-on: ubuntu-latest
