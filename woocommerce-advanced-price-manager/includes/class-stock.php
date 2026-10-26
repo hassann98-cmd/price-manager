@@ -266,8 +266,11 @@ class WAPM_Stock {
 			return [ 'ok' => false, 'reason' => 'save_failed' ];
 		}
 
-		// ترتیب مهم است: لاگ باید مقدار واقعاً ذخیره‌شده را ثبت کند.
-		$saved = (float) wc_get_product( $product_id )->get_stock_quantity();
+		// ترتیب مهم است: لاگ باید مقدار واقعاً ذخیره‌شده را ثبت کند، نه مقداری
+		// که خواسته بودیم (ووکامرس می‌تواند با گرد کردن/فیلتر تغییرش دهد).
+		$fresh = wc_get_product( $product_id );
+		$fresh_qty = $fresh ? $fresh->get_stock_quantity() : null;
+		$saved = null === $fresh_qty ? $new_qty : (float) $fresh_qty;
 
 		self::log( [
 			'batch_id'     => '' !== $batch_id ? $batch_id : 'stock_' . wp_generate_password( 10, false ),

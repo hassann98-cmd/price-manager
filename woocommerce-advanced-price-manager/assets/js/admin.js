@@ -1099,6 +1099,16 @@
 		loadProductList(1);
 	});
 
+	/* ویو «رو به اتمام»: موجودی بین ۱ تا ۵ — محصول بدون مدیریت انبار در این
+	   فهرست نمی‌آید (چون `_stock` ندارد) و همین درست است. */
+	$('#wapm-smart-low-stock').on('click', function () {
+		$('#wapm-smart-stock-min').val(1);
+		$('#wapm-smart-stock-max').val(5);
+		listState.stock_min = 1;
+		listState.stock_max = 5;
+		loadProductList(1);
+	});
+
 	$('#wapm-smart-clear').on('click', function () {
 		$('#wapm-smart-price-min, #wapm-smart-price-max, #wapm-smart-stock-min, #wapm-smart-stock-max').val('');
 		$('#wapm-smart-type').val('');

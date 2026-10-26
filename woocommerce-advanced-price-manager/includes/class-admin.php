@@ -313,6 +313,7 @@ class WAPM_Admin {
 						</label>
 						<button type="button" id="wapm-smart-apply" class="h-10 px-5 bg-primary-600 text-white rounded-xl text-sm font-bold"><?php esc_html_e( 'اعمال فیلتر', 'wapm' ); ?></button>
 						<button type="button" id="wapm-smart-clear" class="h-10 px-5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-500"><?php esc_html_e( 'پاک کردن', 'wapm' ); ?></button>
+						<button type="button" id="wapm-smart-low-stock" class="h-10 px-5 bg-amber-100 text-amber-800 rounded-xl text-sm font-bold" title="<?php esc_attr_e( 'موجودی بین ۱ تا ۵', 'wapm' ); ?>"><?php esc_html_e( 'رو به اتمام', 'wapm' ); ?></button>
 					</div>
 
 					<!-- نوار عملیات گروهی -->
