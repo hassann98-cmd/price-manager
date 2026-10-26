@@ -2933,7 +2933,7 @@
 
 	/* ---- ۲-ب) همگام‌سازی کاتالوگ از API (صفحه‌به‌صفحه) ---- */
 
-	var catalogRun = { stop: false, running: false };
+	var catalogRun = { stop: false, running: false, timer: 0 };
 
 	function syncCatalogPage(page) {
 		if (catalogRun.stop) { return finishCatalog('متوقف شد. هر وقت خواستید دوباره شروع کنید؛ از صفحه‌ی اول ادامه می‌یابد.'); }
@@ -2942,6 +2942,12 @@
 			if (!res.success) {
 				renderApiState(res.data && res.data.state);
 				finishCatalog('⚠ ' + ((res.data && res.data.message) || WAPM.i18n.error));
+				return;
+			}
+
+			// اگر کاربر وسط درخواست «توقف» زده، دیگر صفحه‌ی بعدی زمان‌بندی نشود.
+			if (catalogRun.stop) {
+				finishCatalog('متوقف شد. هر وقت خواستید دوباره شروع کنید؛ از صفحه‌ی اول ادامه می‌یابد.');
 				return;
 			}
 
@@ -2961,7 +2967,10 @@
 			if (res.data.has_more) {
 				// سرور خودش بین درخواست‌ها ۳ ثانیه صبر می‌کند؛ اینجا کمی بیشتر
 				// تا درخواست بعدی هم بلافاصله پشت سر قبلی نباشد.
-				setTimeout(function () { syncCatalogPage(page + 1); }, 3200);
+				catalogRun.timer = setTimeout(function () {
+					catalogRun.timer = 0;
+					syncCatalogPage(page + 1);
+				}, 3200);
 			} else {
 				finishCatalog('✓ همگام‌سازی کاتالوگ تمام شد — ' + fmt(catalogRun.synced) + ' محصول. ' +
 					'حالا ستون «قیمت ترب» نشان می‌دهد ترب چه قیمتی از شما نشان می‌دهد.');
@@ -2972,9 +2981,18 @@
 	}
 
 	function finishCatalog(msg) {
+		if (!catalogRun.running) { return; } // پایان دوباره = پیام تکراری
+
 		catalogRun.running = false;
+		if (catalogRun.timer) {
+			clearTimeout(catalogRun.timer);
+			catalogRun.timer = 0;
+		}
+
 		$('#wapm-torob-catalog-sync').prop('disabled', false);
-		$('#wapm-torob-catalog-stop').hide();
+		// دکمه‌ی توقف باید برای اجرای بعدی دوباره فعال شود؛ قبلاً بعد از اولین
+		// توقف disabled می‌ماند و در همگام‌سازی دوم هیچ کاری نمی‌کرد.
+		$('#wapm-torob-catalog-stop').hide().prop('disabled', false);
 		$('#wapm-torob-catalog-result').prepend(
 			'<div class="notice notice-info inline"><p>' + esc(msg) + '</p></div>'
 		);
@@ -2983,7 +3001,7 @@
 	$('#wapm-torob-catalog-sync').on('click', function () {
 		if (catalogRun.running) { return; }
 
-		catalogRun = { stop: false, running: true, synced: 0 };
+		catalogRun = { stop: false, running: true, synced: 0, timer: 0 };
 
 		$(this).prop('disabled', true);
 		$('#wapm-torob-catalog-stop').show();
@@ -2995,6 +3013,14 @@
 	$('#wapm-torob-catalog-stop').on('click', function () {
 		catalogRun.stop = true;
 		$(this).prop('disabled', true);
+
+		// اگر درخواستی در جریان نیست، همان لحظه تمام شود؛ وگرنه پاسخِ در راه،
+		// با دیدن catalogRun.stop خودش جمع می‌کند.
+		if (catalogRun.timer) {
+			clearTimeout(catalogRun.timer);
+			catalogRun.timer = 0;
+			finishCatalog('متوقف شد. هر وقت خواستید دوباره شروع کنید؛ از صفحه‌ی اول ادامه می‌یابد.');
+		}
 	});
 
 	$('#wapm-torob-api-reset').on('click', function () {
