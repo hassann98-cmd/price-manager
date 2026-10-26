@@ -65,7 +65,9 @@ woocommerce-advanced-price-manager/
 ├── woocommerce-advanced-price-manager.php   # بوت، فعال/غیرفعال‌سازی
 ├── uninstall.php                            # پاک‌سازی کامل (با راه حفظ داده)
 ├── includes/
-│   ├── class-admin.php          # صفحه‌ی پیشخوان و تب‌ها
+│   ├── class-admin.php          # صفحه‌ی پیشخوان، enqueue و ابزارها
+│   ├── admin/views/tab-*.php    # مارک‌آپ هر تب (۸ فایل)
+│   ├── class-bookmarklet.php    # بوکمارکلت همگام‌سازی با ترب
 │   ├── class-ajax.php           # همه‌ی اکشن‌های AJAX
 │   ├── class-price-engine.php   # محاسبه و اعمال قیمت (شامل منطق ترب)
 │   ├── class-list.php           # جدول محصولات، فیلترها، فیلترهای ذخیره‌شده

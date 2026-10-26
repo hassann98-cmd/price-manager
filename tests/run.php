@@ -1375,6 +1375,38 @@ test( 'موجودی/expand_ids: انتخاب همه‌ی نتایج هم از ه
  * ۱۶) فیلترهای ذخیره‌شده‌ی لیست
  * ---------------------------------------------------------------------- */
 
+test( 'تفکیک صفحه: هر تب یک view مستقل با شناسه‌ی درست دارد', function () {
+	$base  = __DIR__ . '/../woocommerce-advanced-price-manager/';
+	$views = [
+		'tab-change'   => 'wapm-tab-change',
+		'tab-list'     => 'wapm-tab-list',
+		'tab-stock'    => 'wapm-tab-stock',
+		'tab-rules'    => 'wapm-tab-rules',
+		'tab-schedule' => 'wapm-tab-schedule',
+		'tab-history'  => 'wapm-tab-history',
+		'tab-csv'      => 'wapm-tab-csv',
+		'tab-torob'    => 'wapm-tab-torob',
+	];
+
+	$page = (string) file_get_contents( $base . 'includes/class-admin.php' );
+
+	foreach ( $views as $file => $id ) {
+		$path = $base . 'includes/admin/views/' . $file . '.php';
+		ok( file_exists( $path ), 'فایل view هست: ' . $file );
+
+		$body = (string) file_get_contents( $path );
+		ok( false !== strpos( $body, "id=\"$id\"" ), 'شناسه‌ی تب درست است: ' . $file );
+		ok( false !== strpos( $body, "if ( ! defined( 'ABSPATH' ) )" ), 'گارد ABSPATH در view: ' . $file );
+
+		// هر view فقط یک بار از render_page صدا زده می‌شود.
+		eq( 1, substr_count( $page, "includes/admin/views/$file.php" ), 'یک include برای ' . $file );
+	}
+
+	// مارک‌آپ تب‌ها نباید داخل فایل ادمین بماند (وگرنه تفکیک نیمه‌کاره است).
+	ok( false === strpos( $page, 'id="wapm-tab-list"' ), 'مارک‌آپ لیست از class-admin.php خارج شد' );
+	ok( strlen( $page ) < 40000, 'class-admin.php کوچک شد', (string) strlen( $page ) );
+} );
+
 test( 'بوکمارکلت: لینک امن شامل توکن و نقطه‌ی پایانی است', function () {
 	stub_reset();
 	update_option( 'wapm_torob_bm_token', 'token123', false );
