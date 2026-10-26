@@ -496,6 +496,12 @@ test( 'ترب/status: شناسه‌ی فروشگاه نامعلوم → needs_sh
 	eq( 'needs_shop_id', WAPM_Torob::compute_status( torob_fresh( [ 'shop_known' => false ] ), 1200.0 ), 'بدون شناسه' );
 } );
 
+test( 'ترب/status: اتصال تازه‌ی بدون داده → none (نه «کهنه»)', function () {
+	stub_reset();
+	// محصولی که دستی به ترب وصل شده ولی هنوز همگام‌سازی نشده است.
+	eq( 'none', WAPM_Torob::compute_status( torob_fresh( [ 'checked_at' => '', 'competitor_price' => null ] ), 1200.0 ), 'بدون داده و بدون تاریخ' );
+} );
+
 test( 'ترب/status: داده‌ی قدیمی → stale', function () {
 	stub_reset();
 	$old = gmdate( 'Y-m-d H:i:s', time() - ( 10 * DAY_IN_SECONDS ) );

@@ -398,15 +398,25 @@ class WAPM_Torob {
 
 		// ۳) تطبیق با کد کالا / SKU.
 		foreach ( self::extract_codes( $torob_name ) as $code ) {
-			$by_sku = wc_get_product_id_by_sku( $code );
-			if ( $by_sku && ! self::has_prk( (int) $by_sku ) ) {
-				return [ 'id' => (int) $by_sku, 'how' => 'sku', 'score' => 1.0, 'ambiguous' => false, 'candidate' => 0 ];
+			// SKU در ووکامرس ممکن است با حروف بزرگ/کوچک دیگری ذخیره شده باشد.
+			foreach ( array_unique( [ $code, strtoupper( $code ), strtolower( $code ) ] ) as $sku_variant ) {
+				$by_sku = wc_get_product_id_by_sku( $sku_variant );
+				if ( $by_sku && ! self::has_prk( (int) $by_sku ) ) {
+					return [ 'id' => (int) $by_sku, 'how' => 'sku', 'score' => 1.0, 'ambiguous' => false, 'candidate' => 0 ];
+				}
+			}
+
+			// عنوان‌های ایندکس نرمال‌شده‌اند (حروف کوچک، خط تیره → فاصله)؛ پس کد
+			// هم باید نرمال شود، وگرنه کدهای لاتین هرگز در عنوان پیدا نمی‌شدند.
+			$code_norm = self::normalize( $code );
+			if ( '' === $code_norm ) {
+				continue;
 			}
 
 			$code_hits = [];
 			foreach ( $index as $title => $ids ) {
 				// مرز واژه‌ای، نه زیررشته‌ی خام: «1234» نباید داخل «12345» پیدا شود.
-				if ( preg_match( '/(^|\D)' . preg_quote( (string) $code, '/' ) . '(\D|$)/u', (string) $title ) ) {
+				if ( preg_match( '/(^|\D)' . preg_quote( (string) $code_norm, '/' ) . '(\D|$)/u', (string) $title ) ) {
 					foreach ( $ids as $id ) {
 						if ( ! self::has_prk( (int) $id ) ) {
 							$code_hits[ (int) $id ] = true;
@@ -512,9 +522,8 @@ class WAPM_Torob {
 		if ( '' !== $name ) {
 			update_post_meta( $product_id, self::META_NAME, $name );
 		}
-		if ( ! metadata_exists( 'post', $product_id, self::META_CHECKED ) ) {
-			update_post_meta( $product_id, self::META_CHECKED, current_time( 'mysql' ) );
-		}
+		// عمداً META_CHECKED را «حالا» نمی‌گذاریم: تا داده‌ی واقعی از ترب نیاید،
+		// وضعیت باید «همگام‌سازی نشده» بماند، نه «تازه».
 
 		self::refresh_diff_meta( $product_id );
 		self::remove_unmatched_by_prk( $prk );
@@ -644,18 +653,20 @@ class WAPM_Torob {
 			return 'needs_shop_id';
 		}
 
+		$competitor = isset( $d['competitor_price'] ) && is_numeric( $d['competitor_price'] )
+			? (float) $d['competitor_price']
+			: null;
+
+		// محصولی که تازه دستی وصل شده ولی هنوز داده‌ای از ترب نگرفته، «کهنه» نیست؛
+		// «همگام‌سازی نشده» است. برچسب کهنه فقط برای داده‌ای است که واقعاً پیر شده.
 		if ( empty( $d['checked_at'] ) ) {
-			return 'stale';
+			return null === $competitor ? 'none' : 'stale';
 		}
 
 		$checked = strtotime( (string) $d['checked_at'] );
 		if ( ! $checked || ( time() - $checked ) > ( (int) $settings['fresh_days'] * DAY_IN_SECONDS ) ) {
 			return 'stale';
 		}
-
-		$competitor = isset( $d['competitor_price'] ) && is_numeric( $d['competitor_price'] )
-			? (float) $d['competitor_price']
-			: null;
 
 		if ( null === $competitor || $competitor <= 0 ) {
 			return 'no_competitor';
