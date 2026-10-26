@@ -73,6 +73,27 @@
 			'<div class="wapm-stat"><b>' + fmt((stats.settings && stats.settings.fresh_days) || 0) + '</b><small>روز تا کهنه‌شدن داده</small></div>' +
 			'</div>';
 
+		// شکاف داده: چند محصول قیمت رقیب ندارند/کهنه‌اند. بدون این عدد،
+		// «همگام‌سازی کامل شد ولی قیمتی نیست» بی‌سرنخ می‌ماند.
+		var gap = stats.gap || {};
+		if (Number(gap.missing || 0) > 0) {
+			html += '<div class="notice notice-warning inline"><p><strong>' + fmt(gap.missing) + ' محصول قیمت رقیب ندارد.</strong> ' +
+				esc(__('این محصولات به ترب وصل‌اند ولی قیمت فروشنده‌ها برایشان ذخیره نشده؛ «همگام‌سازی کاتالوگ» این داده را نمی‌آورد. از دکمه‌ی «به‌روزرسانی گروهی قیمت رقبا» یا بوکمارکلت (حالت «فقط محصولات بدون قیمت رقیب») استفاده کنید.')) +
+				'</p></div>';
+		}
+		if (Number(gap.stale || 0) > 0) {
+			html += '<p class="description" style="margin-top:-6px">' + fmt(gap.stale) + ' محصول داده‌ی کهنه دارد (قدیمی‌تر از «حداکثر عمر داده»).</p>';
+		}
+
+		var auto = stats.auto || {};
+		if (auto.enabled) {
+			var lastAuto = auto.last || {};
+			var autoText = lastAuto.at
+				? 'آخرین اجرای خودکار: ' + torobDate(lastAuto.at) + ' — ' + fmt(lastAuto.done || 0) + ' محصول تازه شد' + (lastAuto.blocked ? ' (نیمه‌کاره: ترب بلاک کرده بود)' : '.')
+				: 'اجرای خودکار هنوز انجام نشده است.';
+			html += '<p class="description">' + esc('به‌روزرسانی خودکار روزانه روشن است (هر اجرا تا ' + fmt(auto.limit || 0) + ' محصول). ' + autoText) + '</p>';
+		}
+
 		var catalog = stats.last_catalog || {};
 		if (catalog.at) {
 			html += '<p class="description">آخرین همگام‌سازی کاتالوگ (قیمت ما از دید ترب): <b>' +
@@ -138,6 +159,17 @@
 			$('#wapm-torob-status-body').html(renderTorobStatusHtml(stats));
 		}
 		$('#wapm-torob-unmatched-count').text(fmt(stats.unmatched || 0));
+
+		// خط جمع‌بندی کنار دکمه‌ی به‌روزرسانی گروهی: کاربر بدون کلیک می‌داند
+		// چند محصول کار دارد.
+		var $banner = $('#wapm-torob-gap-banner');
+		if ($banner.length) {
+			var gap = stats.gap || {};
+			$banner.html(Number(gap.missing || 0) > 0
+				? '<p class="description" style="font-weight:700;color:#b45309">' + fmt(gap.missing) + ' ' + esc(__('محصول بدون قیمت رقیب — دکمه‌ی زیر همین‌ها را می‌گیرد.')) + '</p>'
+				: '<p class="description">' + esc(__('همه‌ی محصولاتِ وصل‌شده قیمت رقیب دارند ✓')) + '</p>');
+		}
+
 		renderApiState(stats.api);
 	}
 
@@ -205,7 +237,9 @@
 			tolerance_pct: $('#wapm-torob-tolerance').val(),
 			exclude_categories: $('#wapm-torob-exclude-categories').val() || [],
 			exclude_brands: $('#wapm-torob-exclude-brands').val() || [],
-			category_undercuts: JSON.stringify(collectUndercutRules())
+			category_undercuts: JSON.stringify(collectUndercutRules()),
+			auto_refresh: $('#wapm-torob-auto-refresh').is(':checked') ? 1 : 0,
+			auto_refresh_limit: $('#wapm-torob-auto-limit').val() || 20
 		}).done(function (res) {
 			if (!res.success) {
 				wapmToast((res.data && res.data.message) || WAPM.i18n.error, 'error');
@@ -445,6 +479,132 @@
 		ajax('torob_api_reset', {}).done(function (res) {
 			if (res.success) { renderApiState(res.data.state); }
 		}).always(function () { $btn.prop('disabled', false); });
+	});
+
+	/* ---- به‌روزرسانی گروهی قیمت رقبا (دسته‌دسته از API) ---- */
+
+	var bulk = { running: false, stop: false, ids: [], total: 0, done: 0, failed: 0, timer: 0 };
+
+	function bulkProgress(pct, text) {
+		$('#wapm-torob-bulk-progress').show().find('span').css('width', Math.max(0, Math.min(100, pct)) + '%');
+		$('#wapm-torob-bulk-count').text(text || '');
+	}
+
+	function bulkFinish(message, type) {
+		bulk.running = false;
+		bulk.stop = false;
+		$('#wapm-torob-bulk-refresh').prop('disabled', false);
+		$('#wapm-torob-bulk-stop').hide().prop('disabled', false);
+		if (message) {
+			$('#wapm-torob-bulk-result').prepend(
+				'<div class="notice notice-' + (type || 'success') + ' inline"><p>' + esc(message) + '</p></div>'
+			);
+		}
+		refreshTorobStats();
+		refreshListIfLoaded();
+	}
+
+	function bulkNext() {
+		if (!bulk.running) { return; }
+
+		if (bulk.stop) {
+			bulkFinish('متوقف شد — ' + fmt(bulk.done) + ' محصول تازه شد و ' + fmt(bulk.ids.length) + ' محصول باقی ماند. دفعه‌ی بعد از همین‌جا ادامه می‌دهد.', 'warning');
+			return;
+		}
+
+		if (!bulk.ids.length) {
+			var msg = 'تمام شد — ' + fmt(bulk.done) + ' محصول قیمت رقیب گرفت.';
+			if (bulk.failed) { msg += ' ' + fmt(bulk.failed) + ' مورد خطا داد (جزئیات در کنسول مرورگر).'; }
+			bulkFinish(msg, bulk.failed ? 'warning' : 'success');
+			return;
+		}
+
+		var chunk = bulk.ids.slice(0, 5);
+		bulk.ids = bulk.ids.slice(chunk.length);
+
+		ajax('torob_refresh_batch', { ids: JSON.stringify(chunk) }).done(function (res) {
+			if (!res.success) {
+				bulkFinish((res.data && res.data.message) || WAPM.i18n.error, 'error');
+				return;
+			}
+
+			var d = res.data || {};
+			bulk.done += (d.done || []).length;
+			bulk.failed += (d.failed || []).length;
+			if ((d.failed || []).length) { console.warn('WAPM torob refresh', d.failed); }
+
+			if (d.api) { renderApiState(d.api); }
+			if (d.stats) { applyTorobStats(d.stats); }
+
+			// هر محصول موفق از لیست «نیازمند بررسی» بیرون می‌رود؛ همان تعداد از
+			// chunk کم می‌شود، پس شمارنده با واقعیت می‌خواند.
+			var processed = bulk.total - bulk.ids.length;
+			bulkProgress((processed / Math.max(bulk.total, 1)) * 100,
+				fmt(processed) + ' از ' + fmt(bulk.total) + ' — ' + fmt(bulk.done) + ' تازه شد');
+
+			if (d.blocked) {
+				// پیام سرور دقیق است (بلاک ۳۰ دقیقه‌ای، ته‌کشیدن بودجه‌ی روزانه یا
+				// کپچا)؛ همان را نشان می‌دهیم و وعده‌ی بی‌جا نمی‌دهیم.
+				bulkFinish((d.message || __('ترب درخواست‌ها را محدود کرد.')) +
+					' ' + fmt(bulk.total - processed) + ' محصول باقی ماند.', 'error');
+				return;
+			}
+
+			// فاصله‌ی کوتاه بین دسته‌ها: حداقل فاصله‌ی سرور ۳ ثانیه است و ۵ درخواست
+			// پشت‌سرهم در یک دسته ارسال می‌شود، پس بین دسته‌ها کمی نفس می‌کشیم.
+			bulk.timer = setTimeout(bulkNext, 1200);
+		}).fail(function () {
+			bulkFinish(WAPM.i18n.error, 'error');
+		});
+	}
+
+	$('#wapm-torob-bulk-refresh').on('click', function () {
+		if (bulk.running) { return; }
+
+		var $btn = $(this).prop('disabled', true);
+		$('#wapm-torob-bulk-result').empty();
+		bulkProgress(0, __('در حال گرفتن فهرست محصولات…'));
+
+		ajax('torob_gap', { mode: 'all' }).done(function (res) {
+			if (!res.success) {
+				$btn.prop('disabled', false);
+				$('#wapm-torob-bulk-result').html('<div class="notice notice-error inline"><p>' + esc((res.data && res.data.message) || WAPM.i18n.error) + '</p></div>');
+				return;
+			}
+
+			var d = res.data || {};
+			if (d.api) { renderApiState(d.api); }
+
+			var ids = d.ids || [];
+			if (!ids.length) {
+				$btn.prop('disabled', false);
+				bulkProgress(100, '');
+				$('#wapm-torob-bulk-result').html('<div class="notice notice-success inline"><p>' +
+					esc(__('همه‌ی محصولاتِ وصل‌شده به ترب، قیمت رقیب تازه دارند؛ کاری نمانده.')) + '</p></div>');
+				return;
+			}
+
+			var auto = d.auto || {};
+			if (auto.enabled && Number(auto.limit || 0) < ids.length) {
+				$('#wapm-torob-bulk-result').html('<div class="notice notice-info inline"><p>' +
+					esc('به‌روزرسانی خودکار روشن است و هر شب تا ' + fmt(auto.limit) + ' محصول را می‌گیرد؛ این اجرای دستی برای ' + fmt(ids.length) + ' محصول است.') +
+					'</p></div>');
+			}
+
+			bulk = { running: true, stop: false, ids: ids, total: ids.length, done: 0, failed: 0, timer: 0 };
+			$('#wapm-torob-bulk-stop').show();
+			bulkProgress(0, '۰ از ' + fmt(bulk.total) + ' — شروع…');
+			bulkNext();
+		}).fail(function () {
+			$btn.prop('disabled', false);
+			$('#wapm-torob-bulk-result').html('<div class="notice notice-error inline"><p>' + esc(WAPM.i18n.error) + '</p></div>');
+		});
+	});
+
+	$('#wapm-torob-bulk-stop').on('click', function () {
+		bulk.stop = true;
+		$(this).prop('disabled', true);
+		$('#wapm-torob-bulk-count').text(__('در حال توقف… (تا پایان دسته‌ی جاری)'));
 	});
 
 	/* ---- بررسی فوری یک محصول (۱ درخواست) ---- */
