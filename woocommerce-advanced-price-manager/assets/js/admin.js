@@ -795,6 +795,7 @@
 		torob_status: '', orderby: 'id_desc',
 		viewMode: 'simple', saveMode: 'auto',
 		selected: {},
+		allResults: false,   // «همه‌ی نتایج فیلتر» انتخاب شده، نه فقط همین صفحه
 		lastRows: [],
 		pending: {}
 	};
@@ -1096,28 +1097,35 @@
 		return html;
 	}
 
+	/**
+	 * فیلترهای فعال جدول — یک منبع حقیقت برای جدول و «انتخاب همه‌ی نتایج».
+	 * اگر این دو جدا ساخته شوند، دیر یا زود انتخاب با آنچه دیده می‌شود فرق می‌کند.
+	 */
+	function listFilters(overrides) {
+		return Object.assign({
+			search: listState.search,
+			category_id: listState.category_id,
+			stock_status: listState.stock_status,
+			per_page: listState.per_page,
+			paged: listState.paged,
+			price_min: listState.price_min,
+			price_max: listState.price_max,
+			stock_min: listState.stock_min,
+			stock_max: listState.stock_max,
+			product_type: listState.product_type,
+			on_sale: listState.on_sale ? 1 : 0,
+			torob_status: listState.torob_status,
+			orderby: listState.orderby
+		}, overrides || {});
+	}
+
 	function loadProductList(paged) {
 		listState.paged = paged || 1;
 		listState.selected = {};
+		listState.allResults = false;
 		updateBulkBar();
 		$('#wapm-list-tbody').html(skeletonRowsHtml());
-		ajax('list_products', {
-			filters: JSON.stringify({
-				search: listState.search,
-				category_id: listState.category_id,
-				stock_status: listState.stock_status,
-				per_page: listState.per_page,
-				paged: listState.paged,
-				price_min: listState.price_min,
-				price_max: listState.price_max,
-				stock_min: listState.stock_min,
-				stock_max: listState.stock_max,
-				product_type: listState.product_type,
-				on_sale: listState.on_sale ? 1 : 0,
-				torob_status: listState.torob_status,
-				orderby: listState.orderby
-			})
-		}).done(function (res) {
+		ajax('list_products', { filters: JSON.stringify(listFilters()) }).done(function (res) {
 			if (res.success) { renderProductList(res.data); }
 			else { $('#wapm-list-tbody').html('<tr><td colspan="' + LIST_COLS + '" class="text-center py-10 text-red-500 text-sm">' + esc(WAPM.i18n.error) + '</td></tr>'); }
 		}).fail(function () {
@@ -1494,12 +1502,43 @@
 		var $checks = $('#wapm-list-tbody .wapm-row-check');
 		var all = $checks.length > 0 && $checks.filter(':checked').length === $checks.length;
 		$('#wapm-list-select-all').prop('checked', all);
+		syncSelectAllResults();
+	}
+
+	/**
+	 * دکمه‌ی «انتخاب همه‌ی N نتیجه» فقط وقتی ظاهر می‌شود که همه‌ی ردیف‌های همین
+	 * صفحه انتخاب شده باشند و نتیجه‌ی بیشتری در فیلتر باشد. این عمداً «ضمنی»
+	 * نیست: کاربر باید صریح بزند تا یک کلیک، عملیات روی ۱۰۰۰ محصول نشود.
+	 */
+	function syncSelectAllResults() {
+		var $btn = $('#wapm-list-select-results');
+		var $scope = $('#wapm-list-selected-scope');
+		var total = Number(listState.total) || 0;
+		var pageRows = $('#wapm-list-tbody .wapm-row-check').length;
+
+		if (listState.allResults) {
+			$btn.prop('hidden', true);
+			$scope.prop('hidden', false).text('— همه‌ی ' + fmt(total) + ' نتیجه‌ی فیلتر');
+			return;
+		}
+
+		$scope.prop('hidden', true).text('');
+
+		var pageAll = pageRows > 0 && $('#wapm-list-tbody .wapm-row-check:checked').length === pageRows;
+		if (pageAll && total > pageRows) {
+			$btn.prop('hidden', false)
+				.prop('disabled', false)
+				.html('انتخاب همه‌ی <b>' + fmt(total) + '</b> نتیجه');
+		} else {
+			$btn.prop('hidden', true);
+		}
 	}
 
 	function updateBulkBar() {
 		var count = Object.keys(listState.selected).length;
 		$('#wapm-list-selected-count').text(count);
 		$('#wapm-list-bulk-bar').toggleClass('is-visible', count > 0);
+		syncSelectAllResults();
 	}
 
 	/** ردیف‌های انتخاب‌شده را با نوار رنگی مشخص می‌کند (نه فقط چک‌باکس). */
@@ -1510,6 +1549,11 @@
 	$(document).on('change', '.wapm-row-check', function () {
 		var id = $(this).data('id');
 		var on = $(this).is(':checked');
+
+		// برداشتن یک تیک در حالت «همه‌ی نتایج» یعنی دیگر «همه» نیست؛ برچسب
+		// دامنه هم باید همین را بگوید، وگرنه عدد نوار با واقعیت نمی‌خواند.
+		if (!on && listState.allResults) { listState.allResults = false; }
+
 		if (on) { listState.selected[id] = true; } else { delete listState.selected[id]; }
 		markRowSelected($(this).closest('tr'), on);
 		updateBulkBar();
@@ -1518,6 +1562,7 @@
 
 	$('#wapm-list-select-all').on('change', function () {
 		var checked = $(this).is(':checked');
+		if (!checked) { listState.allResults = false; }
 		$('#wapm-list-tbody .wapm-row-check').prop('checked', checked).each(function () {
 			var id = $(this).data('id');
 			if (checked) { listState.selected[id] = true; } else { delete listState.selected[id]; }
@@ -1526,8 +1571,45 @@
 		updateBulkBar();
 	});
 
+	$('#wapm-list-select-results').on('click', function () {
+		var $btn = $(this).prop('disabled', true);
+
+		ajax('list_ids', { filters: JSON.stringify(listFilters()), limit: 1000 }).done(function (res) {
+			if (!res.success) {
+				wapmToast((res.data && res.data.message) || WAPM.i18n.error, 'error');
+				return;
+			}
+
+			var ids = res.data.ids || [];
+			if (!ids.length) {
+				wapmToast('با این فیلتر محصولی پیدا نشد.', 'warning');
+				return;
+			}
+
+			listState.selected = {};
+			ids.forEach(function (id) { listState.selected[id] = true; });
+			listState.allResults = true;
+
+			$('#wapm-list-tbody .wapm-row-check').prop('checked', true).each(function () {
+				markRowSelected($(this).closest('tr'), true);
+			});
+
+			updateBulkBar();
+			updateSelectAllCheckbox();
+
+			var msg = fmt(ids.length) + ' محصول انتخاب شد';
+			if (res.data.truncated) {
+				msg += ' — سقف ۱۰۰۰ محصول. برای بقیه، فیلتر را محدودتر کنید یا از تب «موجودی/قیمت» با فیلتر استفاده کنید.';
+			}
+			wapmToast(msg, res.data.truncated ? 'warning' : 'info', { ttl: res.data.truncated ? 12000 : 4000 });
+		}).fail(function () {
+			wapmToast(WAPM.i18n.error, 'error');
+		}).always(function () { $btn.prop('disabled', false); });
+	});
+
 	$('#wapm-list-bulk-clear').on('click', function () {
 		listState.selected = {};
+		listState.allResults = false;
 		$('#wapm-list-tbody .wapm-row-check').prop('checked', false);
 		$('#wapm-list-select-all').prop('checked', false);
 		updateBulkBar();
@@ -1618,7 +1700,11 @@
 		$('#wapm-bp-result').empty();
 		$('#wapm-bp-summary').text('');
 		$('#wapm-bp-apply-btn').prop('disabled', true);
-		$('#wapm-bp-selected-note').text(fmt(ids.length) + ' محصول انتخاب شده');
+		var note = fmt(ids.length) + ' محصول انتخاب شده';
+		if (ids.length > 300) {
+			note += ' — پیش‌نمایش روی ۳۰۰ محصول اول انجام می‌شود، ولی «اعمال» روی همه‌ی ' + fmt(ids.length) + ' محصول اجرا می‌شود.';
+		}
+		$('#wapm-bp-selected-note').text(note);
 		$('#wapm-bp-progress').hide();
 
 		$('#wapm-price-drawer-overlay').addClass('is-open');
@@ -2063,6 +2149,211 @@
 		});
 	});
 
+	/* ---- تغییر موجودی انتخاب‌شده‌ها (کشو) ---- */
+
+	var sdState = { ids: [], will: 0, batch: '', running: false };
+
+	function sdOperation() {
+		return {
+			mode: $('#wapm-sd-mode').val(),
+			unit: $('#wapm-sd-unit').val(),
+			amount: $('#wapm-sd-amount').val()
+		};
+	}
+
+	function sdSelectedIds() {
+		return Object.keys(listState.selected || {}).map(function (x) { return parseInt(x, 10); })
+			.filter(function (id) { return id > 0; });
+	}
+
+	function sdOpen() {
+		if (sdState.running) { return; }
+
+		var ids = sdSelectedIds();
+		if (!ids.length) {
+			wapmToast('ابتدا در جدول، محصول‌ها را تیک بزنید.', 'warning');
+			return;
+		}
+
+		sdState.ids = ids;
+		sdState.will = 0;
+		sdState.batch = '';
+
+		$('#wapm-sd-result').empty();
+		$('#wapm-sd-summary').text('');
+		$('#wapm-sd-foot-note').text('');
+		$('#wapm-sd-apply').prop('disabled', true);
+
+		var note = fmt(ids.length) + ' محصول انتخاب شده';
+		if (ids.length > 300) {
+			note += ' — پیش‌نمایش روی ۳۰۰ محصول اول است، ولی اعمال روی همه اجرا می‌شود.';
+		}
+		$('#wapm-sd-selected-note').text(note);
+
+		sdSyncUi();
+		$('#wapm-stock-drawer-overlay').addClass('is-open');
+		$('#wapm-stock-drawer').addClass('is-open').attr('aria-hidden', 'false');
+		window.setTimeout(function () { $('#wapm-sd-amount').trigger('focus').trigger('select'); }, 240);
+	}
+
+	function sdClose() {
+		if (sdState.running) { return; }
+		$('#wapm-stock-drawer-overlay').removeClass('is-open');
+		$('#wapm-stock-drawer').removeClass('is-open').attr('aria-hidden', 'true');
+	}
+
+	$('#wapm-list-bulk-stock').on('click', sdOpen);
+	$('#wapm-sd-close, #wapm-stock-drawer-overlay').on('click', sdClose);
+
+	$(document).on('keydown', function (e) {
+		if (e.key === 'Escape' && $('#wapm-stock-drawer').hasClass('is-open')) { sdClose(); }
+	});
+
+	function sdSyncUi() {
+		// «تنظیم روی عدد» فقط با تعداد معنا دارد؛ درصدِ یک عدد ثابت بی‌معنی است.
+		var isSet = $('#wapm-sd-mode').val() === 'set';
+		$('#wapm-sd-unit').prop('disabled', isSet).val(isSet ? 'count' : $('#wapm-sd-unit').val());
+		$('#wapm-sd-apply').prop('disabled', true);
+	}
+
+	$('#wapm-sd-mode, #wapm-sd-unit, #wapm-sd-amount').on('change keyup', sdSyncUi);
+
+	$('#wapm-sd-preview').on('click', function () {
+		var op = sdOperation();
+
+		if (op.unit === 'percent' && !(Number(op.amount) > 0 && Number(op.amount) <= 100)) {
+			wapmToast('درصد باید بین ۱ تا ۱۰۰ باشد.', 'warning');
+			return;
+		}
+		if (op.unit === 'count' && op.amount === '') {
+			wapmToast('مقدار را وارد کنید.', 'warning');
+			return;
+		}
+
+		var $btn = $(this).prop('disabled', true);
+		$('#wapm-sd-result').html('<div class="wapm-skeleton" style="height:60px"></div>');
+		$('#wapm-sd-summary').text(WAPM.i18n.loading);
+		$('#wapm-sd-apply').prop('disabled', true);
+
+		ajax('stock_preview_ids', {
+			ids: sdState.ids,
+			mode: op.mode,
+			unit: op.unit,
+			amount: op.amount
+		}).done(function (res) {
+			if (!res.success) {
+				$('#wapm-sd-result').empty();
+				$('#wapm-sd-summary').text('');
+				wapmToast((res.data && res.data.message) || WAPM.i18n.error, 'error');
+				return;
+			}
+
+			var d = res.data;
+			sdState.will = Number(d.will) || 0;
+
+			var summary = 'روی ' + fmt(sdState.will) + ' مورد اثر دارد';
+			if (d.rows_total > d.rows.length) {
+				summary += ' — ' + fmt(d.rows_total) + ' واریشن، ' + fmt(d.rows.length) + ' ردیف اول نمایش داده شد';
+			}
+			if (d.skipped && Object.keys(d.skipped).length) {
+				summary += ' — رد‌شده: ' + stockReasons(d.skipped);
+			}
+			$('#wapm-sd-summary').text(summary);
+
+			$('#wapm-sd-result').html(stockRowsTable(d.rows));
+			$('#wapm-sd-apply').prop('disabled', sdState.will === 0);
+		}).fail(function () {
+			$('#wapm-sd-result').empty();
+			$('#wapm-sd-summary').text('');
+			wapmToast(WAPM.i18n.error, 'error');
+		}).always(function () { $btn.prop('disabled', false); });
+	});
+
+	$('#wapm-sd-apply').on('click', function () {
+		if (sdState.running || !sdState.will) { return; }
+		if (!window.confirm('موجودی ' + sdState.will + ' مورد تغییر می‌کند. ادامه می‌دهید؟')) { return; }
+
+		var op = sdOperation();
+		var ids = sdState.ids.slice();
+		var batch = 'stock_' + Date.now().toString(36);
+		var page = 1;
+		var processed = 0;
+		var applied = 0;
+		var failed = 0;
+		var reasons = {};
+
+		sdState.running = true;
+		sdState.batch = batch;
+
+		var $apply = $(this).prop('disabled', true);
+		var $other = $('#wapm-sd-preview, #wapm-sd-close').prop('disabled', true);
+
+		function setNote(text) { $('#wapm-sd-foot-note').text(text); }
+
+		function step() {
+			ajax('stock_apply_ids', {
+				ids: ids,
+				mode: op.mode,
+				unit: op.unit,
+				amount: op.amount,
+				page: page,
+				batch_id: batch
+			}).done(function (res) {
+				if (!res.success) {
+					sdState.running = false;
+					setNote('');
+					$apply.prop('disabled', false);
+					$other.prop('disabled', false);
+					wapmToast((res.data && res.data.message) || WAPM.i18n.error, 'error');
+					return;
+				}
+
+				processed += Number(res.data.processed) || 0;
+				applied   += Number(res.data.applied) || 0;
+				failed    += Number(res.data.failed) || 0;
+
+				Object.keys(res.data.reasons || {}).forEach(function (k) {
+					reasons[k] = (reasons[k] || 0) + Number(res.data.reasons[k]);
+				});
+
+				setNote('پردازش ' + fmt(processed) + ' از ' + fmt(ids.length) + ' محصول…');
+
+				if (!res.data.done) {
+					page++;
+					window.setTimeout(step, 200);
+					return;
+				}
+
+				sdState.running = false;
+				setNote('');
+				$apply.prop('disabled', false);
+				$other.prop('disabled', false);
+
+				var msg = fmt(applied) + ' موجودی تغییر کرد';
+				if (failed) { msg += ' — ' + fmt(failed) + ' مورد رد شد'; }
+				if (Object.keys(reasons).length) { msg += ' (' + stockReasons(reasons) + ')'; }
+
+				wapmToast(msg + ' — Batch ' + batch, applied ? 'success' : 'warning', {
+					ttl: 12000,
+					actionLabel: 'بازگردانی این تغییر',
+					action: function () { stockUndo(batch); }
+				});
+
+				sdClose();
+				loadProductList(listState.paged);
+				loadStockLogs(1);
+			}).fail(function () {
+				sdState.running = false;
+				setNote('');
+				$apply.prop('disabled', false);
+				$other.prop('disabled', false);
+				wapmToast(WAPM.i18n.error, 'error');
+			});
+		}
+
+		step();
+	});
+
 	/* ---- بازگردانی ---- */
 
 	function refreshStockBatch() {
@@ -2076,6 +2367,8 @@
 
 	function stockUndo(batch, $btn) {
 		if (!batch) { return; }
+		// $btn اختیاری است: از اعلان (toast) هم صدا زده می‌شود و آن‌جا دکمه‌ای نیست.
+		$btn = $btn && $btn.length ? $btn : $();
 		if (!window.confirm('موجودی‌های این Batch به مقدار قبل برمی‌گردند. ادامه می‌دهید؟')) { return; }
 
 		$btn.prop('disabled', true);

@@ -1180,6 +1180,34 @@ test( 'ترب/صف: برچسب دلیل تطبیق‌نشدن', function () {
 } );
 
 /* -------------------------------------------------------------------------
+ * ۱۵) کشوی موجودی — قواعدی که UI به کاربر قول می‌دهد
+ * ---------------------------------------------------------------------- */
+
+test( 'موجودی/sanitize_operation: «تنظیم» همیشه با تعداد است', function () {
+	$op = WAPM_Stock::sanitize_operation( [ 'mode' => 'set', 'unit' => 'percent', 'amount' => 5 ] );
+	eq( 'set', $op['mode'], 'حالت' );
+	eq( 'count', $op['unit'], 'واحد درصد به تعداد تبدیل شد' );
+} );
+
+test( 'موجودی/sanitize_operation: ورودی نامعتبر رد می‌شود', function () {
+	eq( null, WAPM_Stock::sanitize_operation( [ 'mode' => 'multiply', 'unit' => 'count', 'amount' => 2 ] ), 'حالت ناشناخته' );
+	eq( null, WAPM_Stock::sanitize_operation( [ 'mode' => 'increase', 'unit' => 'count', 'amount' => -3 ] ), 'مقدار منفی' );
+} );
+
+test( 'موجودی/expand_ids: انتخاب همه‌ی نتایج هم از همین قاعده رد می‌شود', function () {
+	stub_reset();
+	$GLOBALS['wapm_stub']['products'] = [
+		10  => new WC_Product( [ 'id' => 10, 'type' => 'variable', 'managing' => false, 'children' => [ 101, 102 ] ] ),
+		101 => new WC_Product( [ 'id' => 101, 'type' => 'variation', 'qty' => 0 ] ),
+		102 => new WC_Product( [ 'id' => 102, 'type' => 'variation', 'qty' => 7 ] ),
+		20  => new WC_Product( [ 'id' => 20 ] ),
+	];
+
+	eq( [ 101, 102, 20 ], WAPM_Stock::expand_ids( [ 10, 20 ] ), 'والد متغیر + محصول ساده' );
+	eq( 0.0, WAPM_Stock::compute_qty( 0, 'set', 'count', 0 ), 'تنظیم روی صفر مجاز است' );
+} );
+
+/* -------------------------------------------------------------------------
  * نتیجه
  * ---------------------------------------------------------------------- */
 

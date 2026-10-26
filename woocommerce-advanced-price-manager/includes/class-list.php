@@ -52,6 +52,47 @@ class WAPM_List {
 	 * @return array{rows: array, total: int, pages: int}
 	 */
 	public static function query( array $f ): array {
+		$args = self::build_args( $f );
+
+		$args['posts_per_page'] = $f['per_page'];
+		$args['paged']          = $f['paged'];
+
+		$query = new WP_Query( $args );
+		$rows  = [];
+
+		foreach ( $query->posts as $pid ) {
+			$product = wc_get_product( $pid );
+			if ( ! $product ) {
+				continue;
+			}
+			$rows[] = self::build_row( $product );
+
+			if ( $product->is_type( 'variable' ) ) {
+				foreach ( $product->get_children() as $vid ) {
+					$variation = wc_get_product( $vid );
+					if ( $variation ) {
+						$rows[] = self::build_row( $variation, $product );
+					}
+				}
+			}
+		}
+
+		return [
+			'rows'  => $rows,
+			'total' => (int) $query->found_posts,
+			'pages' => (int) $query->max_num_pages,
+		];
+	}
+
+	/**
+	 * ساخت آرگومان‌های WP_Query از فیلترها (مشترک بین جدول و «انتخاب همه‌ی نتایج»).
+	 *
+	 * جدایی این تابع لازم است: اگر «انتخاب همه» کوئری خودش را بسازد، دیر یا زود
+	 * با فیلترهای جدول ناهم‌خوان می‌شود و کاربر چیزی را انتخاب می‌کند که نمی‌بیند.
+	 *
+	 * @return array<string,mixed>
+	 */
+	private static function build_args( array $f ): array {
 		$args = [
 			'post_type'      => 'product',
 			'post_status'    => 'publish',
@@ -194,30 +235,35 @@ class WAPM_List {
 			$args['meta_query'] = $meta_query;
 		}
 
+		return $args;
+	}
+
+	/**
+	 * شناسه‌های همه‌ی نتایج فیلتر (برای «انتخاب همه‌ی نتایج» در نوار عملیات گروهی).
+	 *
+	 * چرا سقف دارد: انتخاب ۱۰٬۰۰۰ محصول در مرورگر و فرستادن آن در هر درخواست، هم
+	 * کند است و هم یک کلیک اشتباه را به عملیات بزرگ تبدیل می‌کند. سقف اعلام می‌شود
+	 * (`truncated`) تا کاربر بداند فقط بخشی انتخاب شده است.
+	 *
+	 * @return array{ids:int[],total:int,truncated:bool,limit:int}
+	 */
+	public static function query_ids( array $f, int $limit = 1000 ): array {
+		$limit = max( 1, min( 5000, $limit ) );
+
+		$args                   = self::build_args( $f );
+		$args['posts_per_page'] = $limit;
+		$args['paged']          = 1;
+		$args['fields']         = 'ids';
+
 		$query = new WP_Query( $args );
-		$rows  = [];
 
-		foreach ( $query->posts as $pid ) {
-			$product = wc_get_product( $pid );
-			if ( ! $product ) {
-				continue;
-			}
-			$rows[] = self::build_row( $product );
-
-			if ( $product->is_type( 'variable' ) ) {
-				foreach ( $product->get_children() as $vid ) {
-					$variation = wc_get_product( $vid );
-					if ( $variation ) {
-						$rows[] = self::build_row( $variation, $product );
-					}
-				}
-			}
-		}
+		$ids = array_values( array_map( 'intval', (array) $query->posts ) );
 
 		return [
-			'rows'  => $rows,
-			'total' => (int) $query->found_posts,
-			'pages' => (int) $query->max_num_pages,
+			'ids'       => $ids,
+			'total'     => (int) $query->found_posts,
+			'limit'     => $limit,
+			'truncated' => (int) $query->found_posts > count( $ids ),
 		];
 	}
 

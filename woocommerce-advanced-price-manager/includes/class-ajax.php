@@ -17,6 +17,7 @@ class WAPM_Ajax {
 			'get_products', // برچسب محصولات ذخیره‌شده در یک قانون (برای بازگرداندن انتخاب‌ها در فرم)
 			'get_terms',
 			'list_products',
+			'list_ids',
 			'update_field',
 			'update_terms',
 			'toggle_manage_stock',
@@ -45,6 +46,8 @@ class WAPM_Ajax {
 			'stock_import',
 			'price_preview_ids',
 			'price_apply_ids',
+			'stock_preview_ids',
+			'stock_apply_ids',
 			'count_targets',
 			'preview',
 			'dry_run',
@@ -131,6 +134,22 @@ class WAPM_Ajax {
 		$raw     = isset( $_POST['filters'] ) ? json_decode( wp_unslash( $_POST['filters'] ), true ) : [];
 		$filters = WAPM_List::sanitize_filters( is_array( $raw ) ? $raw : [] );
 		wp_send_json_success( WAPM_List::query( $filters ) );
+	}
+
+	/**
+	 * شناسه‌های همه‌ی نتایج فیلتر (دکمه‌ی «انتخاب همه‌ی نتایج»).
+	 *
+	 * چرا سرور: مرورگر فقط ۲۵ ردیف را می‌بیند؛ برای عملیات روی «همه‌ی نتایج»
+	 * باید همان کوئری جدول اجرا شود تا انتخاب با چیزی که دیده می‌شود یکی باشد.
+	 */
+	public function list_ids(): void {
+		$this->guard();
+
+		$raw     = isset( $_POST['filters'] ) ? json_decode( wp_unslash( $_POST['filters'] ), true ) : [];
+		$filters = WAPM_List::sanitize_filters( is_array( $raw ) ? $raw : [] );
+		$limit   = max( 1, min( 5000, absint( $_POST['limit'] ?? 1000 ) ) );
+
+		wp_send_json_success( WAPM_List::query_ids( $filters, $limit ) );
 	}
 
 	public function update_field(): void {
@@ -258,7 +277,9 @@ class WAPM_Ajax {
 	public function price_preview_ids(): void {
 		$this->guard();
 
-		$ids = $this->posted_ids();
+		// پیش‌نمایشِ هر محصول یک WC_Product می‌سازد؛ با ۱۰۰۰ محصول این درخواست
+		// چند دقیقه طول می‌کشد. سقف اعلام‌شده بهتر از timeout بی‌پیام است.
+		$ids = $this->posted_ids( 300 );
 		if ( ! $ids ) {
 			wp_send_json_error( [ 'message' => __( 'هیچ محصولی انتخاب نشده است.', 'wapm' ) ] );
 		}
@@ -300,6 +321,7 @@ class WAPM_Ajax {
 		wp_send_json_success( [
 			'rows'      => $rows,
 			'rows_total' => $total,
+			'previewed' => count( $ids ),
 			'products'  => count( $ids ),
 			'skipped'   => $skipped,
 			'warn'      => $warn,
@@ -316,7 +338,9 @@ class WAPM_Ajax {
 	public function price_apply_ids(): void {
 		$this->guard();
 
-		$ids = $this->posted_ids();
+		// اعمال، صفحه‌به‌صفحه (۲۵ تا) است؛ سقف بالاتر است تا «انتخاب همه‌ی
+		// نتایج» واقعاً همه را بگیرد و نه فقط ۲۰۰ محصول اول را.
+		$ids = $this->posted_ids( 1000 );
 		if ( ! $ids ) {
 			wp_send_json_error( [ 'message' => __( 'هیچ محصولی انتخاب نشده است.', 'wapm' ) ] );
 		}
@@ -457,6 +481,104 @@ class WAPM_Ajax {
 				(int) $result['failed']
 			),
 		] ) );
+	}
+
+	/**
+	 * پیش‌نمایش موجودی روی «شناسه‌های انتخاب‌شده» یا «همه‌ی نتایج فیلتر».
+	 *
+	 * چرا جدا از stock_preview: آن یکی از فیلترها (و سقف ۵۰) شروع می‌کند و لیست
+	 * ممکن است بین پیش‌نمایش و اعمال عوض شود. این‌جا شناسه‌ها صریح می‌آیند، پس
+	 * همان چیزی تأیید می‌شود که اعمال می‌شود — مثل مسیر قیمت.
+	 */
+	public function stock_preview_ids(): void {
+		$this->guard();
+
+		$op = $this->stock_operation();
+		if ( null === $op ) {
+			wp_send_json_error( [ 'message' => __( 'عملیات موجودی نامعتبر است.', 'wapm' ) ] );
+		}
+
+		$ids    = array_slice( $this->stock_ids_from_request(), 0, 300 );
+		$expand = ! isset( $_POST['variations'] ) || ! empty( $_POST['variations'] );
+
+		if ( ! $ids ) {
+			wp_send_json_error( [ 'message' => __( 'هیچ محصولی انتخاب نشده است.', 'wapm' ) ] );
+		}
+
+		$preview = WAPM_Stock::preview( $ids, $op, $expand );
+
+		wp_send_json_success( [
+			'ids'        => $ids,
+			'rows'       => array_slice( $preview['rows'], 0, 100 ),
+			'rows_total' => count( $preview['rows'] ),
+			'will'       => (int) $preview['will_change'],
+			'skipped'    => $preview['skipped'],
+			'op'         => $op,
+		] );
+	}
+
+	/**
+	 * اعمال موجودی روی شناسه‌های صریح، صفحه‌به‌صفحه (سقف ۲۵ در هر درخواست).
+	 *
+	 * پاسخ: batch_id, page, processed, applied, failed, total, done
+	 */
+	public function stock_apply_ids(): void {
+		$this->guard();
+
+		$op = $this->stock_operation();
+		if ( null === $op ) {
+			wp_send_json_error( [ 'message' => __( 'عملیات موجودی نامعتبر است.', 'wapm' ) ] );
+		}
+
+		$ids = $this->stock_ids_from_request();
+		if ( ! $ids ) {
+			wp_send_json_error( [ 'message' => __( 'هیچ محصولی برای تغییر انتخاب نشده است.', 'wapm' ) ] );
+		}
+
+		$page  = max( 1, absint( $_POST['page'] ?? 1 ) );
+		$batch = sanitize_text_field( wp_unslash( $_POST['batch_id'] ?? '' ) );
+		$batch = '' !== $batch ? $batch : 'stock_' . gmdate( 'Ymd_His' ) . '_' . wp_generate_password( 6, false );
+		$total = count( $ids );
+
+		$slice = array_slice( $ids, ( $page - 1 ) * 25, 25 );
+
+		$expand = ! isset( $_POST['variations'] ) || ! empty( $_POST['variations'] );
+		$result = WAPM_Stock::apply_bulk( $slice, $op, $batch, '', $expand );
+
+		$done = $page * 25 >= $total;
+
+		wp_send_json_success( [
+			'batch_id'  => $batch,
+			'page'      => $page,
+			'processed' => count( $slice ),
+			'total'     => $total,
+			'applied'   => (int) $result['applied'],
+			'failed'    => (int) $result['failed'],
+			'reasons'   => $result['reasons'] ?? [],
+			'done'      => $done,
+			'message'   => sprintf(
+				/* translators: 1: applied, 2: failed */
+				__( '%1$d محصول اعمال شد، %2$d مورد رد شد.', 'wapm' ),
+				(int) $result['applied'],
+				(int) $result['failed']
+			),
+		] );
+	}
+
+	/**
+	 * شناسه‌های درخواست: آرایه‌ی ids یا JSON رشته‌ای. منفی/صفر حذف می‌شود.
+	 *
+	 * @return int[]
+	 */
+	private function stock_ids_from_request(): array {
+		$raw = $_POST['ids'] ?? [];
+
+		if ( is_string( $raw ) ) {
+			$decoded = json_decode( wp_unslash( $raw ), true );
+			$raw     = is_array( $decoded ) ? $decoded : [];
+		}
+
+		return array_values( array_unique( array_filter( array_map( 'absint', (array) $raw ) ) ) );
 	}
 
 	/**

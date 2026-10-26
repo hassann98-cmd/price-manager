@@ -349,10 +349,16 @@ class WAPM_Admin {
 						<span class="wapm-bulkbar__count">
 							<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
 							<b id="wapm-list-selected-count">0</b> <?php esc_html_e( 'مورد انتخاب شده', 'wapm' ); ?>
+							<span id="wapm-list-selected-scope" hidden></span>
 						</span>
+						<button type="button" id="wapm-list-select-results" class="wapm-select-results" hidden></button>
 						<button type="button" id="wapm-list-bulk-price" class="h-10 px-5 bg-gradient-to-l from-primary-600 to-primary-500 text-white rounded-xl text-sm font-bold inline-flex items-center gap-2 shadow-sm">
 							<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
 							<?php esc_html_e( 'تغییر قیمت', 'wapm' ); ?>
+						</button>
+						<button type="button" id="wapm-list-bulk-stock" class="h-10 px-5 bg-white border border-slate-300 text-slate-700 rounded-xl text-sm font-bold inline-flex items-center gap-2">
+							<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7 12 3 4 7v10l8 4 8-4V7Z"></path><path d="M4 7l8 4 8-4"></path><path d="M12 11v10"></path></svg>
+							<?php esc_html_e( 'موجودی', 'wapm' ); ?>
 						</button>
 						<select id="wapm-list-bulk-select" class="h-10 rounded-xl border border-slate-200 text-sm px-3">
 							<option value=""><?php esc_html_e( '— انتخاب عملیات —', 'wapm' ); ?></option>
@@ -525,6 +531,63 @@ class WAPM_Admin {
 							<button type="button" class="button" id="wapm-bp-cancel"><?php esc_html_e( 'انصراف', 'wapm' ); ?></button>
 							<button type="button" class="button button-primary" id="wapm-bp-apply-btn" disabled><?php esc_html_e( 'اعمال روی انتخاب‌شده‌ها', 'wapm' ); ?></button>
 						</div>
+					</div>
+				</aside>
+
+				<!-- کشوی تغییر موجودی انتخاب‌شده‌ها -->
+				<div id="wapm-stock-drawer-overlay" class="wapm-drawer-overlay"></div>
+				<aside id="wapm-stock-drawer" class="wapm-drawer" role="dialog" aria-modal="true" aria-labelledby="wapm-sd-title" aria-hidden="true">
+					<div class="wapm-drawer__head">
+						<div>
+							<h2 id="wapm-sd-title"><?php esc_html_e( 'تغییر موجودی انتخاب‌شده‌ها', 'wapm' ); ?></h2>
+							<p><?php esc_html_e( 'همان قاعده‌ی قیمت: اول پیش‌نمایش، بعد اعمال؛ همه با یک Batch و یک دکمه بازگردانی.', 'wapm' ); ?></p>
+						</div>
+						<button type="button" id="wapm-sd-close" class="wapm-drawer__close" aria-label="<?php esc_attr_e( 'بستن', 'wapm' ); ?>">×</button>
+					</div>
+
+					<div class="wapm-drawer__body">
+						<div class="wapm-drawer__section">
+							<h3><?php esc_html_e( 'نوع تغییر', 'wapm' ); ?></h3>
+							<div class="wapm-drawer__row">
+								<label class="wapm-field">
+									<span><?php esc_html_e( 'عملیات', 'wapm' ); ?></span>
+									<select id="wapm-sd-mode">
+										<option value="increase"><?php esc_html_e( 'افزودن (+)', 'wapm' ); ?></option>
+										<option value="decrease"><?php esc_html_e( 'کاهش (−)', 'wapm' ); ?></option>
+										<option value="set"><?php esc_html_e( 'تنظیم روی عدد', 'wapm' ); ?></option>
+									</select>
+								</label>
+								<label class="wapm-field">
+									<span><?php esc_html_e( 'واحد', 'wapm' ); ?></span>
+									<select id="wapm-sd-unit">
+										<option value="count"><?php esc_html_e( 'تعداد', 'wapm' ); ?></option>
+										<option value="percent"><?php esc_html_e( 'درصد', 'wapm' ); ?></option>
+									</select>
+								</label>
+								<label class="wapm-field">
+									<span><?php esc_html_e( 'مقدار', 'wapm' ); ?></span>
+									<input type="number" id="wapm-sd-amount" min="0" step="1" value="1">
+								</label>
+							</div>
+							<p class="description" style="margin:8px 0 0">
+								<?php esc_html_e( 'محصول متغیر به واریشن‌ها باز می‌شود؛ محصولی که «مدیریت انبار» ندارد با دلیل مشخص رد می‌شود (نه اینکه بی‌صدا صفر شود).', 'wapm' ); ?>
+							</p>
+						</div>
+
+						<div class="wapm-drawer__section">
+							<h3><?php esc_html_e( 'پیش‌نمایش', 'wapm' ); ?></h3>
+							<p class="description" id="wapm-sd-selected-note" style="margin:0 0 10px"></p>
+							<div id="wapm-sd-summary" class="wapm-progress-text" style="margin:0 0 8px"></div>
+							<div id="wapm-sd-result"></div>
+						</div>
+					</div>
+
+					<div class="wapm-drawer__foot">
+						<span class="description" id="wapm-sd-foot-note"></span>
+						<span style="display:flex;gap:8px">
+							<button type="button" class="button" id="wapm-sd-preview"><?php esc_html_e( 'پیش‌نمایش', 'wapm' ); ?></button>
+							<button type="button" class="button button-primary" id="wapm-sd-apply" disabled><?php esc_html_e( 'اعمال', 'wapm' ); ?></button>
+						</span>
 					</div>
 				</aside>
 			</div>

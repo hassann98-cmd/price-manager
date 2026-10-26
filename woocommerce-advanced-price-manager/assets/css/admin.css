@@ -1463,3 +1463,69 @@
 .wapm-review {
 	overflow-x: auto;
 }
+
+/* ==========================================================================
+   انتخاب همه‌ی نتایج + کشوی موجودی
+   ========================================================================== */
+
+/*
+ * دکمه‌ی «انتخاب همه‌ی N نتیجه».
+ * عمداً یک دکمه‌ی جدا در نوار است، نه یک چک‌باکس مبهم: انتخاب ۱۰۰۰ محصول باید
+ * یک اقدام صریح باشد.
+ */
+.wapm-select-results {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 5px 12px;
+	border: 1px dashed var(--wapm-brand-300);
+	border-radius: 999px;
+	background: #fff;
+	color: var(--wapm-brand-800);
+	font-size: 11.5px;
+	font-weight: 800;
+	cursor: pointer;
+	white-space: nowrap;
+	transition: background var(--wapm-speed) ease, border-color var(--wapm-speed) ease;
+}
+
+.wapm-select-results:hover {
+	background: var(--wapm-brand-50);
+	border-style: solid;
+}
+
+.wapm-select-results b {
+	font-weight: 900;
+}
+
+.wapm-select-results[hidden] {
+	display: none;
+}
+
+/* «— همه‌ی ۱۲۰۰ نتیجه‌ی فیلتر» داخل نشان تعداد انتخاب */
+#wapm-list-selected-scope {
+	display: inline;
+	margin-inline-start: 2px;
+	font-weight: 700;
+	color: var(--wapm-brand-700);
+}
+
+#wapm-list-selected-scope[hidden] {
+	display: none;
+}
+
+/* کشوی موجودی از همان کلاس‌های .wapm-drawer استفاده می‌کند؛ فقط تأکید رنگی
+   روی دکمه‌ی موجودی تا از «تغییر قیمت» اشتباه گرفته نشود. */
+#wapm-list-bulk-stock {
+	transition: border-color var(--wapm-speed) ease, background var(--wapm-speed) ease;
+}
+
+#wapm-list-bulk-stock:hover {
+	background: var(--wapm-brand-50);
+	border-color: var(--wapm-brand-300);
+}
+
+#wapm-sd-summary:empty,
+#wapm-sd-foot-note:empty {
+	display: none;
+}
