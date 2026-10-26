@@ -1852,6 +1852,40 @@ test( 'حذف افزونه: همه‌ی گزینه‌ها و متاهای شنا
 	eq( [], $missing, 'کلید جامانده در uninstall.php' );
 } );
 
+/* -------------------------------------------------------------------------
+ * ۱۷-۲) اسکریپت‌های ادمین — هر handle باید به فایل موجود اشاره کند
+ * ---------------------------------------------------------------------- */
+
+test( 'اسکریپت‌های ادمین: نام فایل‌ها با فایل‌های واقعی می‌خواند', function () {
+	$root = __DIR__ . '/../woocommerce-advanced-price-manager';
+	require_once $root . '/includes/class-admin.php';
+
+	$scripts = WAPM_Admin::scripts();
+
+	// ترتیب مهم است: core اول (WAPMUI را می‌سازد)، boot آخر.
+	eq( 'wapm-admin-core', array_key_first( $scripts ), 'اولین اسکریپت core است' );
+	eq( 'wapm-admin-boot', array_key_last( $scripts ), 'آخرین اسکریپت boot است' );
+
+	$missing = [];
+	foreach ( $scripts as $handle => $script ) {
+		// همان مسیری که enqueue() به wp_enqueue_script می‌دهد.
+		if ( ! file_exists( $root . '/assets/js/' . $script['file'] ) ) {
+			$missing[] = $handle . ' → assets/js/' . $script['file'];
+		}
+	}
+
+	// رگرسیون واقعی ۱.۱.۰: نام فایل از handle ساخته می‌شد (`core.js` به‌جای
+	// `admin-core.js`) و هر هفت اسکریپت ۴۰۴ می‌شد؛ نتیجه: صفحه‌ای بدون
+	// جاوااسکریپت و تب‌هایی که هیچ کاری نمی‌کردند.
+	eq( [], $missing, 'همه‌ی فایل‌های اسکریپت موجودند' );
+
+	foreach ( $scripts as $handle => $script ) {
+		foreach ( $script['deps'] as $dep ) {
+			ok( isset( $scripts[ $dep ] ), "وابستگی {$dep} برای {$handle} تعریف شده" );
+		}
+	}
+} );
+
 test( 'حذف افزونه: جدول‌ها، کرون و نگهبان WP_UNINSTALL_PLUGIN', function () {
 	$uninstall = (string) file_get_contents( __DIR__ . '/../woocommerce-advanced-price-manager/uninstall.php' );
 

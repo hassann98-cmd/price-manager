@@ -47,6 +47,26 @@ class WAPM_Admin {
 	}
 
 	/**
+	 * فهرست اسکریپت‌های پیشخوان: handle → فایل و وابستگی به ماژول‌های دیگر.
+	 *
+	 * تنها منبع حقیقت برای نام فایل‌هاست؛ `enqueue()` و تست‌ها هر دو از همین
+	 * می‌خوانند. ترتیب مهم است: core اول، boot آخر.
+	 *
+	 * @return array<string, array{file: string, deps: string[]}>
+	 */
+	public static function scripts(): array {
+		return [
+			'wapm-admin-core'       => [ 'file' => 'admin-core.js', 'deps' => [] ],
+			'wapm-admin-price'      => [ 'file' => 'admin-price.js', 'deps' => [ 'wapm-admin-core' ] ],
+			'wapm-admin-automation' => [ 'file' => 'admin-automation.js', 'deps' => [ 'wapm-admin-core' ] ],
+			'wapm-admin-list'       => [ 'file' => 'admin-list.js', 'deps' => [ 'wapm-admin-core' ] ],
+			'wapm-admin-stock'      => [ 'file' => 'admin-stock.js', 'deps' => [ 'wapm-admin-core', 'wapm-admin-list' ] ],
+			'wapm-admin-torob'      => [ 'file' => 'admin-torob.js', 'deps' => [ 'wapm-admin-core', 'wapm-admin-list' ] ],
+			'wapm-admin-boot'       => [ 'file' => 'admin-boot.js', 'deps' => [ 'wapm-admin-automation', 'wapm-admin-list' ] ],
+		];
+	}
+
+	/**
 	 * نسخه‌ی فایل استاتیک برای شکستن کش مرورگر.
 	 *
 	 * چرا mtime در کنار شماره‌ی نسخه: اگر بیلد تازه با همان `WAPM_VERSION` روی
@@ -77,27 +97,23 @@ class WAPM_Admin {
 
 		// اسکریپت‌ها به ماژول تفکیک شده‌اند (assets/js/admin-*.js). ترتیب مهم است:
 		// core ابزارهای مشترک را روی window.WAPMUI می‌گذارد، هر تب از آن برمی‌دارد
-		// و boot آخرین فایل است. قبلاً یک فایل ۳۷۰۰ خطی بود که دو تابع هم‌نام در
-		// آن بی‌صدا جای هم را می‌گرفتند.
-		$scripts = [
-			'wapm-admin-core'       => [],
-			'wapm-admin-price'      => [ 'wapm-admin-core' ],
-			'wapm-admin-automation' => [ 'wapm-admin-core' ],
-			'wapm-admin-list'       => [ 'wapm-admin-core' ],
-			'wapm-admin-stock'      => [ 'wapm-admin-core', 'wapm-admin-list' ],
-			'wapm-admin-torob'      => [ 'wapm-admin-core', 'wapm-admin-list' ],
-			'wapm-admin-boot'       => [ 'wapm-admin-automation', 'wapm-admin-list' ],
-		];
-
+		// و boot آخرین فایل است.
+		//
+		// نام فایل عمداً صریح نوشته می‌شود و از handle ساخته نمی‌شود. نسخه‌ی قبلی
+		// با `substr( $handle, strlen( 'wapm-admin-' ) )` نام را می‌ساخت و به
+		// `core.js` می‌رسید، در حالی که فایل `admin-core.js` است: هر هفت اسکریپت
+		// ۴۰۴ می‌شدند و صفحه هیچ جاوااسکریپتی نداشت (تب‌ها، دکمه‌ی شمارش، select2
+		// و کشوها همه مرده بودند). تست `tests/run.php` حالا وجود هر فایل را بررسی
+		// می‌کند تا این کلاس از خطا دوباره بی‌صدا نماند.
 		$deps = [ 'jquery', 'selectWoo', 'wp-i18n' ];
-		foreach ( $scripts as $handle => $extra ) {
-			$deps      = array_merge( $deps, $extra );
-			$file_name = substr( $handle, strlen( 'wapm-admin-' ) ) . '.js';
+		foreach ( self::scripts() as $handle => $script ) {
+			$file      = 'assets/js/' . $script['file'];
+			$deps      = array_merge( $deps, $script['deps'] );
 			wp_enqueue_script(
 				$handle,
-				WAPM_URL . 'assets/js/' . $file_name,
+				WAPM_URL . $file,
 				array_values( array_unique( $deps ) ),
-				$this->asset_ver( 'assets/js/' . $file_name ),
+				$this->asset_ver( $file ),
 				true
 			);
 
