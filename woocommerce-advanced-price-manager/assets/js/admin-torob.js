@@ -13,7 +13,7 @@
 	var listState = UI.listState;
 	var loadProductList = UI.loadProductList;
 	var updateRowInDom = UI.updateRowInDom;
-	var __ = UI.__;
+	var __ = UI.__, sprintf = UI.sprintf;
 
 	/**
 	 * فراخوانی تنبل تابعی از ماژول دیگر.
@@ -1154,7 +1154,10 @@
 		var prks  = pickedRows($area).map(function (r) { return r.prk; });
 		if (!prks.length) { return; }
 
-		if (!window.confirm(fmt(prks.length) + ' ردیف از لیست تطبیق‌نیافته‌ها حذف شود؟ (داده‌ی محصولات متصل‌شده دست نمی‌خورد)')) {
+		if (!window.confirm(sprintf(
+			__('%s ردیف از لیست تطبیق‌نیافته‌ها حذف شود؟ (داده‌ی محصولات متصل‌شده دست نمی‌خورد)'),
+			fmt(prks.length)
+		))) {
 			return;
 		}
 

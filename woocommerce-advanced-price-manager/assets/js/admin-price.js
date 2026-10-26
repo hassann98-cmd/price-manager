@@ -8,7 +8,7 @@
 	var ajax = UI.ajax, esc = UI.esc, fmt = UI.fmt, wapmToast = UI.wapmToast;
 	var state = UI.state, runBatchLoop = UI.runBatchLoop;
 	var readFilters = UI.readFilters, readSettings = UI.readSettings;
-	var __ = UI.__;
+	var __ = UI.__, sprintf = UI.sprintf;
 
 	/**
 	 * فراخوانی تنبل تابعی از ماژول دیگر.
@@ -198,8 +198,10 @@
 
 				var conflicts = res.data.conflicts || [];
 				if (conflicts.length && !force) {
-					if (window.confirm(conflicts.length + ' مورد بعد از این عملیات تغییر کرده و بازگردانی نشد.\n' +
-						'بازگردانی اجباری انجام شود؟ (تغییرات جدیدترِ این موارد پاک می‌شوند)')) {
+					if (window.confirm(sprintf(
+						__('%d مورد بعد از این عملیات تغییر کرده و بازگردانی نشد.\nبازگردانی اجباری انجام شود؟ (تغییرات جدیدترِ این موارد پاک می‌شوند)'),
+						conflicts.length
+					))) {
 						doRollback(res.data.batch_id || batchId, true, null);
 						return;
 					}

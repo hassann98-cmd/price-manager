@@ -32,6 +32,25 @@ window.WAPMUI = window.WAPMUI || {};
 	}
 
 	/**
+	 * جای‌گذاری مقدار در رشته‌ی ترجمه‌پذیر.
+	 *
+	 * چرا: پیام‌هایی مثل «۳ ردیف حذف شود؟» با چسباندن عدد و متن ساخته می‌شدند و
+	 * در زبان‌هایی که ترتیب جمله فرق دارد قابل ترجمه نیستند. حالا قالب کامل
+	 * ترجمه می‌شود و مقدار داخلش می‌نشیند. اگر wp.i18n.sprintf نبود، نسخه‌ی
+	 * ساده‌ی %s/%d استفاده می‌شود.
+	 */
+	function __sprintf(text) {
+		var args = Array.prototype.slice.call(arguments, 1);
+		if (window.wp && window.wp.i18n && typeof window.wp.i18n.sprintf === 'function') {
+			return window.wp.i18n.sprintf.apply(null, [text].concat(args));
+		}
+		var i = 0;
+		return String(text).replace(/%[sd]/g, function () {
+			return i < args.length ? String(args[i++]) : '';
+		});
+	}
+
+	/**
 	 * فراخوانی تنبل تابعی از ماژول دیگر.
 	 *
 	 * چرا: فایل‌ها به ترتیب لود می‌شوند و بعضی ماژول‌ها به تابعی وابسته‌اند که در
@@ -450,6 +469,7 @@ window.WAPMUI = window.WAPMUI || {};
 	UI.runLabel       = runLabel;
 	UI.esc            = esc;
 	UI.__            = __;
+	UI.sprintf        = __sprintf;
 	UI.wapmToast      = wapmToast;
 	UI.readFilters    = readFilters;
 	UI.readSettings   = readSettings;
