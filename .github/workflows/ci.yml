@@ -48,6 +48,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: npm
+
+      - name: نصب وابستگی‌های توسعه
+        run: npm ci --no-audit --no-fund
+
       - name: بررسی سینتکس
         run: |
           set -euo pipefail
@@ -57,7 +62,10 @@ jobs:
           done
 
       - name: اعلان تکراری در اسکریپت‌ها
-        run: node tools/lint-js.mjs
+        run: npm run lint:js
+
+      - name: تست دودی (jsdom)
+        run: npm run smoke:js
 
   packaging:
     name: ترجمه، CSS و بسته‌ی نصب

@@ -6,9 +6,12 @@
   "scripts": {
     "build:css": "tailwindcss -c tools/tailwind/tailwind.config.js -i tools/tailwind/input.css -o woocommerce-advanced-price-manager/assets/css/tailwind.css --minify",
     "check:css": "tailwindcss -c tools/tailwind/tailwind.config.js -i tools/tailwind/input.css -o /tmp/wapm-tailwind.css --minify && diff -q /tmp/wapm-tailwind.css woocommerce-advanced-price-manager/assets/css/tailwind.css",
-    "lint:js": "node tools/lint-js.mjs"
+    "lint:js": "node tools/lint-js.mjs",
+    "smoke:js": "node tools/smoke-js.mjs"
   },
   "devDependencies": {
+    "jquery": "^3.7.1",
+    "jsdom": "^30.1.3",
     "tailwindcss": "3.4.16"
   }
 }

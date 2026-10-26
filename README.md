@@ -73,11 +73,13 @@ woocommerce-advanced-price-manager/
 │   ├── class-torob.php          # هسته‌ی مقایسه با ترب
 │   ├── class-torob-api.php      # کلاینت api.torob.com
 │   └── …                        # logger, rules, scheduler, csv, product-handler
-├── assets/{css,js}/             # استایل و اسکریپت پیشخوان
+├── assets/
+│   ├── css/{tailwind,admin}.css # تیلویند بیلدشده + استایل اختصاصی
+│   └── js/                      # admin-core → price → automation → list → stock → torob → boot
 ├── languages/wapm.pot           # قالب ترجمه
 └── uninstall.php
-tools/                           # ساخت POT و بسته‌ی zip
-tests/run.php                    # تست‌های واحد (بدون نیاز به وردپرس)
+tools/                           # POT، zip، Tailwind، لینت JS و تست دودی
+tests/run.php                    # تست‌های واحد PHP (بدون نیاز به وردپرس)
 docs/                            # مستندات فارسی
 ```
 
@@ -91,7 +93,7 @@ php tests/run.php
 
 # لینت
 find woocommerce-advanced-price-manager -name '*.php' -exec php -l {} \;
-node --check woocommerce-advanced-price-manager/assets/js/admin.js
+for f in woocommerce-advanced-price-manager/assets/js/*.js; do node --check "$f"; done
 
 # بازتولید فایل ترجمه و بسته‌ی نصب
 python3 tools/make-pot.py
@@ -101,11 +103,20 @@ python3 tools/build-zip.py
 npm ci
 npm run build:css
 
+# بررسی JS: اعلان تکراری + تست دودی در jsdom (رندر لیست، انتخاب گروهی، کشوها)
+npm run lint:js
+npm run smoke:js
+
 # بررسی تازه بودن (همان چیزی که CI اجرا می‌کند)
 python3 tools/make-pot.py --check
 npm run check:css
 python3 tools/build-zip.py --check
 ```
+
+**درباره‌ی ساختار JS:** کد پیشخوان به ماژول‌های کوچک تفکیک شده و از طریق
+`window.WAPMUI` با هم حرف می‌زنند (ترتیب لود در `enqueue` تضمین شده است).
+`npm run smoke:js` با jsdom یک صفحه‌ی وردپرس را شبیه‌سازی می‌کند و مسیرهای
+حساس (رندر لیست، انتخاب گروهی، کشوها، تب‌ها) را می‌آزماید.
 
 **درباره‌ی Tailwind:** استایل‌ها یک‌بار و در این مخزن ساخته می‌شوند
 (`assets/css/tailwind.css`) و افزونه همان فایل را لود می‌کند؛ Play CDN در

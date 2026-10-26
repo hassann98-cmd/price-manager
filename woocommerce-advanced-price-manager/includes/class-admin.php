@@ -58,14 +58,39 @@ class WAPM_Admin {
 		wp_enqueue_style( 'wapm-tailwind', WAPM_URL . 'assets/css/tailwind.css', [], WAPM_VERSION );
 		wp_enqueue_style( 'wapm-admin', WAPM_URL . 'assets/css/admin.css', [ 'wapm-tailwind' ], WAPM_VERSION );
 		wp_enqueue_style( 'woocommerce_admin_styles' );
-		wp_enqueue_script( 'wapm-admin', WAPM_URL . 'assets/js/admin.js', [ 'jquery', 'selectWoo' ], WAPM_VERSION, true );
 		wp_enqueue_style( 'select2' );
+
+		// اسکریپت‌ها به ماژول تفکیک شده‌اند (assets/js/admin-*.js). ترتیب مهم است:
+		// core ابزارهای مشترک را روی window.WAPMUI می‌گذارد، هر تب از آن برمی‌دارد
+		// و boot آخرین فایل است. قبلاً یک فایل ۳۷۰۰ خطی بود که دو تابع هم‌نام در
+		// آن بی‌صدا جای هم را می‌گرفتند.
+		$scripts = [
+			'wapm-admin-core'       => [],
+			'wapm-admin-price'      => [ 'wapm-admin-core' ],
+			'wapm-admin-automation' => [ 'wapm-admin-core' ],
+			'wapm-admin-list'       => [ 'wapm-admin-core' ],
+			'wapm-admin-stock'      => [ 'wapm-admin-core', 'wapm-admin-list' ],
+			'wapm-admin-torob'      => [ 'wapm-admin-core', 'wapm-admin-list' ],
+			'wapm-admin-boot'       => [ 'wapm-admin-automation', 'wapm-admin-list' ],
+		];
+
+		$deps = [ 'jquery', 'selectWoo' ];
+		foreach ( $scripts as $handle => $extra ) {
+			$deps = array_merge( $deps, $extra );
+			wp_enqueue_script(
+				$handle,
+				WAPM_URL . 'assets/js/' . substr( $handle, strlen( 'wapm-admin-' ) ) . '.js',
+				array_values( array_unique( $deps ) ),
+				WAPM_VERSION,
+				true
+			);
+		}
 
 		$brand_taxonomy = class_exists( 'WAPM_List' ) ? WAPM_List::get_brand_taxonomy() : '';
 		$category_terms = get_terms( [ 'taxonomy' => 'product_cat', 'hide_empty' => false ] );
 		$brand_terms    = $brand_taxonomy ? get_terms( [ 'taxonomy' => $brand_taxonomy, 'hide_empty' => false ] ) : [];
 
-		wp_localize_script( 'wapm-admin', 'WAPM', [
+		wp_localize_script( 'wapm-admin-core', 'WAPM', [
 			'ajax_url'       => admin_url( 'admin-ajax.php' ),
 			'export_url'     => admin_url( 'admin-post.php?action=wapm_export_csv' ),
 			'stock_export_url' => admin_url( 'admin-post.php?action=wapm_export_stock_csv' ),
