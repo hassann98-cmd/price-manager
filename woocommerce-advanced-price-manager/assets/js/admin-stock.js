@@ -10,7 +10,7 @@
 	var readFilters = UI.readFilters;
 	var listState = UI.listState;
 	var loadProductList = UI.loadProductList;
-	var __ = UI.__;
+	var __ = UI.__, sprintf = UI.sprintf;
 
 	/**
 	 * فراخوانی تنبل تابعی از ماژول دیگر.
@@ -140,7 +140,7 @@
 
 	$('#wapm-stock-apply-btn').on('click', function () {
 		if (!stockState.previewed) { return; }
-		if (!window.confirm(__('موجودی ') + stockState.previewed + ' محصول تغییر می‌کند. ادامه می‌دهید؟')) { return; }
+		if (!window.confirm(sprintf(__('موجودی %s محصول تغییر می‌کند. ادامه می‌دهید؟'), stockState.previewed))) { return; }
 
 		var payload = stockTargetsPayload();
 		var ids = payload.ids && payload.ids.length
@@ -304,7 +304,7 @@
 
 	$('#wapm-sd-apply').on('click', function () {
 		if (sdState.running || !sdState.will) { return; }
-		if (!window.confirm(__('موجودی ') + sdState.will + ' مورد تغییر می‌کند. ادامه می‌دهید؟')) { return; }
+		if (!window.confirm(sprintf(__('موجودی %s مورد تغییر می‌کند. ادامه می‌دهید؟'), sdState.will))) { return; }
 
 		var op = sdOperation();
 		var ids = sdState.ids.slice();

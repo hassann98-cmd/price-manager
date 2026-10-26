@@ -10,7 +10,7 @@
 	var ajax = UI.ajax, esc = UI.esc, fmt = UI.fmt, wapmToast = UI.wapmToast;
 	var state = UI.state;
 	var readFilters = UI.readFilters, readSettings = UI.readSettings;
-	var __ = UI.__;
+	var __ = UI.__, sprintf = UI.sprintf;
 
 	/**
 	 * فراخوانی تنبل تابعی از ماژول دیگر.
@@ -602,7 +602,7 @@
 		if (!id) { return; }
 
 		var row = savedFilters.filter(function (r) { return r.id === id; })[0];
-		if (!window.confirm(__('فیلتر «') + ((row && row.name) || id) + '» حذف شود؟')) { return; }
+		if (!window.confirm(sprintf(__('فیلتر «%s» حذف شود؟'), (row && row.name) || id))) { return; }
 
 		var $btn = $(this).prop('disabled', true);
 
@@ -1250,7 +1250,7 @@
 				$('#wapm-bp-apply-btn').prop('disabled', bpState.total === 0);
 
 				if (bpState.warn) {
-					wapmToast(__('در پیش‌نمایش ') + fmt(bpState.warn) + ' قیمت افت بیش از ۹۰٪ دارد. قبل از اعمال نگاه کنید.', 'warning');
+					wapmToast(sprintf(__('در پیش‌نمایش %s قیمت افت بیش از ۹۰٪ دارد. قبل از اعمال نگاه کنید.'), fmt(bpState.warn)), 'warning');
 				}
 			})
 			.fail(function () {
@@ -1263,7 +1263,7 @@
 
 	$('#wapm-bp-apply-btn').on('click', function () {
 		if (!bpState.total) { return; }
-		if (bpState.warn && !window.confirm(__('در پیش‌نمایش ') + bpState.warn + ' قیمت افت شدید دارد. ادامه می‌دهید؟')) { return; }
+		if (bpState.warn && !window.confirm(sprintf(__('در پیش‌نمایش %s قیمت افت شدید دارد. ادامه می‌دهید؟'), bpState.warn))) { return; }
 
 		var ids = bpState.ids.slice();
 		if (!ids.length) { return; }
