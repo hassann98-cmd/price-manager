@@ -231,6 +231,34 @@ class WAPM_Torob {
 		);
 	}
 
+	/* ---------- زمان ---------- */
+
+	/**
+	 * زمان‌های ذخیره‌شده با `current_time( 'mysql' )` ساعتِ محلی سایت‌اند، نه UTC.
+	 * اگر مستقیم با `time()` مقایسه شوند، «سن داده» به‌اندازه‌ی اختلاف منطقه‌ی
+	 * زمانی اشتباه می‌شود (برای ایران ۳:۳۰ ساعت) و فیلتر SQL با ستون جدول
+	 * نتیجه‌ی متفاوت می‌دهد. این دو تابع همان تبدیل را در دو جهت انجام می‌دهند.
+	 */
+	public static function local_to_timestamp( string $mysql_local ): int {
+		$local = $mysql_local ? (int) strtotime( $mysql_local ) : 0;
+		if ( ! $local ) {
+			return 0;
+		}
+		$offset = function_exists( 'get_option' ) ? (float) get_option( 'gmt_offset' ) : 0;
+
+		return $local - (int) round( $offset * HOUR_IN_SECONDS );
+	}
+
+	/** همان قالب محلی، از یک timestamp واقعی (UTC). */
+	private static function local_datetime( int $timestamp ): string {
+		if ( function_exists( 'wp_date' ) ) {
+			return (string) wp_date( 'Y-m-d H:i:s', $timestamp );
+		}
+		$offset = function_exists( 'get_option' ) ? (float) get_option( 'gmt_offset' ) : 0;
+
+		return gmdate( 'Y-m-d H:i:s', $timestamp + (int) round( $offset * HOUR_IN_SECONDS ) );
+	}
+
 	/* ---------- نرمال‌سازی و تطبیق ---------- */
 
 	/**
@@ -594,14 +622,29 @@ class WAPM_Torob {
 		}
 
 		if ( 'stale' === $status || 'fresh' === $status ) {
-			$days   = (int) self::settings()['fresh_days'];
-			$cutoff = gmdate( 'Y-m-d H:i:s', time() - ( $days * DAY_IN_SECONDS ) );
+			$days = (int) self::settings()['fresh_days'];
+			// مرز در همان قالبِ محلیِ META_CHECKED ساخته می‌شود.
+			$cutoff = self::local_datetime( time() - ( $days * DAY_IN_SECONDS ) );
 
+			if ( 'fresh' === $status ) {
+				return [
+					'relation' => 'AND',
+					[ 'key' => self::META_PRK, 'compare' => 'EXISTS' ],
+					[ 'key' => self::META_CHECKED, 'value' => $cutoff, 'compare' => '>=', 'type' => 'DATETIME' ],
+				];
+			}
+
+			// «کهنه» یعنی وصل است ولی یا هرگز بررسی نشده یا بررسی‌اش قدیمی است.
+			// حالت اول با مقایسه‌ی ساده در SQL پیدا نمی‌شد (متا وجود ندارد)، پس
+			// فیلتر SQL لیست، ردیف‌هایی را که PHP «کهنه» می‌دانست جا می‌انداخت.
 			return [
-				'key'     => self::META_CHECKED,
-				'value'   => $cutoff,
-				'compare' => ( 'stale' === $status ) ? '<' : '>=',
-				'type'    => 'DATETIME',
+				'relation' => 'AND',
+				[ 'key' => self::META_PRK, 'compare' => 'EXISTS' ],
+				[
+					'relation' => 'OR',
+					[ 'key' => self::META_CHECKED, 'compare' => 'NOT EXISTS' ],
+					[ 'key' => self::META_CHECKED, 'value' => $cutoff, 'compare' => '<', 'type' => 'DATETIME' ],
+				],
 			];
 		}
 
@@ -633,7 +676,7 @@ class WAPM_Torob {
 					return false;
 				}
 				$checked = (string) get_post_meta( $product_id, self::META_CHECKED, true );
-				$ts      = $checked ? (int) strtotime( $checked ) : 0;
+				$ts      = self::local_to_timestamp( $checked );
 				if ( ! $ts ) {
 					return 'stale' === $status;
 				}
@@ -686,7 +729,7 @@ class WAPM_Torob {
 			return null === $competitor ? 'none' : 'stale';
 		}
 
-		$checked = strtotime( (string) $d['checked_at'] );
+		$checked = self::local_to_timestamp( (string) $d['checked_at'] );
 		if ( ! $checked || ( time() - $checked ) > ( (int) $settings['fresh_days'] * DAY_IN_SECONDS ) ) {
 			return 'stale';
 		}
@@ -1248,7 +1291,8 @@ class WAPM_Torob {
 		);
 
 		$diff      = self::diff_pct( $our_price, $competitor );
-		$age_days  = $checked ? (int) floor( ( time() - (int) strtotime( $checked ) ) / DAY_IN_SECONDS ) : null;
+		$checked_ts = self::local_to_timestamp( $checked );
+		$age_days   = $checked_ts ? (int) floor( ( time() - $checked_ts ) / DAY_IN_SECONDS ) : null;
 
 		// ناسازگاری فید: قیمتی که ترب از ما نشان می‌دهد با قیمت ووکامرس یکی نیست.
 		$mismatch_pct = null;
@@ -1260,7 +1304,8 @@ class WAPM_Torob {
 
 		// کاتالوگ (قیمت ما از دید ترب) جدا از داده‌ی رقیب تازه‌سازی می‌شود.
 		$our_checked  = (string) get_post_meta( $product_id, self::META_OUR_CHECKED, true );
-		$our_age_days = $our_checked ? (int) floor( ( time() - (int) strtotime( $our_checked ) ) / DAY_IN_SECONDS ) : null;
+		$our_checked_ts = self::local_to_timestamp( $our_checked );
+		$our_age_days   = $our_checked_ts ? (int) floor( ( time() - $our_checked_ts ) / DAY_IN_SECONDS ) : null;
 
 		// محافظ واحد: اگر قیمت ترب و ووکامرس نسبت ~۱۰ داشته باشند، یا واحد فرق
 		// دارد یا داده اشتباه است. فقط هشدار نمایشی — هیچ تغییر خودکاری نمی‌شود.
@@ -1318,8 +1363,8 @@ class WAPM_Torob {
 			return null;
 		}
 
-		$checked   = (string) get_post_meta( $product_id, self::META_CHECKED, true );
-		$checked_ts = $checked ? (int) strtotime( $checked ) : 0;
+		$checked    = (string) get_post_meta( $product_id, self::META_CHECKED, true );
+		$checked_ts = self::local_to_timestamp( $checked );
 		if ( ! $checked_ts ) {
 			return null;
 		}

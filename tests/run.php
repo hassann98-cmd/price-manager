@@ -1039,6 +1039,33 @@ test( 'ترب/seller_payload: داده‌ی معتبر با شکل یکدست ب
 } );
 
 /* -------------------------------------------------------------------------
+ * ۱۲) ترب — منطقه‌ی زمانی سن داده
+ * ---------------------------------------------------------------------- */
+
+test( 'ترب/time: زمان محلی ذخیره‌شده درست به timestamp تبدیل می‌شود', function () {
+	$GLOBALS['wapm_options']['gmt_offset'] = 3.5;
+	$real  = 1700000000;
+	$local = gmdate( 'Y-m-d H:i:s', $real + 12600 ); // ساعت محلی ایران
+	eq( $real, WAPM_Torob::local_to_timestamp( $local ), 'اختلاف ۳:۳۰ برگشت داده شد' );
+
+	$GLOBALS['wapm_options']['gmt_offset'] = 0;
+	eq( 0, WAPM_Torob::local_to_timestamp( '' ), 'رشته‌ی خالی' );
+	eq( 0, WAPM_Torob::local_to_timestamp( 'نامعتبر' ), 'رشته‌ی نامعتبر' );
+} );
+
+test( 'ترب/time: داده‌ی ۲۵ ساعت پیش با اختلاف منطقه‌ی زمانی هم کهنه است', function () {
+	$GLOBALS['wapm_options']['gmt_offset'] = 3.5;
+	$local = gmdate( 'Y-m-d H:i:s', time() - DAY_IN_SECONDS - HOUR_IN_SECONDS + 12600 );
+
+	// با fresh_days=1، این داده ۲۵ ساعت سن دارد → کهنه. (بدون تصحیح منطقه‌ی
+	// زمانی ۲۰.۵ ساعت حساب می‌شد و «تازه» می‌ماند.)
+	$s = [ 'fresh_days' => 1, 'tolerance_pct' => 1.0, 'shop_name' => '' ];
+	eq( 'stale', WAPM_Torob::compute_status( torob_fresh( [ 'checked_at' => $local ] ), 1200.0, $s ), 'مرز کهنگی درست حساب شد' );
+
+	$GLOBALS['wapm_options']['gmt_offset'] = 0;
+} );
+
+/* -------------------------------------------------------------------------
  * نتیجه
  * ---------------------------------------------------------------------- */
 
