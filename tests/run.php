@@ -871,6 +871,34 @@ test( 'ترب/cheapest: داده‌ی قدیمی فید (بدون پرچم) مث
 } );
 
 
+
+test( 'مطلق/calculate: هر محصول دقیقاً به قیمت هدف می‌رسد و جهت بی‌اثر است', function () {
+	stub_reset();
+	$s = settings( [ 'mode' => 'absolute', 'amount' => 500000, 'currency_unit' => 'toman', 'direction' => 'decrease' ] );
+	eq( 'absolute', $s['mode'], 'حالت پذیرفته می‌شود' );
+	eq( 500000.0, WAPM_Price_Engine::calculate( '1000000', $s ), 'قیمت مطلق' );
+	eq( 500000.0, WAPM_Price_Engine::calculate( '200000', $s ), 'حتی وقتی قیمت فعلی کمتر است' );
+} );
+
+test( 'مطلق/calculate: تبدیل ریال، گرد کردن و حداقل قیمت', function () {
+	stub_reset();
+	$rial = settings( [ 'mode' => 'absolute', 'amount' => 5000000, 'currency_unit' => 'rial' ] );
+	eq( 500000.0, WAPM_Price_Engine::calculate( '900000', $rial ), '۵٬۰۰۰٬۰۰۰ ریال = ۵۰۰٬۰۰۰ تومان' );
+
+	$round = settings( [ 'mode' => 'absolute', 'amount' => 123456, 'round_mode' => 'nearest', 'round_base' => 1000 ] );
+	eq( 123000.0, WAPM_Price_Engine::calculate( '1000', $round ), 'گرد کردن نزدیک‌ترین مضرب' );
+
+	$min = settings( [ 'mode' => 'absolute', 'amount' => 100000, 'min_price' => 150000 ] );
+	eq( 150000.0, WAPM_Price_Engine::calculate( '900000', $min ), 'حداقل قیمت اعمال می‌شود' );
+} );
+
+test( 'مطلق/calculate: قیمت صفر ورودی هم هدف را می‌گیرد (برخلاف حالت درصدی)', function () {
+	stub_reset();
+	$s = settings( [ 'mode' => 'absolute', 'amount' => 250000 ] );
+	eq( 250000.0, WAPM_Price_Engine::calculate( '0', $s ), 'صفر هم به هدف می‌رسد' );
+	eq( null, WAPM_Price_Engine::calculate( '', $s ), 'قیمت خالی رد می‌شود' );
+} );
+
 /* -------------------------------------------------------------------------
  * موجودی — WAPM_Stock (توابع خالص)
  * ---------------------------------------------------------------------- */

@@ -13,7 +13,9 @@ class WAPM_Price_Engine {
 	 * نرمال‌سازی تنظیمات ورودی از فرم/قانون.
 	 */
 	public static function sanitize_settings( array $raw ): array {
-		$mode      = in_array( $raw['mode'] ?? '', [ 'percent', 'fixed' ], true ) ? $raw['mode'] : 'percent';
+		// absolute = «همه به یک قیمت ثابت» (برای ویرایش گروهی از لیست). در این
+		// حالت «جهت» معنی ندارد و مقدار، خودِ قیمت است نه درصد/اختلاف.
+		$mode      = in_array( $raw['mode'] ?? '', [ 'percent', 'fixed', 'absolute' ], true ) ? $raw['mode'] : 'percent';
 		$direction = in_array( $raw['direction'] ?? '', [ 'increase', 'decrease' ], true ) ? $raw['direction'] : 'increase';
 		$target    = in_array( $raw['price_target'] ?? '', [ 'regular', 'sale', 'both' ], true ) ? $raw['price_target'] : 'regular';
 		$scope     = in_array( $raw['variable_scope'] ?? '', [ 'parent', 'variations', 'both' ], true ) ? $raw['variable_scope'] : 'variations';
@@ -94,7 +96,16 @@ class WAPM_Price_Engine {
 			return null;
 		}
 
-		$old  = (float) $old_price;
+		$old = (float) $old_price;
+
+		// «قیمت مطلق»: مقدار، خودِ قیمت هدف است (به واحد پول انتخاب‌شده)، نه
+		// درصد یا مبلغ اختلاف. جهت هم بی‌اثر است.
+		if ( 'absolute' === $s['mode'] ) {
+			$new = self::round_price( $s['amount'] * self::unit_factor( $s['currency_unit'] ), $s );
+			$new = self::clamp_price( $new, $s );
+			return max( 0, round( $new, wc_get_price_decimals() ) );
+		}
+
 		$sign = ( 'decrease' === $s['direction'] ) ? -1 : 1;
 
 		if ( 'percent' === $s['mode'] ) {
@@ -362,6 +373,32 @@ class WAPM_Price_Engine {
 			return $changes;
 		}
 
+		// حالت «قیمت مطلق» + مدیریت Sale مستقل: «هر دو» اینجا معنی ندارد، چون
+		// Sale باید از Regular کمتر بماند و هر دو به یک عدد برسند یعنی جفت قیمت
+		// نامعتبر. پس فقط Regular تنظیم می‌شود و اگر Sale فعلی از Regular جدید
+		// کمتر نباشد، Sale حذف می‌شود (در پیش‌نمایش هم دیده می‌شود).
+		if ( 'absolute' === $s['mode'] ) {
+			if ( 'sale' === $s['price_target'] ) {
+				$new_sale = $has_sale ? self::calculate( $sale, $s ) : null;
+				if ( null !== $new_sale && (float) $regular > 0 && $new_sale < (float) $regular && (float) $sale !== $new_sale ) {
+					$changes[] = [ 'price_type' => 'sale', 'old' => (float) $sale, 'new' => $new_sale ];
+				}
+				return $changes;
+			}
+
+			$new_regular = ( '' !== $regular && null !== $regular ) ? self::calculate( $regular, $s ) : null;
+
+			if ( null !== $new_regular && abs( (float) $regular - $new_regular ) > 0.000001 ) {
+				$changes[] = [ 'price_type' => 'regular', 'old' => (float) $regular, 'new' => $new_regular ];
+			}
+
+			if ( $has_sale && null !== $new_regular && (float) $sale >= $new_regular ) {
+				$changes[] = [ 'price_type' => 'sale', 'old' => (float) $sale, 'new' => null ];
+			}
+
+			return $changes;
+		}
+
 		// حالت پیش‌فرض: مستقل، طبق price_target.
 		$targets = ( 'both' === $s['price_target'] ) ? [ 'regular', 'sale' ] : [ $s['price_target'] ];
 		foreach ( $targets as $t ) {
@@ -549,6 +586,7 @@ class WAPM_Price_Engine {
 
 		$changed = 0;
 		$dirty   = false;
+		$applied = []; // برای لاگ بعد از save موفق
 
 		// اول Regular اعمال می‌شود تا مقایسه Sale با Regular جدید انجام شود.
 		$changes = self::compute_changes( $product, $s, $ctx );
@@ -573,24 +611,33 @@ class WAPM_Price_Engine {
 				$product->set_regular_price( wc_format_decimal( $new ) );
 			}
 
-			$dirty = true;
+			$dirty    = true;
 			$changed++;
-
-			WAPM_Logger::log( [
-				'batch_id'     => $batch_id,
-				'product_id'   => $product->get_id(),
-				'parent_id'    => $product->get_parent_id(),
-				'product_name' => $product->get_name(),
-				'sku'          => $product->get_sku(),
-				'price_type'   => $t,
-				'old_price'    => (string) $old,
-				'new_price'    => null === $new ? '' : (string) $new,
-				'operation'    => $operation,
-			] );
+			$applied[] = [ 'price_type' => $t, 'old' => $old, 'new' => $new ];
 		}
 
 		if ( $dirty ) {
 			$product->save();
+
+			/*
+			 * لاگ فقط بعد از save موفق نوشته می‌شود. قبلاً قبل از save نوشته
+			 * می‌شد و اگر ذخیره شکست می‌خورد، تاریخچه تغییری را نشان می‌داد که
+			 * هرگز ذخیره نشده بود؛ بدتر اینکه همان ردیف باعث می‌شد Retry آن
+			 * محصول را «قبلاً انجام‌شده» بداند و برای همیشه رد کند (P2-1).
+			 */
+			foreach ( $applied as $entry ) {
+				WAPM_Logger::log( [
+					'batch_id'     => $batch_id,
+					'product_id'   => $product->get_id(),
+					'parent_id'    => $product->get_parent_id(),
+					'product_name' => $product->get_name(),
+					'sku'          => $product->get_sku(),
+					'price_type'   => $entry['price_type'],
+					'old_price'    => (string) $entry['old'],
+					'new_price'    => null === $entry['new'] ? '' : (string) $entry['new'],
+					'operation'    => $operation,
+				] );
+			}
 		}
 
 		return $changed;
