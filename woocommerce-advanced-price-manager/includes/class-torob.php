@@ -57,6 +57,7 @@ class WAPM_Torob {
 	const META_URL          = '_wapm_torob_url';
 	const META_CHECKED      = '_wapm_torob_checked_at';    // آخرین داده‌ی رقیب
 	const META_OUR_CHECKED  = '_wapm_torob_our_checked';    // آخرین همگام‌سازی کاتالوگ (قیمت ما از دید ترب)
+	const META_CARD_PRICE   = '_wapm_torob_card_price';    // قیمت کارت در لیست فروشگاه (تخمینی)
 	const META_SOURCE       = '_wapm_torob_source';        // bookmarklet | feed | api | manual
 	const META_LINK         = '_wapm_torob_link';          // auto | manual
 	const META_STATUS       = '_wapm_torob_status';        // برای فیلتر/مرتب‌سازی SQL
@@ -894,7 +895,15 @@ class WAPM_Torob {
 			// ---- حالت کاتالوگ: فقط «قیمت ما از دید ترب» ----
 			if ( $catalog_only ) {
 				if ( isset( $item['our_price'] ) && is_numeric( $item['our_price'] ) && (float) $item['our_price'] > 0 ) {
-					update_post_meta( $product_id, self::META_OUR_PRICE, (string) (float) $item['our_price'] );
+					// قیمت کارت «تخمینی» است (برداشت ما از معنی فیلد price در لیست
+					// فروشگاه). قیمت قطعی از ردیف فروشنده‌ی خودمان می‌آید؛ پس آن را
+					// با این مقدار بازنویسی نمی‌کنیم.
+					update_post_meta( $product_id, self::META_CARD_PRICE, (string) (float) $item['our_price'] );
+
+					$known = (string) get_post_meta( $product_id, self::META_OUR_PRICE, true );
+					if ( '' === $known ) {
+						update_post_meta( $product_id, self::META_OUR_PRICE, (string) (float) $item['our_price'] );
+					}
 				}
 				update_post_meta( $product_id, self::META_OUR_CHECKED, $checked );
 				continue;
@@ -1174,6 +1183,17 @@ class WAPM_Torob {
 		$competitor = ( '' === $competitor || null === $competitor ) ? null : (float) $competitor;
 		$our_torob  = get_post_meta( $product_id, self::META_OUR_PRICE, true );
 		$our_torob  = ( '' === $our_torob || null === $our_torob ) ? null : (float) $our_torob;
+
+		// منبع «قیمت ما از دید ترب»: ردیف فروشنده‌ی خودمان (دقیق) یا کارت لیست
+		// فروشگاه (تخمینی). تفکیکشان برای صداقت نمایش لازم است.
+		$card_price = get_post_meta( $product_id, self::META_CARD_PRICE, true );
+		$card_price = ( '' === $card_price || null === $card_price ) ? null : (float) $card_price;
+		$our_source = 'none';
+		if ( null !== $our_torob ) {
+			$our_source = ( null !== $card_price && abs( $card_price - $our_torob ) < 0.01 ) ? 'both' : 'seller';
+		} elseif ( null !== $card_price ) {
+			$our_source = 'card';
+		}
 		$checked    = (string) get_post_meta( $product_id, self::META_CHECKED, true );
 
 		if ( null === $our_price ) {
@@ -1223,6 +1243,8 @@ class WAPM_Torob {
 			'name'           => (string) get_post_meta( $product_id, self::META_NAME, true ),
 			'competitor_price' => $competitor,
 			'our_price_torob'  => $our_torob,
+			'card_price'       => $card_price,
+			'our_source'       => $our_source,
 			'our_price_wc'     => $our_price,
 			'sellers'        => (int) get_post_meta( $product_id, self::META_SELLERS, true ),
 			'sellers_list'   => is_array( $sellers_list ) ? $sellers_list : [],

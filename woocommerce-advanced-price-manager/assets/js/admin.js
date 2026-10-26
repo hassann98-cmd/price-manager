@@ -912,10 +912,15 @@
 			html += '<div style="font-size:9px;color:#94a3b8">قیمت ترب: ' + torobAgeLabel(t.age_days) + '</div>';
 		}
 
+		// «تخمینی» یعنی قیمت از کارت لیست فروشگاه آمده، نه از ردیف فروشنده‌ی خودمان.
+		var est = (t.our_source === 'card')
+			? ' <span title="این قیمت از لیست محصولات فروشگاه در ترب برداشته شده است؛ قیمت قطعی از ردیف فروشنده‌ی خودتان می‌آید (دکمه‌ی بررسی الان)" style="font-size:9px;color:#94a3b8">(تخمینی)</span>'
+			: '';
+
 		// ناسازگاری فید: قیمتی که ترب از ما نشان می‌دهد با قیمت سایت یکی نیست.
 		if (t.mismatch_pct !== null && t.mismatch_pct !== undefined && Math.abs(Number(t.mismatch_pct)) > Number(t.tolerance_pct || 1)) {
 			html += '<div style="font-size:9px;color:#b45309;font-weight:800" title="قیمتی که ترب از فروشگاه شما نشان می‌دهد با قیمت ووکامرس نمی‌خواند — احتمالاً فید/کش ترب به‌روز نیست">⚠ فید ترب: ' +
-				fmt(t.our_price_torob) + '</div>';
+				fmt(t.our_price_torob) + est + '</div>';
 		}
 
 		// محافظ واحد: نسبت ~۱۰ بین قیمت ترب و ووکامرس یعنی تومان/ریال قاطی شده
