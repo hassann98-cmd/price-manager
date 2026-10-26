@@ -1532,6 +1532,7 @@
 
 /* فیلترهای ذخیره‌شده — یک گروه فشرده در نوار ابزار جدول */
 .wapm-saved-filters {
+	position: relative;
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
@@ -1565,5 +1566,45 @@
 	.wapm-saved-filters select {
 		flex: 1 1 160px;
 		max-width: none;
+	}
+}
+
+/* نام‌گذاری فیلتر — پاپ‌اور داخل همان گروه (نه window.prompt) */
+.wapm-saved-filters__pop {
+	position: absolute;
+	top: calc(100% + 8px);
+	inset-inline-start: 0;
+	z-index: 40;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 8px;
+	background: #fff;
+	border: 1px solid var(--wapm-line);
+	border-radius: var(--wapm-radius);
+	box-shadow: var(--wapm-shadow-md);
+}
+
+.wapm-saved-filters__pop[hidden] {
+	display: none;
+}
+
+.wapm-saved-filters__pop input[type="text"] {
+	width: 220px;
+	min-height: 32px;
+	margin: 0;
+	font-size: 12.5px;
+	border-radius: var(--wapm-radius-sm);
+}
+
+@media (max-width: 782px) {
+	.wapm-saved-filters__pop {
+		inset-inline-start: 0;
+		inset-inline-end: 0;
+		flex-wrap: wrap;
+	}
+
+	.wapm-saved-filters__pop input[type="text"] {
+		width: 100%;
 	}
 }

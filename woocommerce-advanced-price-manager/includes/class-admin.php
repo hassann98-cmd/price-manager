@@ -257,6 +257,13 @@ class WAPM_Admin {
 							</select>
 							<button type="button" id="wapm-list-save-filter" class="h-11 px-4 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600" title="<?php esc_attr_e( 'ذخیره‌ی فیلتر فعلی', 'wapm' ); ?>"><?php esc_html_e( 'ذخیره', 'wapm' ); ?></button>
 							<button type="button" id="wapm-list-delete-filter" class="h-11 px-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-400" title="<?php esc_attr_e( 'حذف فیلتر انتخاب‌شده', 'wapm' ); ?>" disabled>×</button>
+
+							<div id="wapm-saved-name-pop" class="wapm-saved-filters__pop" hidden>
+								<label class="screen-reader-text" for="wapm-saved-name"><?php esc_html_e( 'نام فیلتر', 'wapm' ); ?></label>
+								<input type="text" id="wapm-saved-name" maxlength="60" placeholder="<?php esc_attr_e( 'نام فیلتر (خالی = خودکار)', 'wapm' ); ?>">
+								<button type="button" id="wapm-saved-name-ok" class="button button-primary"><?php esc_html_e( 'ذخیره', 'wapm' ); ?></button>
+								<button type="button" id="wapm-saved-name-cancel" class="button"><?php esc_html_e( 'لغو', 'wapm' ); ?></button>
+							</div>
 						</div>
 
 						<button type="button" id="wapm-list-smart-toggle" class="h-11 px-5 bg-white border border-slate-200 rounded-xl flex items-center gap-2 text-sm font-bold text-slate-600">

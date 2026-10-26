@@ -1293,10 +1293,32 @@
 		applySavedFilter(row.filters);
 	});
 
-	$('#wapm-list-save-filter').on('click', function () {
+	/* نام‌گذاری داخل خود صفحه است، نه window.prompt: دیالوگ مرورگر با ظاهر پنل
+	   نمی‌خواند و در برخی مرورگرها بلاک می‌شود. */
+	function openSaveNamePop() {
+		$('#wapm-saved-name-pop').prop('hidden', false);
+		$('#wapm-saved-name').val('').trigger('focus');
+	}
+
+	function closeSaveNamePop() {
+		$('#wapm-saved-name-pop').prop('hidden', true);
+	}
+
+	$('#wapm-list-save-filter').on('click', openSaveNamePop);
+	$('#wapm-saved-name-cancel').on('click', closeSaveNamePop);
+
+	$(document).on('keydown', function (e) {
+		if ($('#wapm-saved-name-pop').prop('hidden')) { return; }
+		if (e.key === 'Escape') { closeSaveNamePop(); }
+		if (e.key === 'Enter' && $(e.target).is('#wapm-saved-name')) {
+			e.preventDefault();
+			$('#wapm-saved-name-ok').trigger('click');
+		}
+	});
+
+	$('#wapm-saved-name-ok').on('click', function () {
 		var filters = listFilters();
-		var name = window.prompt('نام این فیلتر (خالی = نام خودکار از روی شرط‌ها):', '');
-		if (name === null) { return; }
+		var name = $.trim($('#wapm-saved-name').val());
 
 		var $btn = $(this).prop('disabled', true);
 
@@ -1309,6 +1331,7 @@
 				return;
 			}
 			renderSavedFilters(res.data.rows);
+			closeSaveNamePop();
 			wapmToast(res.data.message || 'ذخیره شد.', 'success');
 		}).fail(function () {
 			wapmToast(WAPM.i18n.error, 'error');
