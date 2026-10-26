@@ -122,7 +122,10 @@ class WAPM_Scheduler {
 						self::update_schedule( $schedule );
 					}
 
-					WAPM_Logger::rollback_batch( $schedule['batch_id'] );
+					// force=true: پایان یک کمپین زمان‌بندی‌شده قرارداد صریح کاربر است،
+					// پس حتی اگر کسی وسط کمپین قیمتی را عوض کرده باشد، بازگشت انجام می‌شود
+					// (در غیر این صورت کمپین «reverted» ثبت می‌شد ولی قیمت‌ها نیمه‌کاره می‌ماندند).
+					WAPM_Logger::rollback_batch( $schedule['batch_id'], true );
 
 					$schedule['status'] = 'reverted';
 					self::update_schedule( $schedule );

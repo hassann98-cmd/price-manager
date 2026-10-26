@@ -126,11 +126,43 @@ class WAPM_Logger {
 	}
 
 	/**
+	 * قیمت فعلی همان فیلدی که لاگ شده (regular یا sale).
+	 */
+	private static function current_price( WC_Product $product, string $price_type ): string {
+		$value = ( 'sale' === $price_type )
+			? $product->get_sale_price( 'edit' )
+			: $product->get_regular_price( 'edit' );
+
+		return ( null === $value ) ? '' : (string) $value;
+	}
+
+	/**
+	 * مقایسه‌ی عددی دو قیمتِ ذخیره‌شده به‌صورت رشته ('' = بدون قیمت).
+	 */
+	private static function same_price( string $a, string $b ): bool {
+		$a = trim( $a );
+		$b = trim( $b );
+
+		if ( '' === $a && '' === $b ) {
+			return true;
+		}
+		if ( '' === $a || '' === $b ) {
+			return false;
+		}
+
+		return abs( (float) $a - (float) $b ) < 0.000001;
+	}
+
+	/**
 	 * بازگردانی یک Batch (قیمت‌ها به مقدار قبل برمی‌گردند).
 	 *
-	 * @return int تعداد رکوردهای بازگردانی‌شده
+	 * محافظ تداخل: اگر قیمت فعلی با «قیمتی که این Batch نوشته بود» یکی نباشد، یعنی
+	 * بعد از این Batch کسی (یا عملیات جدیدتری) قیمت را عوض کرده است. در این حالت
+	 * بازگردانی آن ردیف انجام نمی‌شود تا تغییر جدیدتر پاک نشود — مگر $force=true.
+	 *
+	 * @return array{restored:int, conflicts:array<int, array<string, mixed>>, rows:int}
 	 */
-	public static function rollback_batch( string $batch_id ): int {
+	public static function rollback_batch( string $batch_id, bool $force = false ): array {
 		global $wpdb;
 		$table = self::table();
 
@@ -140,17 +172,36 @@ class WAPM_Logger {
 		);
 
 		if ( empty( $rows ) ) {
-			return 0;
+			return [ 'restored' => 0, 'conflicts' => [], 'rows' => 0 ];
 		}
 
 		$restored        = 0;
+		$conflicts       = [];
+		$done_ids        = [];
 		$new_batch       = 'rb_' . wp_generate_password( 12, false );
 		$touched_parents = [];
 
 		foreach ( $rows as $row ) {
 			$product = wc_get_product( (int) $row['product_id'] );
 			if ( ! $product ) {
+				// محصول حذف شده — چیزی برای بازگردانی نیست، ولی نباید Batch را
+				// «بازگردانی‌نشده» نگه دارد.
+				$done_ids[] = (int) $row['id'];
 				continue;
+			}
+
+			// آیا قیمت هنوز همان چیزی است که این Batch نوشته بود؟
+			$current = self::current_price( $product, (string) $row['price_type'] );
+			if ( ! $force && ! self::same_price( (string) $row['new_price'], $current ) ) {
+				$conflicts[] = [
+					'product_id'   => (int) $row['product_id'],
+					'product_name' => $row['product_name'],
+					'price_type'   => $row['price_type'],
+					'batch_price'  => (string) $row['new_price'],
+					'current'      => $current,
+					'restore_to'   => (string) $row['old_price'],
+				];
+				continue; // rolled_back = 0 می‌ماند تا با force قابل بازگردانی باشد.
 			}
 
 			$old = $row['old_price']; // مقدار قبل از تغییر — همان چیزی که باید برگردد.
@@ -178,6 +229,7 @@ class WAPM_Logger {
 				'operation'    => 'rollback:' . $batch_id,
 			] );
 
+			$done_ids[] = (int) $row['id'];
 			$restored++;
 		}
 
@@ -185,12 +237,16 @@ class WAPM_Logger {
 			WC_Product_Variable::sync( $pid );
 		}
 
-		$wpdb->update( $table, [ 'rolled_back' => 1 ], [ 'batch_id' => $batch_id ], [ '%d' ], [ '%s' ] );
+		// فقط ردیف‌های واقعاً بازگردانی‌شده علامت می‌خورند؛ ردیف‌های متعارض برای
+		// تلاش دوباره (با force) و ردیف‌های محصول‌حذف‌شده هم دست‌نخورده می‌مانند.
+		if ( $done_ids ) {
+			$wpdb->query( "UPDATE {$table} SET rolled_back = 1 WHERE id IN (" . implode( ',', array_map( 'intval', $done_ids ) ) . ')' );
+		}
 
 		if ( function_exists( 'wc_delete_product_transients' ) ) {
 			wc_delete_product_transients();
 		}
 
-		return $restored;
+		return [ 'restored' => $restored, 'conflicts' => $conflicts, 'rows' => count( $rows ) ];
 	}
 }

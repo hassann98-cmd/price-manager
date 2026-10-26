@@ -363,16 +363,41 @@ class WAPM_Ajax {
 	public function rollback(): void {
 		$this->guard();
 		$batch_id = sanitize_text_field( wp_unslash( $_POST['batch_id'] ?? '' ) );
+		$force    = ! empty( $_POST['force'] ) && 'false' !== $_POST['force'];
+
 		if ( '' === $batch_id || 'last' === $batch_id ) {
 			$batch_id = WAPM_Logger::get_last_batch_id();
 		}
 		if ( ! $batch_id ) {
 			wp_send_json_error( [ 'message' => __( 'عملیاتی برای بازگردانی یافت نشد.', 'wapm' ) ] );
 		}
-		$restored = WAPM_Rollback::rollback( $batch_id );
+
+		$result    = WAPM_Rollback::rollback( $batch_id, $force );
+		$restored  = (int) $result['restored'];
+		$conflicts = $result['conflicts'];
+		$rows      = (int) ( $result['rows'] ?? $restored );
+
+		if ( $conflicts && ! $force ) {
+			// ردیف‌هایی که بعد از این Batch قیمتشان عوض شده، دست‌نخورده ماندند.
+			$message = sprintf(
+				__( '%1$d قیمت بازگردانی شد؛ %2$d مورد بعد از این عملیات تغییر کرده بود و برای جلوگیری از پاک‌شدن تغییر جدیدتر، بازگردانی نشد.', 'wapm' ),
+				$restored,
+				count( $conflicts )
+			);
+		} else {
+			$message = sprintf(
+				/* translators: 1: restored rows, 2: total rows in the batch */
+				__( '%1$d قیمت با موفقیت بازگردانی شد (این دسته %2$d ردیف داشت).', 'wapm' ),
+				$restored,
+				$rows
+			);
+		}
+
 		wp_send_json_success( [
-			'restored' => $restored,
-			'message'  => sprintf( __( '%d قیمت با موفقیت بازگردانی شد.', 'wapm' ), $restored ),
+			'restored'  => $restored,
+			'conflicts' => $conflicts,
+			'batch_id'  => $batch_id,
+			'message'   => $message,
 		] );
 	}
 

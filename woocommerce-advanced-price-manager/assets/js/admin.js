@@ -448,21 +448,45 @@
 
 	/* ---------------- Rollback آخرین عملیات ---------------- */
 
+	/**
+	 * بازگردانی با تشخیص تداخل.
+	 * اگر قیمت بعضی ردیف‌ها بعد از آن Batch عوض شده باشد، سرور آن‌ها را دست‌نخورده
+	 * می‌گذارد و تعدادشان را برمی‌گرداند؛ کاربر می‌تواند صریحاً «بازگردانی اجباری»
+	 * را انتخاب کند (وگرنه تغییرات جدیدتر پاک می‌شدند).
+	 */
+	function doRollback(batchId, force, $btn) {
+		if ($btn) { $btn.prop('disabled', true); }
+
+		return ajax('rollback', { batch_id: batchId, force: force ? 1 : 0 })
+			.done(function (res) {
+				if (!res.success) {
+					window.alert((res.data && res.data.message) || WAPM.i18n.error);
+					return;
+				}
+				window.alert(res.data.message);
+
+				var conflicts = res.data.conflicts || [];
+				if (conflicts.length && !force) {
+					if (window.confirm(conflicts.length + ' مورد بعد از این عملیات تغییر کرده و بازگردانی نشد.\n' +
+						'بازگردانی اجباری انجام شود؟ (تغییرات جدیدترِ این موارد پاک می‌شوند)')) {
+						doRollback(res.data.batch_id || batchId, true, null);
+						return;
+					}
+				}
+				if ($('#wapm-tab-history').is(':visible')) { loadHistory(1); }
+			})
+			.fail(function () { window.alert(WAPM.i18n.error); })
+			.always(function () { if ($btn) { $btn.prop('disabled', false); } });
+	}
+
 	$('#wapm-rollback-last-btn').on('click', function () {
 		if (!window.confirm(WAPM.i18n.confirm_rollback)) { return; }
-		var $btn = $(this).prop('disabled', true);
-		ajax('rollback', { batch_id: 'last' }).done(function (res) {
-			window.alert(res.success ? res.data.message : ((res.data && res.data.message) || WAPM.i18n.error));
-		}).always(function () { $btn.prop('disabled', false); });
+		doRollback('last', false, $(this));
 	});
 
 	$(document).on('click', '.wapm-rollback-batch', function () {
 		if (!window.confirm(WAPM.i18n.confirm_rollback)) { return; }
-		var batch = $(this).data('batch');
-		ajax('rollback', { batch_id: batch }).done(function (res) {
-			window.alert(res.success ? res.data.message : ((res.data && res.data.message) || WAPM.i18n.error));
-			loadHistory(1);
-		});
+		doRollback($(this).data('batch'), false, $(this));
 	});
 
 	/* ---------------- قوانین ---------------- */
