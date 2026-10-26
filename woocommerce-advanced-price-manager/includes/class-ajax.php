@@ -714,14 +714,24 @@ class WAPM_Ajax {
 			wp_send_json_error( [ 'message' => $result['error'] ] );
 		}
 
+		$message = sprintf(
+			/* translators: 1: rows in file, 2: matched, 3: unmatched */
+			__( '%1$d ردیف خوانده شد — %2$d محصول تطبیق خورد، %3$d تطبیق نخورد.', 'wapm' ),
+			$result['items'],
+			(int) ( $result['stats']['matched'] ?? 0 ),
+			(int) ( $result['stats']['unmatched'] ?? 0 )
+		);
+
+		if ( 'catalog' === ( $result['mode'] ?? 'full' ) ) {
+			$message .= ' ' . __( 'این فایل ستون قیمت رقیب نداشت، پس فقط «قیمت ما از دید ترب» به‌روز شد و قیمت رقبا دست‌نخورده ماند.', 'wapm' );
+		}
+
+		if ( ! empty( $result['warn_no_shop'] ) ) {
+			$message .= ' ' . __( 'هشدار: فایل ستون shop_id/shop_name نداشت؛ هر ردیف یک قیمتِ بی‌نام است. اگر این فایل قیمت خودتان است، به‌جای ستون price از ستون our_price استفاده کنید تا قیمت خودتان «رقیب» حساب نشود.', 'wapm' );
+		}
+
 		wp_send_json_success( [
-			'message' => sprintf(
-				/* translators: 1: rows in file, 2: matched, 3: unmatched */
-				__( '%1$d ردیف خوانده شد — %2$d محصول تطبیق خورد، %3$d تطبیق نخورد.', 'wapm' ),
-				$result['items'],
-				(int) ( $result['stats']['matched'] ?? 0 ),
-				(int) ( $result['stats']['unmatched'] ?? 0 )
-			),
+			'message' => $message,
 			'stats'   => $this->torob_stats_payload(),
 		] );
 	}

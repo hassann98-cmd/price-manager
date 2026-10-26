@@ -591,6 +591,8 @@ class WAPM_Torob {
 			self::META_NAME,
 			self::META_PRICE,
 			self::META_OUR_PRICE,
+			self::META_CARD_PRICE,
+			self::META_OUR_CHECKED,
 			self::META_SELLERS,
 			self::META_SELLERS_LIST,
 			self::META_URL,
@@ -1529,7 +1531,13 @@ class WAPM_Torob {
 	 * `price` می‌تواند قیمت «قیمت رقیب» باشد؛ اگر `shop_id`/`our_price` ستون داشته
 	 * باشد، همان‌ها استفاده می‌شوند.
 	 *
-	 * @return array{items:int,stats:array,error?:string}
+	 * دو حالت جدا پردازش می‌شود:
+	 *  - فایل ستون قیمت رقیب دارد → حالت `full`؛ ردیف‌هایی که قیمت ندارند کلید
+	 *    `sellers` را هم ندارند تا داده‌ی قبلی پاک نشود.
+	 *  - فایل فقط قیمت خودمان دارد → حالت `catalog` (فقط `META_CARD_PRICE`/
+	 *    `META_OUR_PRICE`؛ قیمت رقیب و زمان بررسی دست‌نخورده می‌ماند).
+	 *
+	 * @return array{items:int,stats:array,mode:string,warn_no_shop:bool,error?:string}
 	 */
 	public static function import_csv( string $tmp_path ): array {
 		$handle = fopen( $tmp_path, 'r' );
@@ -1554,8 +1562,17 @@ class WAPM_Torob {
 
 		if ( null === $col_prk ) {
 			fclose( $handle );
-			return [ 'items' => 0, 'stats' => [], 'error' => __( 'ستون prk در فایل پیدا نشد.', 'wapm' ) ];
+			return [ 'items' => 0, 'stats' => [], 'mode' => 'full', 'warn_no_shop' => false, 'error' => __( 'ستون prk در فایل پیدا نشد.', 'wapm' ) ];
 		}
+
+		if ( null === $col_price && null === $col_ours ) {
+			fclose( $handle );
+			return [ 'items' => 0, 'stats' => [], 'mode' => 'full', 'warn_no_shop' => false, 'error' => __( 'نه ستون قیمت رقیب (price) در فایل هست و نه قیمت خودمان (our_price).', 'wapm' ) ];
+		}
+
+		// بدون ستون قیمت رقیب، این فایل فقط «قیمت ما از دید ترب» را می‌آورد.
+		$mode         = null === $col_price ? 'catalog' : 'full';
+		$warn_no_shop = null === $col_shop && null === $col_shopname;
 
 		$rows = [];
 		while ( ( $row = fgetcsv( $handle ) ) !== false && count( $rows ) < 5000 ) {
@@ -1565,19 +1582,23 @@ class WAPM_Torob {
 				continue;
 			}
 
-			$sellers = [];
+			$item = [ 'prk' => $prk, 'name' => $name ];
+
 			if ( null !== $col_price ) {
 				$price = (float) str_replace( [ ',', '،' ], '', (string) ( $row[ $col_price ] ?? '' ) );
 				if ( $price > 0 ) {
-					$sellers[] = [
-						'shop_id'   => null !== $col_shop ? (int) ( $row[ $col_shop ] ?? 0 ) : 0,
-						'shop_name' => null !== $col_shopname ? (string) ( $row[ $col_shopname ] ?? '' ) : '',
-						'price'     => $price,
+					// کلید sellers فقط وقتی ساخته می‌شود که قیمتی در کار باشد؛
+					// ردیفِ بی‌قیمت یعنی «داده‌ی رقیب نداریم» نه «قیمت را پاک کن».
+					$item['sellers'] = [
+						[
+							'shop_id'   => null !== $col_shop ? (int) ( $row[ $col_shop ] ?? 0 ) : 0,
+							'shop_name' => null !== $col_shopname ? (string) ( $row[ $col_shopname ] ?? '' ) : '',
+							'price'     => $price,
+						],
 					];
 				}
 			}
 
-			$item = [ 'prk' => $prk, 'name' => $name, 'sellers' => $sellers ];
 			if ( null !== $col_ours ) {
 				$ours = (float) str_replace( [ ',', '،' ], '', (string) ( $row[ $col_ours ] ?? '' ) );
 				if ( $ours > 0 ) {
@@ -1589,8 +1610,13 @@ class WAPM_Torob {
 		}
 		fclose( $handle );
 
-		$stats = self::ingest( $rows, 'feed', [ 'discovered' => count( $rows ) ] );
+		$stats = self::ingest( $rows, 'feed', [ 'discovered' => count( $rows ) ], $mode );
 
-		return [ 'items' => count( $rows ), 'stats' => $stats ];
+		return [
+			'items'         => count( $rows ),
+			'stats'         => $stats,
+			'mode'          => $mode,
+			'warn_no_shop'  => $warn_no_shop,
+		];
 	}
 }
