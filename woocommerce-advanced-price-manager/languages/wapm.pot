@@ -1106,7 +1106,7 @@ msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:117
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:162
-#: woocommerce-advanced-price-manager/includes/class-price-engine.php:388
+#: woocommerce-advanced-price-manager/includes/class-price-engine.php:425
 msgid "ساده"
 msgstr ""
 
@@ -1527,7 +1527,7 @@ msgstr ""
 msgid "متغیر"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-price-engine.php:377
+#: woocommerce-advanced-price-manager/includes/class-price-engine.php:414
 msgid "متغیر (والد)"
 msgstr ""
 
@@ -1970,7 +1970,7 @@ msgstr ""
 msgid "وارد کردن قیمت‌ها"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-price-engine.php:383
+#: woocommerce-advanced-price-manager/includes/class-price-engine.php:420
 msgid "واریشن"
 msgstr ""
 

@@ -144,9 +144,12 @@ class WAPM_Price_Engine {
 			$new    = $old + $sign * $amount;
 		}
 
+		$raw = $new; // مقدار محاسبه‌شده قبل از رند — برای محافظ «رندِ چسبنده».
+
 		$new = self::round_price( $new, $s );
 		$new = self::clamp_price( $new, $s );
 		$new = round( $new, wc_get_price_decimals() );
+		$new = self::keep_small_change( $new, $raw, $old, $s );
 
 		// محافظ پایه: کاهش قیمت هرگز نباید محصول را رایگان (صفر) کند.
 		// قبلاً فقط max( 0, … ) بود، پس کاهش ۱۰۰٪ قیمت را صفر می‌کرد و محصول
@@ -320,6 +323,40 @@ class WAPM_Price_Engine {
 			'down'    => floor( $price / $base ) * $base,
 			default   => round( $price / $base ) * $base,
 		};
+	}
+
+	/**
+	 * جلوگیری از بلعیده‌شدن تغییرهای کوچک توسط رند کردن.
+	 *
+	 * چرا: با پایه‌ی رند بزرگ (مثلاً ۱۰۰۰ تومان) و تغییر کوچک، رند کردن می‌تواند
+	 * نتیجه را دقیقاً به همان قیمت قبلی برگرداند؛ مثلاً «+۰.۵٪» روی ۱۰۰٬۰۰۰
+	 * می‌شود ۱۰۰٬۵۰۰ و رندِ «رو به پایین» ۱۰۰٬۰۰۰ = قیمت قبلی. آن‌وقت عملیات
+	 * بی‌صدا «بدون تغییر» می‌شد و کاربر فکر می‌کرد قانون/دکمه کار نمی‌کند.
+	 * اگر رند تغییر را کامل ببلعد، مقدار رند‌نشده (با همان حداقل/حداکثر) برمی‌گردد.
+	 *
+	 * فقط وقتی اعمال می‌شود که رند کردن روشن باشد؛ رندِ دستیِ کاربر هم اگر
+	 * تغییر را نکشد، دست‌نخورده می‌ماند.
+	 */
+	private static function keep_small_change( float $rounded, float $raw, float $old, array $s ): float {
+		if ( 'none' === $s['round_mode'] || $s['round_base'] <= 0 ) {
+			return $rounded;
+		}
+
+		$decimals = (int) wc_get_price_decimals();
+		$target   = round( $raw, $decimals );
+		$eps      = 0.000001;
+
+		// خود تغییر ناچیز است (درصد ۰ یا مبلغ ۰) → رند کردن درست عمل کرده.
+		if ( abs( $target - $old ) < $eps ) {
+			return $rounded;
+		}
+
+		// رند کردن تغییر را نگرفته → همان نتیجه‌ی رند‌شده معتبر است.
+		if ( abs( $rounded - $old ) >= $eps ) {
+			return $rounded;
+		}
+
+		return self::clamp_price( $target, $s );
 	}
 
 	/**

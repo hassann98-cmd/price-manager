@@ -473,6 +473,26 @@ test( 'گرد کردن: base صفر = بی‌اثر', function () {
 	eq( 235001.0, WAPM_Price_Engine::calculate( '235001', $s ), 'بدون گرد کردن' );
 } );
 
+test( 'گرد کردن: تغییر کوچک نباید توسط رند بلعیده شود', function () {
+	stub_reset();
+	// +۰.۵٪ روی ۱۰۰٬۰۰۰ → ۱۰۰٬۵۰۰؛ رندِ رو به پایین با پایه‌ی ۱۰۰۰ آن را به
+	// ۱۰۰٬۰۰۰ (قیمت قبلی) برمی‌گرداند و عملیات بی‌صدا «بدون تغییر» می‌شد.
+	$s = settings( [ 'mode' => 'percent', 'direction' => 'increase', 'amount' => 0.5, 'round_mode' => 'down', 'round_base' => 1000 ] );
+	eq( 100500.0, WAPM_Price_Engine::calculate( '100000', $s ), 'تغییر حفظ می‌شود، نه صفر' );
+
+	// همان درصد با گرد کردن رو به بالا تغییر را نمی‌بلعد → رند دست‌نخورده می‌ماند.
+	$up = settings( [ 'mode' => 'percent', 'direction' => 'increase', 'amount' => 0.5, 'round_mode' => 'up', 'round_base' => 1000 ] );
+	eq( 101000.0, WAPM_Price_Engine::calculate( '100000', $up ), 'رندِ مؤثر همان می‌ماند' );
+
+	// درصد صفر یعنی «فقط رند کن»؛ نباید به بهانه‌ی این محافظ رند حذف شود.
+	$zero = settings( [ 'mode' => 'percent', 'direction' => 'increase', 'amount' => 0, 'round_mode' => 'down', 'round_base' => 1000 ] );
+	eq( 100000.0, WAPM_Price_Engine::calculate( '100500', $zero ), 'درصد ۰ = فقط رند' );
+
+	// اگر رند به زیر حداقل قیمت برسد، خودِ حداقل قیمت تغییر است (نه «بدون تغییر»).
+	$min = settings( [ 'mode' => 'percent', 'direction' => 'increase', 'amount' => 0.5, 'round_mode' => 'down', 'round_base' => 1000, 'min_price' => 100400 ] );
+	eq( 100400.0, WAPM_Price_Engine::calculate( '100000', $min ), 'حداقل قیمت اعمال می‌شود' );
+} );
+
 /* -------------------------------------------------------------------------
  * ۶) حداقل/حداکثر
  * ---------------------------------------------------------------------- */
