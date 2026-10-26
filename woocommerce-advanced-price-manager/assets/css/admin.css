@@ -1608,3 +1608,75 @@
 		width: 100%;
 	}
 }
+
+/* ---- «هم‌تراز با ترب» (کشوی داخل تب لیست) ---- */
+
+.wapm-drawer--narrow {
+	width: min(440px, 96vw);
+}
+
+.wapm-align-facts {
+	display: grid;
+	grid-template-columns: 1fr auto;
+	gap: 6px 12px;
+	padding: 10px 12px;
+	background: var(--wapm-surface-soft, #fbfaff);
+	border: 1px solid var(--wapm-line, #eaecf0);
+	border-radius: var(--wapm-radius-sm, 8px);
+}
+
+.wapm-align-fact {
+	display: contents;
+}
+
+.wapm-align-fact > span {
+	font-size: 11.5px;
+	font-weight: 700;
+	color: var(--wapm-ink-500, #667085);
+}
+
+.wapm-align-fact > b {
+	font-size: 12.5px;
+	font-weight: 900;
+	color: var(--wapm-ink-800, #1d2939);
+	text-align: left;
+	font-variant-numeric: tabular-nums;
+}
+
+.wapm-align-result {
+	display: grid;
+	grid-template-columns: 1fr auto;
+	gap: 6px 12px;
+	padding: 10px 12px;
+	border: 1px solid var(--wapm-brand-100, #e9e2f2);
+	border-radius: var(--wapm-radius-sm, 8px);
+	background: linear-gradient(180deg, #fff, rgba(245, 241, 250, 0.55));
+}
+
+.wapm-align-result > span {
+	font-size: 11.5px;
+	font-weight: 700;
+	color: var(--wapm-ink-500, #667085);
+}
+
+.wapm-align-result > b {
+	font-size: 13px;
+	font-weight: 900;
+	text-align: left;
+	font-variant-numeric: tabular-nums;
+}
+
+.wapm-align-result .wapm-align-result__new {
+	font-size: 17px;
+	color: var(--wapm-brand-700, #6941c6);
+}
+
+.wapm-align-skip {
+	padding: 10px 12px;
+	border: 1px dashed #fedf89;
+	border-radius: var(--wapm-radius-sm, 8px);
+	background: var(--wapm-warn-50, #fffaeb);
+	font-size: 12px;
+	font-weight: 800;
+	color: var(--wapm-warn-600, #b54708);
+}

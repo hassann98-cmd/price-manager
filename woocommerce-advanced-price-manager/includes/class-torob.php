@@ -828,6 +828,27 @@ class WAPM_Torob {
 		return $labels[ $status ] ?? $status;
 	}
 
+	/**
+	 * برچسب فارسی «چرا این محصول خودکار قیمت نمی‌گیرد».
+	 *
+	 * چرا در PHP و نه JS: همان دلیلی که در لیست نمایش داده می‌شود، در پاسخ
+	 * «هم‌تراز با ترب» و در آینده در CSV هم می‌آید؛ یک منبع حقیقت، یک زبان.
+	 *
+	 * @param string $reason کد دلیل (`skip` خروجی torob_context یا حالت‌های محلی)
+	 */
+	public static function skip_label( string $reason ): string {
+		$labels = [
+			'already_cheaper' => __( 'از ارزان‌ترین رقیب ارزان‌تریم — قیمت بالا نمی‌رود', 'wapm' ),
+			'small_gap'       => __( 'اختلاف با قیمت هدف ناچیز است', 'wapm' ),
+			'sanity'          => __( 'تغییر بیش از ۱۰ برابر — داده مشکوک', 'wapm' ),
+			'unit_suspect'    => __( 'واحد قیمت مشکوک (تومان/ریال)', 'wapm' ),
+			'no_data'         => __( 'داده‌ی تازه‌ی ترب ندارد', 'wapm' ),
+			'missing'         => __( 'محصول پیدا نشد', 'wapm' ),
+		];
+
+		return $labels[ $reason ] ?? $reason;
+	}
+
 	/** وضعیت‌هایی که در فیلتر SQL قابل استفاده‌اند. */
 	public static function filterable_statuses(): array {
 		return [ 'pricier', 'cheaper', 'equal', 'no_competitor', 'needs_shop_id', 'no_price' ];

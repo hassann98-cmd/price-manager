@@ -397,6 +397,163 @@
 		});
 	});
 
+	/* ---- «هم‌تراز با ترب»: قیمت = ارزان‌ترین رقیب منهای x ---- */
+
+	var alignState = { id: 0, row: null, ready: false };
+
+	function alignFindRow(id) {
+		var rows = listState.lastRows || [];
+		for (var i = 0; i < rows.length; i++) {
+			if (Number(rows[i].id) === Number(id)) { return rows[i]; }
+		}
+		return null;
+	}
+
+	/** نمایش وضعیت فعلی محصول در کشو (قیمت ما، رقیب، اختلاف، تازگی). */
+	function alignFactsHtml(row) {
+		var t = (row && row.torob) || {};
+		var facts = [];
+		var current = row ? (row.regular_price !== '' && row.regular_price !== null ? row.regular_price : row.sale_price) : '';
+
+		facts.push(['قیمت فعلی ما', fmt(current)]);
+		if (t.competitor_price !== null && t.competitor_price !== undefined) {
+			facts.push(['ارزان‌ترین رقیب', fmt(t.competitor_price)]);
+		}
+		if (t.diff_pct !== null && t.diff_pct !== undefined) {
+			var d = Number(t.diff_pct);
+			var color = d > 0 ? '#b42318' : (d < 0 ? '#067647' : '#475467');
+			facts.push(['اختلاف با رقیب', '<span style="color:' + color + '">' + (d > 0 ? '+' : '') + d.toFixed(1) + '٪</span>']);
+		}
+		if (t.sellers) {
+			facts.push(['تعداد فروشنده‌ها', fmt(t.sellers)]);
+		}
+		facts.push(['تازگی داده‌ی ترب', call('torobAgeLabel', t.age_days)]);
+
+		return facts.map(function (f) {
+			return '<div class="wapm-align-fact"><span>' + esc(f[0]) + '</span><b>' + f[1] + '</b></div>';
+		}).join('');
+	}
+
+	function alignOpen(id) {
+		var row = alignFindRow(id);
+
+		alignState.id = id;
+		alignState.row = row;
+		alignState.ready = false;
+
+		$('#wapm-ad-facts').html(alignFactsHtml(row));
+		$('#wapm-ad-result').empty();
+		$('#wapm-ad-apply').prop('disabled', true);
+		$('#wapm-ad-note').text(row ? esc(row.name) : '');
+		$('#wapm-align-drawer-overlay').addClass('is-open');
+		$('#wapm-align-drawer').addClass('is-open').attr('aria-hidden', 'false');
+
+		window.setTimeout(function () { $('#wapm-ad-value').trigger('focus').trigger('select'); }, 240);
+	}
+
+	function alignClose() {
+		$('#wapm-align-drawer-overlay').removeClass('is-open');
+		$('#wapm-align-drawer').removeClass('is-open').attr('aria-hidden', 'true');
+		alignState.ready = false;
+	}
+
+	function alignResultHtml(data) {
+		var skipped = data.skipped || [];
+
+		if (skipped.length) {
+			var s = skipped[0];
+			return '<div class="wapm-align-skip">' + esc(s.label || s.reason || 'امکان هم‌ترازی نیست') + '</div>';
+		}
+
+		var rows = data.rows || [];
+		if (!rows.length) {
+			return '<div class="wapm-align-skip">با این مقدار، قیمتی تغییر نمی‌کند. مقدار زیربرش را عوض کنید.</div>';
+		}
+
+		var html = '';
+		rows.forEach(function (r) {
+			var label = r.price_type === 'sale' ? 'قیمت ویژه' : 'قیمت اصلی';
+			var delta = (Number(r.percent) > 0 ? '+' : '') + Number(r.percent).toFixed(1) + '٪';
+			var color = Number(r.new) < Number(r.old) ? '#067647' : '#b42318';
+			var sub = r.parent_id > 0 ? 'واریشن' : (r.type || '');
+
+			html += '<div class="wapm-align-result" style="margin-bottom:6px">' +
+				'<span>' + esc(r.name) + (sub ? ' · ' + esc(sub) : '') + '</span><b>' + esc(label) + '</b>' +
+				'<span>قیمت جدید</span><b class="wapm-align-result__new">' + fmt(r.new) + '</b>' +
+				'<span>تغییر</span><b style="color:' + color + '">' + delta + ' (' + fmt(Number(r.new) - Number(r.old)) + ')</b>' +
+				(r.warn ? '<span>هشدار</span><b style="color:#b42318">افت بیش از ۹۰٪ — بررسی کنید</b>' : '') +
+				'</div>';
+		});
+
+		return html;
+	}
+
+	function alignRequest(dryRun, $btn, onDone) {
+		var payload = {
+			ids: [alignState.id],
+			undercut: $('#wapm-ad-value').val() || 0,
+			undercut_mode: $('#wapm-ad-unit').val() || 'percent',
+			dry_run: dryRun ? 1 : 0
+		};
+
+		if ($btn) { $btn.prop('disabled', true); }
+
+		ajax('torob_align', payload).done(function (res) {
+			if (!res.success) {
+				wapmToast((res.data && res.data.message) || WAPM.i18n.error, 'error');
+				return;
+			}
+			onDone(res.data || {});
+		}).fail(function () {
+			wapmToast(WAPM.i18n.error, 'error');
+		}).always(function () {
+			if ($btn) { $btn.prop('disabled', false); }
+		});
+	}
+
+	$(document).on('click', '.wapm-torob-align', function () {
+		alignOpen($(this).data('id'));
+	});
+
+	$('#wapm-ad-close, #wapm-ad-cancel, #wapm-align-drawer-overlay').on('click', alignClose);
+
+	$(document).on('keydown', function (e) {
+		if (e.key === 'Escape' && $('#wapm-align-drawer').hasClass('is-open')) { alignClose(); }
+	});
+
+	// با هر تغییر مقدار، پیش‌نمایش قبلی بی‌اعتبار است (همان قاعده‌ی کشوی قیمت).
+	$('#wapm-ad-value, #wapm-ad-unit').on('change keyup', function () {
+		alignState.ready = false;
+		$('#wapm-ad-apply').prop('disabled', true);
+	});
+
+	$('#wapm-ad-preview').on('click', function () {
+		alignRequest(true, $(this), function (data) {
+			alignState.ready = !(data.skipped && data.skipped.length) && (data.rows || []).length > 0;
+			$('#wapm-ad-result').html(alignResultHtml(data));
+			$('#wapm-ad-apply').prop('disabled', !alignState.ready);
+		});
+	});
+
+	$('#wapm-ad-apply').on('click', function () {
+		if (!alignState.ready) { return; }
+
+		alignRequest(false, $(this), function (data) {
+			var changed = Number(data.changed) || 0;
+
+			wapmToast(
+				changed
+					? 'قیمت هم‌تراز شد (' + fmt(changed) + ' قیمت، Batch ' + (data.batch_id || '—') + ').'
+					: 'قیمتی تغییر نکرد.',
+				changed ? 'success' : 'info',
+				changed ? { ttl: 12000, actionLabel: 'بازگردانی', action: function () { call('bpUndo', data.batch_id); } } : {}
+			);
+
+			alignClose();
+			refreshListIfLoaded();
+		});
+	});
+
 	/* ---- ۴) ورود فید CSV ---- */
 
 	$('#wapm-torob-feed-import').on('click', function () {
@@ -1020,5 +1177,7 @@
 	UI.pickedRows = pickedRows;
 	UI.updateUnmatchedBar = updateUnmatchedBar;
 	UI.loadTorobUnmatched = loadTorobUnmatched;
+	UI.alignOpen = alignOpen;
+	UI.alignClose = alignClose;
 
 })(jQuery, window.WAPMUI);

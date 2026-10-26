@@ -41,6 +41,7 @@ class WAPM_Ajax {
 			'torob_verify_shop',
 			'torob_sync_catalog',
 			'torob_refresh_product',
+			'torob_align',
 			'torob_api_reset',
 			'stock_preview',
 			'stock_apply',
@@ -1188,6 +1189,93 @@ class WAPM_Ajax {
 				(int) $result['sellers']
 			),
 		] ) );
+	}
+
+	/**
+	 * «هم‌تراز با ترب» — قیمت را روی «ارزان‌ترین رقیب منهای x» می‌گذارد.
+	 *
+	 * چرا یک اکشن با دو حالت: `dry_run` و اعمال باید از *همان* تنظیمات و همان
+	 * موتور رد شوند، وگرنه عددی که کاربر در پیش‌نمایش می‌بیند با آنچه ذخیره
+	 * می‌شود یکی نیست. مسیر اعمال همان `apply_to_product` است تا لاگ، Rollback،
+	 * محافظ واحد و سقف ۱۰ برابر همه مثل تب قیمت کار کنند.
+	 *
+	 * ورودی: ids (حداکثر ۱۰۰)، undercut، undercut_mode (percent|fixed)، dry_run، max_age.
+	 * خروجی: rows (پیش‌نمایش)، skipped (با دلیل فارسی)، changed، batch_id.
+	 */
+	public function torob_align(): void {
+		$this->guard();
+
+		$ids = array_slice(
+			array_values( array_unique( array_filter( array_map( 'absint', (array) ( $_POST['ids'] ?? [] ) ) ) ) ),
+			0,
+			100
+		);
+
+		if ( ! $ids ) {
+			wp_send_json_error( [ 'message' => __( 'محصولی برای هم‌ترازی انتخاب نشده است.', 'wapm' ) ] );
+		}
+
+		$dry_run  = '1' === (string) ( $_POST['dry_run'] ?? '' ) || 'true' === (string) ( $_POST['dry_run'] ?? '' );
+		$mode     = in_array( $_POST['undercut_mode'] ?? '', [ 'percent', 'fixed' ], true ) ? (string) $_POST['undercut_mode'] : 'percent';
+		$value    = max( 0, (float) ( $_POST['undercut'] ?? 1 ) );
+		$max_age  = max( 0, (int) ( $_POST['max_age'] ?? 0 ) );
+		$settings = WAPM_Price_Engine::torob_align_settings( $value, $mode, $max_age );
+
+		$batch_id = sanitize_key( $_POST['batch_id'] ?? '' ) ?: 'align_' . wp_generate_password( 10, false );
+
+		if ( ! $dry_run && function_exists( 'wc_set_time_limit' ) ) {
+			wc_set_time_limit( 120 );
+		}
+
+		$rows    = [];
+		$skipped = [];
+		$changed = 0;
+
+		foreach ( $ids as $id ) {
+			$product = wc_get_product( $id );
+
+			if ( ! $product ) {
+				$skipped[] = [ 'id' => $id, 'name' => '', 'reason' => 'missing', 'label' => WAPM_Torob::skip_label( 'missing' ) ];
+				continue;
+			}
+
+			// دلیل رد‌شدن را خودمان می‌سازیم؛ پیش‌نمایش عمداً «ردیف خالی» می‌دهد
+			// و کاربر باید بداند چرا.
+			$ctx = WAPM_Price_Engine::torob_context( $product, $settings );
+			if ( null === $ctx || ! empty( $ctx['skip'] ) ) {
+				$reason    = (string) ( $ctx['skip'] ?? 'no_data' );
+				$skipped[] = [
+					'id'     => $id,
+					'name'   => $product->get_name(),
+					'reason' => $reason,
+					'label'  => WAPM_Torob::skip_label( $reason ),
+				];
+				continue;
+			}
+
+			if ( $dry_run ) {
+				$rows = array_merge( $rows, WAPM_Price_Engine::preview_product( $id, $settings ) );
+				continue;
+			}
+
+			$changed += WAPM_Price_Engine::apply_to_product( $id, $settings, $batch_id, 'torob_align' );
+		}
+
+		if ( ! $dry_run && $changed && function_exists( 'wc_delete_product_transients' ) ) {
+			wc_delete_product_transients();
+		}
+
+		wp_send_json_success( [
+			'dry_run'  => $dry_run,
+			'rows'     => $rows,
+			'skipped'  => $skipped,
+			'changed'  => $changed,
+			'batch_id' => $changed > 0 ? $batch_id : '',
+			'settings' => [
+				'undercut'      => $value,
+				'undercut_mode' => $mode,
+			],
+		] );
 	}
 
 	/**

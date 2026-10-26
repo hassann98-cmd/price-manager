@@ -59,6 +59,35 @@ class WAPM_Price_Engine {
 	}
 
 	/**
+	 * تنظیمات آماده برای «هم‌تراز با ترب» (قیمت = ارزان‌ترین رقیب منهای x).
+	 *
+	 * چرا اینجا و نه در Ajax: همان `sanitize_settings` فرم را رد می‌کند تا
+	 * مقدارهای عجیب (درصد منفی، واحد نامعتبر) نتوانند از مسیر دکمه‌ی داخل لیست
+	 * وارد شوند. پیش‌فرض‌ها محافظه‌کارانه‌اند:
+	 * `only_if_pricier` روشن (هرگز قیمت را گران نمی‌کند)، `min_gap` صفر (کاربر
+	 * خودش خواسته)، و گرد کردن «رو به پایین» روی مضرب ۱۰۰۰ تا قیمت نهایی
+	 * زیبا باشد و هرگز از رقیب گران‌تر نشود.
+	 *
+	 * @param float  $undercut   مقدار زیربرش (درصد یا مبلغ)
+	 * @param string $mode       `percent` یا `fixed`
+	 * @param int    $max_age    حداکثر عمر مجاز داده‌ی ترب (روز؛ ۰ = بدون محدودیت)
+	 */
+	public static function torob_align_settings( float $undercut = 1.0, string $mode = 'percent', int $max_age = 0 ): array {
+		return self::sanitize_settings( [
+			'source'                => 'torob',
+			'torob_undercut'        => max( 0, $undercut ),
+			'torob_undercut_mode'   => in_array( $mode, [ 'percent', 'fixed' ], true ) ? $mode : 'percent',
+			'torob_max_age'         => max( 0, $max_age ),
+			'torob_only_if_pricier' => 1,
+			'torob_min_gap_pct'     => 0,
+			'price_target'          => 'regular',
+			'variable_scope'        => 'both',
+			'round_mode'            => 'down',
+			'round_base'            => 1000,
+		] );
+	}
+
+	/**
 	 * آیا این تنظیمات از داده‌ی ترب استفاده می‌کند؟
 	 */
 	public static function uses_torob( array $s ): bool {

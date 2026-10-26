@@ -74,7 +74,19 @@ const row = {
 	view_url: 'https://example.test/?p=101',
 	can_duplicate: true,
 	can_edit_terms: true,
-	torob: null,
+	torob: {
+		prk: 'p-1',
+		url: 'https://torob.com/p/p-1/',
+		status: 'pricier',
+		status_label: 'گران‌تر از رقیب',
+		competitor_price: 100000,
+		diff_pct: 20,
+		age_days: 1,
+		sellers: 3,
+		our_price_wc: 120000,
+		fresh_days: 3,
+		link: 'manual',
+	},
 };
 
 const html = `<!doctype html><html lang="fa" dir="rtl"><body>
@@ -143,6 +155,18 @@ const html = `<!doctype html><html lang="fa" dir="rtl"><body>
 </div>
 <div id="wapm-price-drawer" style="display:none"></div><div id="wapm-price-drawer-overlay"></div>
 <div id="wapm-stock-drawer" style="display:none"></div><div id="wapm-stock-drawer-overlay"></div>
+<div id="wapm-align-drawer-overlay"></div>
+<aside id="wapm-align-drawer" aria-hidden="true">
+  <button id="wapm-ad-close"></button>
+  <div id="wapm-ad-facts"></div>
+  <input type="number" id="wapm-ad-value" value="1">
+  <select id="wapm-ad-unit"><option value="percent">درصد</option><option value="fixed">تومان</option></select>
+  <button id="wapm-ad-preview"></button>
+  <div id="wapm-ad-result"></div>
+  <span id="wapm-ad-note"></span>
+  <button id="wapm-ad-cancel"></button>
+  <button id="wapm-ad-apply" disabled></button>
+</aside>
 <div id="wapm-toasts"></div>
 <script type="application/json" id="wapm-initial-data">{"rules":[],"schedules":[]}</script>
 </body></html>`;
@@ -196,6 +220,14 @@ $.post = function (url, data) {
 		payload = { ids: [101], rows: [], will: 1, skipped: 0 };
 	} else if (action === 'torob_get_unmatched') {
 		payload = { rows: [], total: 0, counts: {} };
+	} else if (action === 'torob_align') {
+		const dry = String((data && data.dry_run) || '') === '1';
+		payload = dry
+			? { dry_run: true, skipped: [], rows: [{
+				id: 101, parent_id: 0, name: 'محصول آزمایشی', sku: 'SKU-101', type: '',
+				price_type: 'regular', old: 120000, new: 99000, diff: -21000, percent: -17.5, warn: false,
+			}], changed: 0, batch_id: '' }
+			: { dry_run: false, skipped: [], rows: [], changed: 1, batch_id: 'align_test' };
 	} else if (action === 'get_logs' || action === 'stock_logs') {
 		payload = { rows: [], total: 0, pages: 0, last_batch: '' };
 	}
@@ -221,7 +253,7 @@ for (const name of ORDER) {
 const UI = window.WAPMUI || {};
 
 console.log('— صادرات مشترک');
-for (const key of ['ajax', 'esc', 'fmt', 'wapmToast', 'state', 'runBatchLoop', 'readFilters', 'readSettings', 'listState', 'loadProductList', 'updateRowInDom', 'renderRules', 'renderSchedules', 'loadHistory', 'loadStockLogs', 'loadTorobUnmatched', 'refreshListIfLoaded', 'bpOpen', 'sdOpen']) {
+for (const key of ['ajax', 'esc', 'fmt', 'wapmToast', 'state', 'runBatchLoop', 'readFilters', 'readSettings', 'listState', 'loadProductList', 'updateRowInDom', 'renderRules', 'renderSchedules', 'loadHistory', 'loadStockLogs', 'loadTorobUnmatched', 'refreshListIfLoaded', 'bpOpen', 'sdOpen', 'alignOpen', 'alignClose']) {
 	ok(typeof UI[key] === 'function' || (key === 'state' || key === 'listState') ? key in UI : false, `WAPMUI.${key}`);
 }
 
@@ -258,6 +290,26 @@ try {
 	ok(!$('#wapm-stock-drawer').hasClass('is-open'), 'کشوی موجودی بسته شد');
 } catch (error) {
 	ok(false, 'کشوها بدون خطا باز/بسته شدند', error.message);
+}
+
+console.log('— «هم‌تراز با ترب» (دکمه‌ی ستون ترب)');
+try {
+	ok($('#wapm-list-tbody .wapm-torob-align').length === 1, 'دکمه‌ی هم‌تراز در ستون ترب رندر شد');
+
+	$('#wapm-list-tbody .wapm-torob-align').first().trigger('click');
+	ok($('#wapm-align-drawer').hasClass('is-open'), 'کشوی هم‌تراز باز شد');
+	ok(String($('#wapm-ad-facts').text()).indexOf('ارزان‌ترین رقیب') !== -1, 'وضعیت فعلی در کشو نشان داده شد');
+
+	// پیش‌نمایش: تا وقتی محاسبه نشده، «اعمال» باید خاموش بماند.
+	ok($('#wapm-ad-apply').prop('disabled') === true, 'اعمال قبل از پیش‌نمایش خاموش است');
+	$('#wapm-ad-preview').trigger('click');
+	ok(String($('#wapm-ad-result').text()).indexOf('۹۹') !== -1 || String($('#wapm-ad-result').text()).length > 0, 'نتیجه‌ی پیش‌نمایش نمایش داده شد');
+	ok($('#wapm-ad-apply').prop('disabled') === false, 'اعمال بعد از پیش‌نمایش فعال شد');
+
+	$('#wapm-ad-apply').trigger('click');
+	ok(!$('#wapm-align-drawer').hasClass('is-open'), 'کشو بعد از اعمال بسته شد');
+} catch (error) {
+	ok(false, 'سناریوی هم‌تراز بدون خطا اجرا شد', error.message);
 }
 
 console.log('— تب‌ها');

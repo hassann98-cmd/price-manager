@@ -360,6 +360,59 @@ if ( ! defined( 'ABSPATH' ) ) {
 					</div>
 				</aside>
 
+				<!-- کشوی «هم‌تراز با ترب» — قیمت یک محصول روی ارزان‌ترین رقیب منهای x -->
+				<div id="wapm-align-drawer-overlay" class="wapm-drawer-overlay"></div>
+				<aside id="wapm-align-drawer" class="wapm-drawer wapm-drawer--narrow" role="dialog" aria-modal="true" aria-labelledby="wapm-ad-title" aria-hidden="true">
+					<div class="wapm-drawer__head">
+						<div>
+							<h2 id="wapm-ad-title"><?php esc_html_e( 'هم‌تراز با ترب', 'wapm' ); ?></h2>
+							<p><?php esc_html_e( 'قیمت روی «ارزان‌ترین رقیب منهای مقدار زیربرش» تنظیم می‌شود. اول پیش‌نمایش، بعد اعمال.', 'wapm' ); ?></p>
+						</div>
+						<button type="button" id="wapm-ad-close" class="wapm-drawer__close" aria-label="<?php esc_attr_e( 'بستن', 'wapm' ); ?>">×</button>
+					</div>
+
+					<div class="wapm-drawer__body">
+						<div class="wapm-drawer__section">
+							<h3><?php esc_html_e( 'وضعیت فعلی', 'wapm' ); ?></h3>
+							<div class="wapm-align-facts" id="wapm-ad-facts"></div>
+						</div>
+
+						<div class="wapm-drawer__section">
+							<h3><?php esc_html_e( 'مقدار زیربرش', 'wapm' ); ?></h3>
+							<div class="wapm-drawer__row">
+								<label class="wapm-field">
+									<span><?php esc_html_e( 'مقدار', 'wapm' ); ?></span>
+									<input type="number" id="wapm-ad-value" min="0" step="any" value="1">
+								</label>
+								<label class="wapm-field">
+									<span><?php esc_html_e( 'واحد', 'wapm' ); ?></span>
+									<select id="wapm-ad-unit">
+										<option value="percent"><?php esc_html_e( 'درصد', 'wapm' ); ?></option>
+										<option value="fixed"><?php esc_html_e( 'تومان', 'wapm' ); ?></option>
+									</select>
+								</label>
+							</div>
+							<p class="description"><?php esc_html_e( 'مثال: «۱ درصد» یعنی یک درصد ارزان‌تر از ارزان‌ترین فروشنده‌ی رقیب. قیمت نهایی رو به پایین روی مضرب ۱٬۰۰۰ رند می‌شود و هرگز از رقیب گران‌تر نمی‌شود.', 'wapm' ); ?></p>
+						</div>
+
+						<div class="wapm-drawer__section">
+							<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+								<h3 style="margin:0"><?php esc_html_e( 'پیش‌نمایش', 'wapm' ); ?></h3>
+								<button type="button" class="button" id="wapm-ad-preview"><?php esc_html_e( 'محاسبه', 'wapm' ); ?></button>
+							</div>
+							<div id="wapm-ad-result" style="margin-top:8px"></div>
+						</div>
+					</div>
+
+					<div class="wapm-drawer__foot">
+						<span class="wapm-mini-link" id="wapm-ad-note"></span>
+						<div style="display:flex;gap:8px">
+							<button type="button" class="button" id="wapm-ad-cancel"><?php esc_html_e( 'انصراف', 'wapm' ); ?></button>
+							<button type="button" class="button button-primary" id="wapm-ad-apply" disabled><?php esc_html_e( 'اعمال قیمت', 'wapm' ); ?></button>
+						</div>
+					</div>
+				</aside>
+
 				<!-- کشوی تغییر موجودی انتخاب‌شده‌ها -->
 				<div id="wapm-stock-drawer-overlay" class="wapm-drawer-overlay"></div>
 				<aside id="wapm-stock-drawer" class="wapm-drawer" role="dialog" aria-modal="true" aria-labelledby="wapm-sd-title" aria-hidden="true">

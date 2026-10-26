@@ -228,6 +228,11 @@
 			links += '<a href="' + esc(t.url) + '" target="_blank" rel="noopener" class="wapm-mini-link">ترب</a>';
 		}
 		links += ' <button type="button" class="wapm-torob-check wapm-mini-link" data-id="' + r.id + '" title="همین حالا از ترب بخوان (۱ درخواست)">بررسی الان</button>';
+		// «هم‌تراز» فقط وقتی معنا دارد که ارزان‌ترین رقیب را داشته باشیم؛ دکمه‌ی
+		// بی‌اثر نشان دادن، کاربر را به کلیک‌های بی‌نتیجه عادت می‌دهد.
+		if (t.competitor_price !== null && t.competitor_price !== undefined && Number(t.competitor_price) > 0) {
+			links += ' <button type="button" class="wapm-torob-align wapm-mini-link" data-id="' + r.id + '" title="قیمت را روی ارزان‌ترین رقیب منهای درصد تعیین‌شده بگذار (با پیش‌نمایش)">هم‌تراز</button>';
+		}
 		links += ' <button type="button" class="wapm-torob-unlink wapm-mini-link wapm-mini-link--danger" data-id="' + r.id + '" title="جداکردن از ترب">جداکردن</button>';
 
 		html += '<div style="margin-top:2px">' + links + '</div>';

@@ -1762,6 +1762,63 @@ test( 'رشته: هیچ فایل افزونه‌ای مستقیم mb_* صدا ن
 } );
 
 /* -------------------------------------------------------------------------
+ * ۱۹) «هم‌تراز با ترب» — تنظیمات، برچسب دلیل و ثبت اکشن
+ * ---------------------------------------------------------------------- */
+
+test( 'هم‌تراز: تنظیمات امن و پیش‌فرض‌های محافظه‌کارانه', function () {
+	$s = WAPM_Price_Engine::torob_align_settings( 2.5, 'percent' );
+
+	eq( 'torob', $s['source'], 'منبع ترب' );
+	eq( 2.5, $s['torob_undercut'], 'مقدار زیربرش' );
+	eq( 'percent', $s['torob_undercut_mode'], 'واحد درصدی' );
+	eq( true, $s['torob_only_if_pricier'], 'هرگز گران نمی‌کند' );
+	eq( 0.0, $s['torob_min_gap_pct'], 'اختلاف ناچیز جلوی کار دستی را نمی‌گیرد' );
+	eq( 'regular', $s['price_target'], 'قیمت اصلی' );
+	eq( 'both', $s['variable_scope'], 'والد + واریشن' );
+	eq( 'down', $s['round_mode'], 'گرد کردن رو به پایین' );
+	eq( 1000.0, $s['round_base'], 'مضرب ۱۰۰۰' );
+
+	// ورودی نامعتبر نباید راه پیدا کند.
+	$a = WAPM_Price_Engine::torob_align_settings( -5, 'چیز-نامعتبر' );
+	eq( 0.0, $a['torob_undercut'], 'زیربرش منفی → صفر' );
+	eq( 'percent', $a['torob_undercut_mode'], 'واحد نامعتبر → درصد' );
+} );
+
+test( 'هم‌تراز: قیمت هدف = ارزان‌ترین رقیب منهای زیربرش', function () {
+	$percent = WAPM_Price_Engine::torob_align_settings( 1, 'percent' );
+	eq( 99000.0, WAPM_Price_Engine::torob_target_price( 100000, $percent ), '۱٪ زیر ۱۰۰٬۰۰۰' );
+
+	$fixed = WAPM_Price_Engine::torob_align_settings( 5000, 'fixed' );
+	eq( 95000.0, WAPM_Price_Engine::torob_target_price( 100000, $fixed ), '۵٬۰۰۰ تومان زیر رقیب' );
+
+	$zero = WAPM_Price_Engine::torob_align_settings( 0, 'percent' );
+	eq( 100000.0, WAPM_Price_Engine::torob_target_price( 100000, $zero ), 'بدون زیربرش' );
+	// رند رو به پایین: ۹۹٬۹۹۹ → ۹۹٬۰۰۰ (حداکثر ۹۹۹ تومان پایین‌تر، هرگز بالاتر از رقیب).
+	eq( 99000.0, WAPM_Price_Engine::torob_target_price( 99999, WAPM_Price_Engine::torob_align_settings( 0, 'percent' ) ), 'رند رو به پایین' );
+
+	eq( null, WAPM_Price_Engine::torob_target_price( 0, $percent ), 'بدون قیمت رقیب → null' );
+} );
+
+test( 'هم‌تراز: هر کد دلیل رد‌شدن، برچسب فارسی دارد', function () {
+	// این فهرست باید با کدهایی که torob_context برمی‌گرداند هم‌خوان بماند.
+	foreach ( [ 'already_cheaper', 'small_gap', 'sanity', 'unit_suspect', 'no_data', 'missing' ] as $code ) {
+		$label = WAPM_Torob::skip_label( $code );
+		ok( $label !== $code && '' !== $label, 'برچسب برای ' . $code );
+	}
+
+	eq( 'دلیل-ناشناخته', WAPM_Torob::skip_label( 'دلیل-ناشناخته' ), 'کد ناشناخته بدون تغییر برمی‌گردد' );
+} );
+
+test( 'هم‌تراز: اکشن Ajax و هندلرش وجود دارند', function () {
+	$ajax = (string) file_get_contents( __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-ajax.php' );
+
+	ok( false !== strpos( $ajax, "'torob_align'," ), 'اکشن در فهرست مجاز ثبت شده' );
+	ok( false !== strpos( $ajax, 'public function torob_align(): void' ), 'هندلر تعریف شده' );
+	// مسیر اعمال باید از موتور قیمت رد شود، نه اینکه مستقیم متا را بنویسد.
+	ok( false !== strpos( $ajax, 'WAPM_Price_Engine::apply_to_product( $id, $settings, $batch_id, \'torob_align\' )' ), 'اعمال از موتور قیمت' );
+} );
+
+/* -------------------------------------------------------------------------
  * نتیجه
  * ---------------------------------------------------------------------- */
 

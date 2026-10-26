@@ -11,52 +11,52 @@ msgstr ""
 "X-Domain: wapm\n"
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:1069
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:1070
 msgid "%1$d ردیف خوانده شد — %2$d محصول تطبیق خورد، %3$d تطبیق نخورد."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:1441
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:1529
 msgid "%1$d قیمت با موفقیت بازگردانی شد (این دسته %2$d ردیف داشت)."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:1434
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:1522
 msgid "%1$d قیمت بازگردانی شد؛ %2$d مورد بعد از این عملیات تغییر کرده بود و برای جلوگیری از پاک‌شدن تغییر جدیدتر، بازگردانی نشد."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:1550
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:1638
 msgid "%1$d قیمت به‌روزرسانی شد، %2$d ردیف نادیده گرفته شد. (Batch: %3$s)"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:557
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:639
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:558
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:640
 msgid "%1$d محصول اعمال شد، %2$d مورد رد شد."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:1000
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:1001
 msgid "%1$d محصول به ترب وصل شد؛ %2$d مورد وصل نشد."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:687
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:688
 msgid "%1$d موجودی بازگردانی شد؛ %2$d مورد بعد از این عملیات تغییر کرده بود."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:734
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:735
 msgid "%1$d موجودی ذخیره شد، %2$d ردیف رد شد."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:296
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:297
 msgid "%d آیتم حذف شد."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:1029
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:1030
 msgid "%d ردیف از لیست تطبیق‌نیافته‌ها حذف شد."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:1006
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:1007
 msgid "%d محصول به ترب وصل شد."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:306
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:307
 msgid "%d مورد رد شد"
 msgstr ""
 
@@ -88,7 +88,7 @@ msgstr ""
 msgid "taxonomy نامعتبر است."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:979
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:980
 msgid "«%s» وصل نشد (واریشن یا شناسه‌ی نامعتبر)."
 msgstr ""
 
@@ -125,7 +125,7 @@ msgstr ""
 msgid "ابتدا مدیریت انبار را برای این محصول فعال کنید."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:893
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:894
 msgid "اتصال انجام نشد؛ محصول یا شناسه معتبر نیست. واریشن‌ها را نمی‌شود مستقیم به ترب وصل کرد — والد را انتخاب کنید."
 msgstr ""
 
@@ -137,7 +137,7 @@ msgstr ""
 msgid "اتصال قطع شد — تلاش مجدد %1$d از ۳ (%2$d ثانیه دیگر)…"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:916
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:917
 msgid "اتصال محصول به ترب حذف شد."
 msgstr ""
 
@@ -158,6 +158,10 @@ msgstr ""
 msgid "اجرای خودکار"
 msgstr ""
 
+#: woocommerce-advanced-price-manager/includes/class-torob.php:842
+msgid "اختلاف با قیمت هدف ناچیز است"
+msgstr ""
+
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-torob.php:49
 msgid "اختلاف کمتر از این مقدار، «برابر با رقیب» حساب می‌شود."
 msgstr ""
@@ -170,15 +174,19 @@ msgstr ""
 msgid "ارزان‌ترین محصول"
 msgstr ""
 
+#: woocommerce-advanced-price-manager/includes/class-torob.php:841
+msgid "از ارزان‌ترین رقیب ارزان‌تریم — قیمت بالا نمی‌رود"
+msgstr ""
+
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-rules.php:45
 msgid "از:"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:889
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:890
 msgid "اطلاعات اتصال کامل نیست."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:415
+#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:468
 msgid "اعمال"
 msgstr ""
 
@@ -188,6 +196,10 @@ msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:168
 msgid "اعمال فیلتر"
+msgstr ""
+
+#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:411
+msgid "اعمال قیمت"
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-stock.php:48
@@ -211,7 +223,7 @@ msgstr ""
 msgid "افزودن"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:381
+#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:434
 msgid "افزودن (+)"
 msgstr ""
 
@@ -232,10 +244,11 @@ msgid "انجام شد"
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:357
+#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:410
 msgid "انصراف"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-torob.php:1624
+#: woocommerce-advanced-price-manager/includes/class-torob.php:1645
 msgid "اول شناسه‌ی فروشگاه در ترب را تنظیم کنید."
 msgstr ""
 
@@ -243,7 +256,7 @@ msgstr ""
 msgid "اول پیش‌نمایش، بعد اعمال. کل تغییر یک Batch است و با یک دکمه بازگردانی می‌شود."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:207
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:208
 msgid "اول یک فیلتر بزنید، بعد ذخیره کنید."
 msgstr ""
 
@@ -276,7 +289,7 @@ msgstr ""
 msgid "این بوکمارکلت با API عمومی ترب (api.torob.com) کار می‌کند و فقط JSON می‌خواند — یعنی دیگر به ظاهر صفحه وابسته نیست. دو حالت دارد: «سریع» فقط کاتالوگ و قیمت خودتان را می‌گیرد؛ «کامل» برای هر محصول یک درخواست می‌فرستد و ارزان‌ترین رقیب را هم می‌آورد. چون از مرورگر خودتان و روی دامنه‌ی ترب اجرا می‌شود، مثل بازدید واقعی دیده می‌شود؛ ولی با بلاک ۴۹۰ فوراً متوقف می‌شود."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:1076
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:1077
 msgid "این فایل ستون قیمت رقیب نداشت، پس فقط «قیمت ما از دید ترب» به‌روز شد و قیمت رقبا دست‌نخورده ماند."
 msgstr ""
 
@@ -292,7 +305,7 @@ msgstr ""
 msgid "این محصول از تغییرات گروهی قیمت افزونه Advanced Price Manager خارج شود."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-torob.php:1674
+#: woocommerce-advanced-price-manager/includes/class-torob.php:1695
 msgid "این محصول به ترب وصل نیست؛ اول از لیست «تطبیق‌نیافته‌ها» یا با همگام‌سازی کاتالوگ وصلش کنید."
 msgstr ""
 
@@ -358,11 +371,11 @@ msgstr ""
 msgid "برابر با رقیب"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:693
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:694
 msgid "برای بازگردانی اجباری دوباره بزنید."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:1187
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:1188
 msgid "بررسی شد — %d فروشنده در ترب."
 msgstr ""
 
@@ -377,6 +390,7 @@ msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:243
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:371
+#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:424
 msgid "بستن"
 msgstr ""
 
@@ -400,7 +414,7 @@ msgstr ""
 msgid "به این آدرس بروید: %s"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-torob.php:1465
+#: woocommerce-advanced-price-manager/includes/class-torob.php:1486
 msgid "به‌طور خودکار تطبیق نخورد"
 msgstr ""
 
@@ -457,7 +471,7 @@ msgstr ""
 msgid "ترب (نسبت به ارزان‌ترین رقیب)"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-torob.php:1685
+#: woocommerce-advanced-price-manager/includes/class-torob.php:1706
 msgid "ترب برای این محصول فروشنده‌ای برنگرداند."
 msgstr ""
 
@@ -465,7 +479,7 @@ msgstr ""
 msgid "ترب درخواست را بلاک کرد (کد %d). ۳۰ دقیقه صبر کنید؛ افزونه تا آن زمان درخواستی به ترب نمی‌فرستد."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:1110
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:1111
 msgid "ترب درخواست را محدود کرده است؛ حدود %d دقیقه دیگر تلاش کنید."
 msgstr ""
 
@@ -495,9 +509,13 @@ msgstr ""
 msgid "تطبیق‌نیافته"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:389
+#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:442
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-stock.php:31
 msgid "تعداد"
+msgstr ""
+
+#: woocommerce-advanced-price-manager/includes/class-torob.php:843
+msgid "تغییر بیش از ۱۰ برابر — داده مشکوک"
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:183
@@ -511,7 +529,7 @@ msgstr ""
 msgid "تغییر قیمت انتخاب‌شده‌ها"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:368
+#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:421
 msgid "تغییر موجودی انتخاب‌شده‌ها"
 msgstr ""
 
@@ -539,7 +557,7 @@ msgstr ""
 msgid "تفاوت"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:383
+#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:436
 msgid "تنظیم روی عدد"
 msgstr ""
 
@@ -556,6 +574,7 @@ msgid "تولید دوباره‌ی توکن (بوکمارکلت/فید قبلی
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:289
+#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:391
 #: woocommerce-advanced-price-manager/includes/class-admin.php:317
 #: woocommerce-advanced-price-manager/includes/class-admin.php:367
 msgid "تومان"
@@ -598,7 +617,7 @@ msgstr ""
 msgid "حداقل اختلاف برای تغییر:"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:1099
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:1100
 msgid "حداقل دو حرف از نام فروشگاه را بنویسید."
 msgstr ""
 
@@ -699,20 +718,20 @@ msgstr ""
 msgid "خط %d: مقدار موجودی معتبر نیست."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:241
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:255
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:269
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:278
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:242
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:256
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:270
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:279
 msgid "خطا"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:1051
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:709
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:1052
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:710
 msgid "خطا در آپلود فایل."
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/class-csv-handler.php:62
-#: woocommerce-advanced-price-manager/includes/class-torob.php:1767
+#: woocommerce-advanced-price-manager/includes/class-torob.php:1788
 msgid "خطا در خواندن فایل."
 msgstr ""
 
@@ -729,17 +748,21 @@ msgstr ""
 msgid "داده تازه"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:1496
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:1584
 msgid "داده زمان‌بندی نامعتبر است."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:1461
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:1549
 msgid "داده قانون نامعتبر است."
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:45
 #: woocommerce-advanced-price-manager/includes/class-torob.php:823
 msgid "داده کهنه"
+msgstr ""
+
+#: woocommerce-advanced-price-manager/includes/class-torob.php:845
+msgid "داده‌ی تازه‌ی ترب ندارد"
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-torob.php:41
@@ -787,6 +810,7 @@ msgid "در پیش‌نمایش %d قیمت پرخطر (افت بیش از ۹۰�
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:390
+#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:443
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-torob.php:48
 #: woocommerce-advanced-price-manager/includes/class-admin.php:313
 msgid "درصد"
@@ -805,8 +829,8 @@ msgstr ""
 msgid "درصدی"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:1512
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:746
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:1600
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:747
 msgid "دسترسی نامعتبر."
 msgstr ""
 
@@ -945,7 +969,7 @@ msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:115
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:160
-#: woocommerce-advanced-price-manager/includes/class-price-engine.php:333
+#: woocommerce-advanced-price-manager/includes/class-price-engine.php:362
 msgid "ساده"
 msgstr ""
 
@@ -953,7 +977,7 @@ msgstr ""
 msgid "ستون Stock Status خالی یا نامعتبر است و مدیریت انبار هم خاموش است"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-torob.php:1787
+#: woocommerce-advanced-price-manager/includes/class-torob.php:1808
 msgid "ستون prk در فایل پیدا نشد."
 msgstr ""
 
@@ -997,9 +1021,9 @@ msgstr ""
 msgid "شروع همگام‌سازی کاتالوگ"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:1515
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:749
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:93
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:1603
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:750
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:94
 msgid "شما دسترسی لازم را ندارید."
 msgstr ""
 
@@ -1049,7 +1073,7 @@ msgstr ""
 msgid "صفحات خوانده‌شده"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:436
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:437
 msgid "صفحه‌ی نامعتبر."
 msgstr ""
 
@@ -1063,7 +1087,7 @@ msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-history.php:26
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:218
-#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:379
+#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:432
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-rules.php:90
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-schedule.php:65
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-stock.php:23
@@ -1071,21 +1095,21 @@ msgstr ""
 msgid "عملیات"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:514
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:515
 msgid "عملیات موجودی نامعتبر است (حالت/مقدار/واحد)."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:541
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:576
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:608
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:542
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:577
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:609
 msgid "عملیات موجودی نامعتبر است."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:328
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:329
 msgid "عملیات نامعتبر است."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:1423
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:1511
 msgid "عملیاتی برای بازگردانی یافت نشد."
 msgstr ""
 
@@ -1103,23 +1127,23 @@ msgstr ""
 msgid "غیرفعال"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:1054
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:712
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:1055
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:713
 msgid "فایل آپلودشده معتبر نیست."
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/class-csv-handler.php:72
-#: woocommerce-advanced-price-manager/includes/class-torob.php:1773
+#: woocommerce-advanced-price-manager/includes/class-torob.php:1794
 msgid "فایل خالی است."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:1048
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:1534
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:706
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:1049
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:1622
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:707
 msgid "فایلی انتخاب نشده است."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-torob.php:1737
+#: woocommerce-advanced-price-manager/includes/class-torob.php:1758
 msgid "فروشگاه «%1$s» در ترب فعال نیست (%2$s). تا فعال‌شدن، محصولات شما در ترب نمایش داده نمی‌شوند و مقایسه معنی ندارد."
 msgstr ""
 
@@ -1127,7 +1151,7 @@ msgstr ""
 msgid "فروشگاه پیدا نشد."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:1111
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:1112
 msgid "فروشگاهی با این نام پیدا نشد. نام را همان‌طور که در ترب می‌بینید وارد کنید."
 msgstr ""
 
@@ -1139,9 +1163,9 @@ msgstr ""
 msgid "فقط تخفیف‌دار"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:1059
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:1539
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:717
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:1060
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:1627
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:718
 msgid "فقط فایل CSV مجاز است."
 msgstr ""
 
@@ -1162,11 +1186,11 @@ msgstr ""
 msgid "فید CSV"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:229
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:230
 msgid "فیلتر حذف شد."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:214
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:215
 msgid "فیلتر ذخیره شد."
 msgstr ""
 
@@ -1186,7 +1210,7 @@ msgstr ""
 msgid "فیلترهای ذخیره‌شده…"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:187
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:188
 msgid "فیلتری برای ذخیره وجود ندارد."
 msgstr ""
 
@@ -1202,7 +1226,7 @@ msgstr ""
 msgid "قانون غیرفعال در لیست می‌ماند ولی قابل اجرا نیست."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:1483
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:1571
 msgid "قانون یافت نشد."
 msgstr ""
 
@@ -1260,6 +1284,10 @@ msgstr ""
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:101
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:214
 msgid "قیمت ترب"
+msgstr ""
+
+#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:369
+msgid "قیمت روی «ارزان‌ترین رقیب منهای مقدار زیربرش» تنظیم می‌شود. اول پیش‌نمایش، بعد اعمال."
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:304
@@ -1350,12 +1378,16 @@ msgstr ""
 msgid "متغیر"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-price-engine.php:322
+#: woocommerce-advanced-price-manager/includes/class-price-engine.php:351
 msgid "متغیر (والد)"
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/class-admin.php:390
 msgid "مثال حفظ تخفیف: Regular از ۱٬۰۰۰٬۰۰۰ به ۱٬۲۰۰٬۰۰۰ → Sale از ۸۰۰٬۰۰۰ به ۹۶۰٬۰۰۰ (تخفیف ۲۰٪ حفظ می‌شود)."
+msgstr ""
+
+#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:395
+msgid "مثال: «۱ درصد» یعنی یک درصد ارزان‌تر از ارزان‌ترین فروشنده‌ی رقیب. قیمت نهایی رو به پایین روی مضرب ۱٬۰۰۰ رند می‌شود و هرگز از رقیب گران‌تر نمی‌شود."
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/class-admin.php:320
@@ -1374,6 +1406,10 @@ msgstr ""
 msgid "مثلاً: حراج تابستانه"
 msgstr ""
 
+#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:401
+msgid "محاسبه"
+msgstr ""
+
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:343
 msgid "محاسبه پیش‌نمایش"
 msgstr ""
@@ -1388,11 +1424,11 @@ msgstr ""
 msgid "محصول"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:984
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:985
 msgid "محصول #%d پیدا نشد."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:898
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:899
 msgid "محصول به ترب متصل شد."
 msgstr ""
 
@@ -1400,7 +1436,7 @@ msgstr ""
 msgid "محصول متصل به ترب"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:399
+#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:452
 msgid "محصول متغیر به واریشن‌ها باز می‌شود؛ محصولی که «مدیریت انبار» ندارد با دلیل مشخص رد می‌شود (نه اینکه بی‌صدا صفر شود)."
 msgstr ""
 
@@ -1420,11 +1456,12 @@ msgstr ""
 msgid "محصول منتشرشده"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:909
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:910
 msgid "محصول نامعتبر است."
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/class-stock.php:221
+#: woocommerce-advanced-price-manager/includes/class-torob.php:846
 msgid "محصول پیدا نشد"
 msgstr ""
 
@@ -1451,6 +1488,10 @@ msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/class-admin.php:495
 msgid "محصولات یافت‌شده"
+msgstr ""
+
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:1215
+msgid "محصولی برای هم‌ترازی انتخاب نشده است."
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:309
@@ -1487,9 +1528,14 @@ msgid "مستقل (طبق «قیمت هدف»)"
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:282
-#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:394
+#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:384
+#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:447
 #: woocommerce-advanced-price-manager/includes/class-admin.php:362
 msgid "مقدار"
+msgstr ""
+
+#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:381
+msgid "مقدار زیربرش"
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/class-stock.php:227
@@ -1576,7 +1622,7 @@ msgstr ""
 msgid "نام فیلتر (خالی = خودکار)"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-torob.php:1460
+#: woocommerce-advanced-price-manager/includes/class-torob.php:1481
 msgid "نام مشابه چند محصول — شباهت %s٪"
 msgstr ""
 
@@ -1598,16 +1644,16 @@ msgstr ""
 msgid "نسخه"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:90
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:91
 msgid "نشست شما منقضی شده است. صفحه را رفرش کنید."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-torob.php:1792
+#: woocommerce-advanced-price-manager/includes/class-torob.php:1813
 msgid "نه ستون قیمت رقیب (price) در فایل هست و نه قیمت خودمان (our_price)."
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:262
-#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:376
+#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:429
 #: woocommerce-advanced-price-manager/includes/class-admin.php:343
 msgid "نوع تغییر"
 msgstr ""
@@ -1633,7 +1679,7 @@ msgstr ""
 msgid "هر دو"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:1080
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:1081
 msgid "هشدار: فایل ستون shop_id/shop_name نداشت؛ هر ردیف یک قیمتِ بی‌نام است. اگر این فایل قیمت خودتان است، به‌جای ستون price از ستون our_price استفاده کنید تا قیمت خودتان «رقیب» حساب نشود."
 msgstr ""
 
@@ -1645,7 +1691,7 @@ msgstr ""
 msgid "همان عددی است که در آدرس torob.com/shop/عدد/... می‌بینید."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:369
+#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:422
 msgid "همان قاعده‌ی قیمت: اول پیش‌نمایش، بعد اعمال؛ همه با یک Batch و یک دکمه بازگردانی."
 msgstr ""
 
@@ -1681,33 +1727,37 @@ msgstr ""
 msgid "همگام‌سازی کاتالوگ از API ترب"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-torob.php:1449
+#: woocommerce-advanced-price-manager/includes/class-torob.php:1470
 msgid "همین عنوان در ووکامرس به محصول دیگری در ترب وصل است"
+msgstr ""
+
+#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:368
+msgid "هم‌تراز با ترب"
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/class-admin.php:487
 msgid "هنوز هیچ داده‌ای از ترب دریافت نشده است."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:1020
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:1021
 msgid "هیچ ردیفی انتخاب نشده است."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:944
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:945
 msgid "هیچ ردیفی برای اتصال انتخاب نشده است."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-torob.php:1452
+#: woocommerce-advanced-price-manager/includes/class-torob.php:1473
 msgid "هیچ محصول مشابهی پیدا نشد"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:362
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:423
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:583
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:363
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:424
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:584
 msgid "هیچ محصولی انتخاب نشده است."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:289
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:290
 msgid "هیچ محصولی انتخاب نشده."
 msgstr ""
 
@@ -1715,14 +1765,19 @@ msgstr ""
 msgid "هیچ محصولی با این شرایط پیدا نشد."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:546
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:613
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:547
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:614
 msgid "هیچ محصولی برای تغییر انتخاب نشده است."
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:287
-#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:387
+#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:388
+#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:440
 msgid "واحد"
+msgstr ""
+
+#: woocommerce-advanced-price-manager/includes/class-torob.php:844
+msgid "واحد قیمت مشکوک (تومان/ریال)"
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-torob.php:134
@@ -1733,11 +1788,11 @@ msgstr ""
 msgid "وارد کردن قیمت‌ها"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-price-engine.php:328
+#: woocommerce-advanced-price-manager/includes/class-price-engine.php:357
 msgid "واریشن"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-torob.php:1446
+#: woocommerce-advanced-price-manager/includes/class-torob.php:1467
 msgid "واریشن هم‌نام شد — ترب در سطح والد مقایسه می‌کند"
 msgstr ""
 
@@ -1767,13 +1822,17 @@ msgstr ""
 msgid "وضعیت این محصول از تعداد موجودی می‌آید"
 msgstr ""
 
+#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:376
+msgid "وضعیت فعلی"
+msgstr ""
+
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:211
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:32
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:96
 msgid "وضعیت موجودی"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:304
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:305
 msgid "وضعیت موجودی %d محصول تغییر کرد."
 msgstr ""
 
@@ -1827,8 +1886,9 @@ msgid "پیش‌فرض خاموش است: قانون فقط با دکمه‌ی �
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:342
-#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:404
-#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:414
+#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:400
+#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:457
+#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:467
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-stock.php:47
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-stock.php:78
 msgid "پیش‌نمایش"
@@ -1838,7 +1898,7 @@ msgstr ""
 msgid "پیش‌نمایش تغییرات"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-ajax.php:728
+#: woocommerce-advanced-price-manager/includes/class-ajax.php:729
 msgid "پیش‌نمایش: %1$d ردیف تغییر می‌کند، %2$d ردیف رد می‌شود. هنوز هیچ چیزی ذخیره نشده است."
 msgstr ""
 
@@ -1853,18 +1913,18 @@ msgid "کاهش"
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:276
-#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:382
+#: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:435
 #: woocommerce-advanced-price-manager/includes/class-admin.php:357
 msgid "کاهش (−)"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-torob.php:1455
+#: woocommerce-advanced-price-manager/includes/class-torob.php:1476
 msgid "کد/SKU پیدا شد ولی نام نمی‌خواند"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-torob.php:1627
-#: woocommerce-advanced-price-manager/includes/class-torob.php:1677
-#: woocommerce-advanced-price-manager/includes/class-torob.php:1719
+#: woocommerce-advanced-price-manager/includes/class-torob.php:1648
+#: woocommerce-advanced-price-manager/includes/class-torob.php:1698
+#: woocommerce-advanced-price-manager/includes/class-torob.php:1740
 msgid "کلاینت API ترب بارگذاری نشده است."
 msgstr ""
 
