@@ -644,6 +644,13 @@ class WAPM_List {
 	 * @return array{success: bool, message?: string, row?: array}
 	 */
 	public static function update_field( int $product_id, string $field, $value ): array {
+		// شناسه‌ی صفر/منفی یعنی درخواست ناقص (نه محصول حذف‌شده). پیام صریح
+		// بده تا در کنسول/شبکه معلوم باشد کدام سمت اشکال دارد؛ قبلاً همین حالت
+		// «محصول یافت نشد.» می‌داد و شبیه حذف‌شدن محصول به نظر می‌رسید.
+		if ( $product_id <= 0 ) {
+			return [ 'success' => false, 'message' => __( 'شناسه محصول نامعتبر است.', 'wapm' ) ];
+		}
+
 		$product = wc_get_product( $product_id );
 		if ( ! $product ) {
 			return [ 'success' => false, 'message' => __( 'محصول یافت نشد.', 'wapm' ) ];
@@ -761,6 +768,9 @@ class WAPM_List {
 	 * روشن/خاموش کردن «مدیریت انبار» یک محصول یا واریشن.
 	 */
 	public static function toggle_manage_stock( int $product_id, bool $enabled ): array {
+		if ( $product_id <= 0 ) {
+			return [ 'success' => false, 'message' => __( 'شناسه محصول نامعتبر است.', 'wapm' ) ];
+		}
 		$product = wc_get_product( $product_id );
 		if ( ! $product ) {
 			return [ 'success' => false, 'message' => __( 'محصول یافت نشد.', 'wapm' ) ];
