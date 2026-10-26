@@ -320,19 +320,40 @@ class WAPM_Torob_Api {
 			return $data;
 		}
 
+		return self::parse_shop_products( $data, $page );
+	}
+
+	/**
+	 * تبدیل پاسخ خام «محصولات فروشگاه» به شکل یکدست (بدون درخواست شبکه).
+	 *
+	 * از shop_products جدا شده تا بدون HTTP هم قابل تست باشد.
+	 *
+	 * @param array $data پاسخ JSON ترب
+	 * @param int   $page شماره‌ی صفحه
+	 * @return array{items:array,count:int,page:int,has_more:bool}
+	 */
+	public static function parse_shop_products( array $data, int $page = 0 ): array {
+		$raw = (array) ( $data['results'] ?? [] );
+
 		$items = [];
-		foreach ( (array) ( $data['results'] ?? [] ) as $card ) {
+		foreach ( $raw as $card ) {
 			$item = self::card( $card );
 			if ( $item ) {
 				$items[] = $item;
 			}
 		}
 
+		// «صفحه‌ی بعد» را ترب تعیین می‌کند (`next`)، نه شمارش ما. قبلاً شرط
+		// `count($items) >= $size` هم داشت و چون `card()` ردیف‌های بی‌شناسه را
+		// دور می‌ریزد، یک کارت خراب کافی بود تا صفحه «آخرین» شمرده شود و بقیه‌ی
+		// کاتالوگ هرگز خوانده نشود — بی‌آنکه خطایی نشان داده شود.
+		$has_more = ! empty( $data['next'] ) && ! empty( $raw );
+
 		return [
 			'items'    => $items,
 			'count'    => (int) ( $data['count'] ?? 0 ),
 			'page'     => max( 0, $page ),
-			'has_more' => ! empty( $data['next'] ) && count( $items ) >= $size,
+			'has_more' => $has_more,
 		];
 	}
 

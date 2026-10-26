@@ -892,6 +892,30 @@ test( 'ترب/sellers: پرچم‌های رشته‌ای فید/بوکمارکل
 	eq( false, $res['list'][0]['unreliable'], '«false» رشته‌ای پرچم نمی‌زند' );
 } );
 
+test( 'ترب/API: صفحه‌ی بعدی کاتالوگ با next تعیین می‌شود، نه شمارش کارت‌ها', function () {
+	stub_reset();
+
+	$card = [ 'random_key' => 'abc123', 'name1' => 'محصول', 'price' => 1000 ];
+
+	// یک کارت خراب (بی‌شناسه) نباید صفحه را «آخرین» جا بزند.
+	$page = WAPM_Torob_Api::parse_shop_products( [
+		'count'   => 48,
+		'next'    => '/v4/internet-shop/base-product/list/?page=1',
+		'results' => [ $card, [ 'name1' => 'خراب', 'price' => 5 ] ],
+	], 0 );
+
+	eq( 1, count( $page['items'] ), 'کارت خراب دور ریخته شد' );
+	eq( true, $page['has_more'], 'صفحه‌ی بعدی وجود دارد' );
+	eq( 48, $page['count'], 'کل کاتالوگ' );
+
+	$last = WAPM_Torob_Api::parse_shop_products( [ 'count' => 48, 'results' => [ $card ] ], 1 );
+	eq( false, $last['has_more'], 'بدون next = آخرین صفحه' );
+
+	$empty = WAPM_Torob_Api::parse_shop_products( [ 'next' => '/x', 'results' => [] ], 2 );
+	eq( false, $empty['has_more'], 'صفحه‌ی خالی حلقه نمی‌سازد' );
+	eq( 0, count( $empty['items'] ), 'بدون آیتم' );
+} );
+
 /* -------------------------------------------------------------------------
  * ۱۳) ترب — تصمیم‌گیری با پرچم‌های موجودی/اعتبار
  * ---------------------------------------------------------------------- */
