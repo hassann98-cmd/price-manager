@@ -36,6 +36,11 @@ class WAPM_Ajax {
 			'torob_sync_catalog',
 			'torob_refresh_product',
 			'torob_api_reset',
+			'stock_preview',
+			'stock_apply',
+			'stock_logs',
+			'stock_undo',
+			'stock_import',
 			'count_targets',
 			'preview',
 			'dry_run',
@@ -54,6 +59,7 @@ class WAPM_Ajax {
 			add_action( "wp_ajax_wapm_{$action}", [ $this, $action ] );
 		}
 		add_action( 'admin_post_wapm_export_csv', [ $this, 'export_csv' ] );
+		add_action( 'admin_post_wapm_export_stock_csv', [ $this, 'export_stock_csv' ] );
 
 		// این یکی از torob.com (Bookmarklet) صدا زده می‌شود، نه از پنل ادمین — پس باید
 		// بدون لاگین (nopriv) هم در دسترس باشد؛ احراز هویتش با توکن اختصاصی است، نه nonce.
@@ -192,14 +198,230 @@ class WAPM_Ajax {
 
 		if ( 'set_stock_status' === $action ) {
 			$status = sanitize_key( $_POST['value'] ?? '' );
-			$count  = WAPM_List::bulk_set_stock_status( $ids, $status );
+			$result = WAPM_List::bulk_set_stock_status( $ids, $status );
+
+			$message = sprintf( __( 'وضعیت موجودی %d محصول تغییر کرد.', 'wapm' ), (int) $result['count'] );
+			if ( ! empty( $result['skipped'] ) ) {
+				$message .= ' ' . sprintf( __( '%d مورد رد شد', 'wapm' ), (int) $result['skipped'] );
+
+				$labels = [];
+				foreach ( (array) $result['reasons'] as $reason => $n ) {
+					$labels[] = WAPM_Stock::reason_label( (string) $reason ) . ' (' . (int) $n . ')';
+				}
+				if ( $labels ) {
+					$message .= ': ' . implode( '، ', $labels );
+				}
+				$message .= '.';
+			}
+
 			wp_send_json_success( [
-				'count'   => $count,
-				'message' => sprintf( __( 'وضعیت موجودی %d محصول تغییر کرد.', 'wapm' ), $count ),
+				'count'   => (int) $result['count'],
+				'skipped' => (int) $result['skipped'],
+				'reasons' => $result['reasons'],
+				'rows'    => $result['rows'],
+				'batch'   => $result['batch_id'] ?? '',
+				'message' => $message,
 			] );
 		}
 
 		wp_send_json_error( [ 'message' => __( 'عملیات نامعتبر است.', 'wapm' ) ] );
+	}
+
+	/* ---------- موجودی ---------- */
+
+	/**
+	 * شناسه‌های هدف موجودی: یا صریح (انتخاب کاربر) یا طبق فیلترها.
+	 *
+	 * @return array{ids:int[],total:int,paged:int,pages:int}
+	 */
+	private function stock_targets(): array {
+		$raw_ids = array_values( array_filter( array_map( 'absint', (array) ( $_POST['ids'] ?? [] ) ) ) );
+
+		if ( $raw_ids ) {
+			return [ 'ids' => $raw_ids, 'total' => count( $raw_ids ), 'paged' => 1, 'pages' => 1 ];
+		}
+
+		$filters  = $this->get_filters();
+		$paged    = max( 1, intval( $_POST['paged'] ?? 1 ) );
+		$per_page = min( 100, max( 1, intval( $_POST['per_page'] ?? 50 ) ) );
+
+		$targets = WAPM_Product_Handler::get_target_ids( $filters, $paged, $per_page );
+
+		return [
+			'ids'   => $targets['ids'],
+			'total' => (int) $targets['total'],
+			'paged' => $paged,
+			'pages' => (int) ceil( max( 1, (int) $targets['total'] ) / $per_page ),
+		];
+	}
+
+	/**
+	 * عملیات درخواستی موجودی را از POST می‌خواند.
+	 *
+	 * @return array{mode:string,unit:string,amount:float}|null
+	 */
+	private function stock_operation(): ?array {
+		$raw = [
+			'mode'   => sanitize_key( $_POST['mode'] ?? '' ),
+			'unit'   => sanitize_key( $_POST['unit'] ?? 'count' ),
+			'amount' => wp_unslash( $_POST['amount'] ?? '' ),
+		];
+
+		return WAPM_Stock::sanitize_operation( $raw );
+	}
+
+	/**
+	 * پیش‌نمایش تغییر موجودی — هیچ چیزی نوشته نمی‌شود.
+	 */
+	public function stock_preview(): void {
+		$this->guard();
+
+		$op = $this->stock_operation();
+		if ( null === $op ) {
+			wp_send_json_error( [ 'message' => __( 'عملیات موجودی نامعتبر است (حالت/مقدار/واحد).', 'wapm' ) ] );
+		}
+
+		$targets = $this->stock_targets();
+		$expand  = ! isset( $_POST['variations'] ) || ! empty( $_POST['variations'] );
+		$preview = WAPM_Stock::preview( $targets['ids'], $op, $expand );
+
+		wp_send_json_success( [
+			'rows'       => $preview['rows'],
+			'will'       => (int) $preview['will_change'],
+			'skipped'    => $preview['skipped'],
+			'ids'        => $targets['ids'],
+			'total'      => $targets['total'],
+			'paged'      => $targets['paged'],
+			'pages'      => $targets['pages'],
+			'operation'  => $op,
+		] );
+	}
+
+	/**
+	 * اجرای تغییر موجودی روی حداکثر ۵۰ شناسه در هر درخواست.
+	 */
+	public function stock_apply(): void {
+		$this->guard();
+
+		$op = $this->stock_operation();
+		if ( null === $op ) {
+			wp_send_json_error( [ 'message' => __( 'عملیات موجودی نامعتبر است.', 'wapm' ) ] );
+		}
+
+		$ids = array_values( array_filter( array_map( 'absint', (array) ( $_POST['ids'] ?? [] ) ) ) );
+		if ( ! $ids ) {
+			wp_send_json_error( [ 'message' => __( 'هیچ محصولی برای تغییر انتخاب نشده است.', 'wapm' ) ] );
+		}
+
+		$batch  = sanitize_text_field( wp_unslash( $_POST['batch_id'] ?? '' ) );
+		$batch  = '' !== $batch ? $batch : 'stock_' . gmdate( 'Ymd_His' ) . '_' . wp_generate_password( 6, false );
+		$expand = ! isset( $_POST['variations'] ) || ! empty( $_POST['variations'] );
+		$result = WAPM_Stock::apply_bulk( $ids, $op, $batch, '', $expand );
+
+		wp_send_json_success( array_merge( $result, [
+			'message' => sprintf(
+				/* translators: 1: applied, 2: failed */
+				__( '%1$d محصول اعمال شد، %2$d مورد رد شد.', 'wapm' ),
+				(int) $result['applied'],
+				(int) $result['failed']
+			),
+		] ) );
+	}
+
+	/**
+	 * تاریخچه‌ی موجودی.
+	 */
+	public function stock_logs(): void {
+		$this->guard();
+
+		$paged   = max( 1, intval( $_POST['paged'] ?? 1 ) );
+		$logs    = WAPM_Stock::get_logs( $paged, 25, [ 'batch_id' => sanitize_text_field( wp_unslash( $_POST['batch_id'] ?? '' ) ) ] );
+		$last    = WAPM_Stock::get_last_batch_id();
+
+		wp_send_json_success( array_merge( $logs, [ 'last_batch' => $last ] ) );
+	}
+
+	/**
+	 * بازگردانی یک Batch موجودی.
+	 */
+	public function stock_undo(): void {
+		$this->guard();
+
+		$batch = sanitize_text_field( wp_unslash( $_POST['batch_id'] ?? '' ) );
+		$force = ! empty( $_POST['force'] );
+
+		$result = WAPM_Stock::undo_batch( $batch, $force );
+		$message = sprintf(
+			/* translators: 1: restored, 2: conflicts */
+			__( '%1$d موجودی بازگردانی شد؛ %2$d مورد بعد از این عملیات تغییر کرده بود.', 'wapm' ),
+			(int) $result['restored'],
+			(int) $result['conflicts']
+		);
+
+		if ( $result['conflicts'] > 0 && ! $force ) {
+			$message .= ' ' . __( 'برای بازگردانی اجباری دوباره بزنید.', 'wapm' );
+		}
+
+		wp_send_json_success( array_merge( $result, [ 'message' => $message ] ) );
+	}
+
+	/**
+	 * ورود موجودی از CSV (با پیش‌نمایش اجباری).
+	 */
+	public function stock_import(): void {
+		$this->guard();
+
+		if ( empty( $_FILES['feed_file']['tmp_name'] ) ) {
+			wp_send_json_error( [ 'message' => __( 'فایلی انتخاب نشده است.', 'wapm' ) ] );
+		}
+		if ( ! empty( $_FILES['feed_file']['error'] ) ) {
+			wp_send_json_error( [ 'message' => __( 'خطا در آپلود فایل.', 'wapm' ) ] );
+		}
+		if ( ! is_uploaded_file( $_FILES['feed_file']['tmp_name'] ) ) {
+			wp_send_json_error( [ 'message' => __( 'فایل آپلودشده معتبر نیست.', 'wapm' ) ], 400 );
+		}
+
+		$check = wp_check_filetype( sanitize_file_name( wp_unslash( $_FILES['feed_file']['name'] ) ), [ 'csv' => 'text/csv' ] );
+		if ( 'csv' !== $check['ext'] ) {
+			wp_send_json_error( [ 'message' => __( 'فقط فایل CSV مجاز است.', 'wapm' ) ] );
+		}
+
+		$dry   = empty( $_POST['apply'] );
+		$result = WAPM_Stock::import_csv( $_FILES['feed_file']['tmp_name'], $dry );
+
+		wp_send_json_success( array_merge( $result, [
+			'dry_run' => $dry,
+			'message' => $dry
+				? sprintf(
+					/* translators: 1: rows to change, 2: skipped */
+					__( 'پیش‌نمایش: %1$d ردیف تغییر می‌کند، %2$d ردیف رد می‌شود. هنوز هیچ چیزی ذخیره نشده است.', 'wapm' ),
+					(int) $result['applied'],
+					(int) $result['skipped']
+				)
+				: sprintf(
+					/* translators: 1: applied, 2: skipped */
+					__( '%1$d موجودی ذخیره شد، %2$d ردیف رد شد.', 'wapm' ),
+					(int) $result['applied'],
+					(int) $result['skipped']
+				),
+		] ) );
+	}
+
+	/**
+	 * خروجی CSV موجودی بر اساس فیلترهای فعلی.
+	 */
+	public function export_stock_csv(): void {
+		if ( ! isset( $_GET['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['nonce'] ) ), self::NONCE ) ) {
+			wp_die( esc_html__( 'دسترسی نامعتبر.', 'wapm' ) );
+		}
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_die( esc_html__( 'شما دسترسی لازم را ندارید.', 'wapm' ) );
+		}
+
+		$raw_f   = json_decode( wp_unslash( $_GET['filters'] ?? '{}' ), true );
+		$filters = WAPM_Product_Handler::sanitize_filters( is_array( $raw_f ) ? $raw_f : [] );
+
+		WAPM_Stock::stream_export( $filters );
 	}
 
 	/* ---------- ترب ---------- */
