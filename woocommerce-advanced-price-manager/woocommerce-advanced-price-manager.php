@@ -64,6 +64,7 @@ final class WAPM_Plugin {
 		require_once WAPM_PATH . 'includes/class-price-engine.php';
 		require_once WAPM_PATH . 'includes/class-product-handler.php';
 		require_once WAPM_PATH . 'includes/class-list.php';
+		require_once WAPM_PATH . 'includes/class-stock.php';
 		require_once WAPM_PATH . 'includes/class-torob.php';
 		require_once WAPM_PATH . 'includes/class-torob-api.php';
 		require_once WAPM_PATH . 'includes/class-rollback.php';
@@ -74,6 +75,7 @@ final class WAPM_Plugin {
 		require_once WAPM_PATH . 'includes/class-admin.php';
 
 		WAPM_Logger::maybe_upgrade();
+		WAPM_Stock::maybe_upgrade();
 		WAPM_Torob::hooks();
 		new WAPM_Scheduler();
 		new WAPM_Ajax();
@@ -86,6 +88,8 @@ final class WAPM_Plugin {
 	public function activate(): void {
 		require_once WAPM_PATH . 'includes/class-logger.php';
 		WAPM_Logger::create_table();
+		require_once WAPM_PATH . 'includes/class-stock.php';
+		WAPM_Stock::create_table();
 		if ( ! wp_next_scheduled( 'wapm_run_schedules' ) ) {
 			wp_schedule_event( time() + 60, 'hourly', 'wapm_run_schedules' );
 		}
