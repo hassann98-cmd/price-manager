@@ -843,7 +843,7 @@ class WAPM_Ajax {
 				'price'       => $their_price,
 				'sellers'     => (int) ( $row['sellers'] ?? 0 ),
 				'seen'        => (string) ( $row['seen'] ?? '' ),
-				'seen_i18n'   => ! empty( $row['seen'] ) ? date_i18n( 'Y/m/d H:i', strtotime( (string) $row['seen'] ) ) : '',
+				'seen_i18n'   => ! empty( $row['seen'] ) ? WAPM_Logger::format_time( (string) $row['seen'] ) : '',
 				'how'         => (string) ( $row['how'] ?? '' ),
 				'how_label'   => WAPM_Torob::match_reason_label( $row ),
 				'score'       => (float) ( $row['score'] ?? 0 ),

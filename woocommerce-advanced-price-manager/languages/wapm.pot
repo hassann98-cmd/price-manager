@@ -682,20 +682,20 @@ msgstr ""
 msgid "خروجی بر اساس فیلترها و تنظیمات تب «تغییر قیمت» ساخته می‌شود (ستون‌های قیمت فعلی و قیمت جدید محاسبه‌شده)."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-stock.php:872
-#: woocommerce-advanced-price-manager/includes/class-stock.php:926
+#: woocommerce-advanced-price-manager/includes/class-stock.php:875
+#: woocommerce-advanced-price-manager/includes/class-stock.php:929
 msgid "خط %1$d: %2$s"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-stock.php:830
+#: woocommerce-advanced-price-manager/includes/class-stock.php:833
 msgid "خط %d: محصول پیدا نشد (نه با شناسه و نه با SKU)."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-stock.php:841
+#: woocommerce-advanced-price-manager/includes/class-stock.php:844
 msgid "خط %d: محصول پیدا نشد."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-stock.php:883
+#: woocommerce-advanced-price-manager/includes/class-stock.php:886
 msgid "خط %d: مقدار موجودی معتبر نیست."
 msgstr ""
 

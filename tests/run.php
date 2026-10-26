@@ -98,6 +98,23 @@ function wp_date( $format, $timestamp = null ) {
 	return gmdate( $format, null === $timestamp ? time() : (int) $timestamp );
 }
 
+/**
+ * شبیه‌سازی mysql2date وردپرس: رشته‌ی «زمان دیواری محلی» را همان‌طور که هست
+ * نمایش می‌دهد (بدون جمع‌کردن offset).
+ */
+function mysql2date( $format, $date, $translate = true ) {
+	if ( '' === (string) $date ) {
+		return false;
+	}
+	return gmdate( $format, (int) strtotime( $date . ' UTC' ) );
+}
+
+/** شبیه‌سازی date_i18n: timestamp → وقت محلی با offset سایت. */
+function date_i18n( $format, $timestamp = null ) {
+	$offset = (float) ( $GLOBALS['wapm_gmt_offset'] ?? 0 );
+	return gmdate( $format, (int) $timestamp + (int) round( $offset * 3600 ) );
+}
+
 function esc_js( $text ) {
 	return addcslashes( (string) $text, "\\'\"\r\n</" );
 }
@@ -1526,6 +1543,23 @@ test( 'صف: مهاجرت از wp-cron به AS، بقایای مسیر قدیم�
 	$before = WAPM_Queue::next_run();
 	WAPM_Queue::maybe_migrate();
 	eq( $before, WAPM_Queue::next_run(), 'بی‌اثر' );
+} );
+
+test( 'تاریخچه: زمان ذخیره‌شده دو بار offset نمی‌خورد (P2-1)', function () {
+	stub_reset();
+
+	// ایران: +۳:۳۰. زمان ذخیره‌شده «۱۰:۰۰ محلی» است و باید همان ۱۰:۰۰ نمایش داده شود.
+	$GLOBALS['wapm_gmt_offset'] = 3.5;
+
+	eq( '2024/05/01 10:00', WAPM_Logger::format_time( '2024-05-01 10:00:00' ), 'بدون جابه‌جایی' );
+
+	// مسیر قدیمی (strtotime + date_i18n) ۱۳:۳۰ می‌داد — اثبات تفاوت:
+	eq( '2024/05/01 13:30', date_i18n( 'Y/m/d H:i', strtotime( '2024-05-01 10:00:00' ) ), 'مسیر قدیمی جابه‌جا بود' );
+
+	eq( '—', WAPM_Logger::format_time( '' ), 'خالی' );
+	eq( '—', WAPM_Logger::format_time( '   ' ), 'فقط فاصله' );
+
+	$GLOBALS['wapm_gmt_offset'] = 0;
 } );
 
 test( 'لیست: پاسخ «کپی محصول» وضعیت پیش‌نویس را توضیح می‌دهد (P1-8)', function () {

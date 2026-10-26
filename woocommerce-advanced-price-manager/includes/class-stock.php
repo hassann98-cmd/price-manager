@@ -575,7 +575,10 @@ class WAPM_Stock {
 		foreach ( $rows as &$row ) {
 			$user             = get_userdata( (int) $row['user_id'] );
 			$row['user_name'] = $user ? $user->display_name : '—';
-			$row['date_i18n'] = date_i18n( 'Y/m/d H:i', strtotime( $row['created_at'] ) );
+			// همان قاعده‌ی تاریخچه‌ی قیمت: زمان دیواری محلی، بدون offset دوباره.
+			$row['date_i18n'] = class_exists( 'WAPM_Logger' )
+				? WAPM_Logger::format_time( (string) $row['created_at'] )
+				: (string) $row['created_at'];
 			$row['undoable']  = self::row_undoable( $row );
 		}
 

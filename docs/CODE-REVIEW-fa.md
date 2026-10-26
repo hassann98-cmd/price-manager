@@ -494,7 +494,7 @@ function esc(s) { return $('<span>').text(s == null ? '' : String(s)).html(); }
 
 | # | محل | مشکل | پیشنهاد |
 |---|---|---|---|
-| 1 | `class-logger.php:111` | **زمان تاریخچه جابه‌جا نمایش داده می‌شود.** `created_at` با `current_time('mysql')` (زمان دیواری محلی) ذخیره می‌شود، بعد `strtotime()` آن را UTC فرض می‌کند و `date_i18n()` دوباره offset سایت را اضافه می‌کند → مثلاً در ایران ۳:۳۰ ساعت جلوتر. | `mysql2date( 'Y/m/d H:i', $row['created_at'] )` |
+| 1 ✅ | `class-logger.php:111` | **رفع‌شده در فاز ۴.** `WAPM_Logger::format_time()` جایش را گرفت (mysql2date)؛ هر چهار محل نمایش زمان اصلاح شد. **شرح اصلی:** `created_at` با `current_time('mysql')` (زمان دیواری محلی) ذخیره می‌شود، بعد `strtotime()` آن را UTC فرض می‌کند و `date_i18n()` دوباره offset سایت را اضافه می‌کند → مثلاً در ایران ۳:۳۰ ساعت جلوتر. | `mysql2date( 'Y/m/d H:i', $row['created_at'] )` |
 | 2 | `class-price-engine.php:305` | لاگ **قبل** از `$product->save()` نوشته می‌شود؛ اگر save شکست بخورد، تاریخچه تغییری را نشان می‌دهد که ذخیره نشده و Retry هم آن محصول را رد می‌کند (چون `product_done_in_batch` true است). | لاگ بعد از save موفق، یا ثبت وضعیت |
 | 3 | `class-price-engine.php:301` | پیش‌نمایش تغییری را نشان می‌دهد که `apply_single` بعداً با `continue` رد می‌کند (وقتی Sale ≥ Regular) → عدم تطابق پیش‌نمایش با اجرا. | همین شرط را در `compute_changes` هم اعمال کن |
 | 4 | `class-ajax.php:228,254,310` | اندازه‌ی صفحه در preview=۲۰، dry_run=۵۰، apply=۲۵ → درصد پیشرفت هر ابزار متفاوت و مقایسه‌ناپذیر است. | یک مقدار ثابت مشترک |

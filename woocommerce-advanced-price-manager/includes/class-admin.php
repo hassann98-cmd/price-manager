@@ -490,7 +490,7 @@ class WAPM_Admin {
 
 		echo '<table class="widefat striped" style="max-width:720px"><tbody>';
 		$rows = [
-			__( 'آخرین همگام‌سازی', 'wapm' ) => $last['at'] ? date_i18n( 'Y/m/d H:i', strtotime( (string) $last['at'] ) ) : '—',
+			__( 'آخرین همگام‌سازی', 'wapm' ) => WAPM_Logger::format_time( (string) ( $last['at'] ?? '' ) ),
 			__( 'منبع', 'wapm' )            => $source_map[ (string) $last['source'] ] ?? (string) $last['source'],
 			__( 'محصولات یافت‌شده', 'wapm' ) => (int) $last['discovered'],
 			__( 'صفحات خوانده‌شده', 'wapm' ) => (int) $last['pages'],

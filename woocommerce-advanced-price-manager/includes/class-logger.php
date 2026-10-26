@@ -16,6 +16,25 @@ class WAPM_Logger {
 		return $wpdb->prefix . 'wapm_price_log';
 	}
 
+	/**
+	 * زمان ذخیره‌شده (MySQL، به وقت محلی سایت) → رشته‌ی نمایشی.
+	 *
+	 * چرا mysql2date و نه strtotime+date_i18n: `created_at` با
+	 * `current_time('mysql')` یعنی «زمان دیواری محلی» نوشته می‌شود. `strtotime`
+	 * آن را UTC فرض می‌کند و بعد `date_i18n` دوباره offset سایت را اضافه
+	 * می‌کند؛ نتیجه: تاریخچه در ایران ۳:۳۰ ساعت جلوتر نشان داده می‌شد.
+	 * `mysql2date` خودش رشته را به وقت محلی سایت تفسیر می‌کند.
+	 */
+	public static function format_time( string $mysql_local ): string {
+		if ( '' === trim( $mysql_local ) ) {
+			return '—';
+		}
+
+		$formatted = mysql2date( 'Y/m/d H:i', $mysql_local, false );
+
+		return is_string( $formatted ) && '' !== $formatted ? $formatted : $mysql_local;
+	}
+
 	public static function create_table(): void {
 		global $wpdb;
 		$table   = self::table();
@@ -118,7 +137,7 @@ class WAPM_Logger {
 		foreach ( $rows as &$row ) {
 			$user             = get_userdata( (int) $row['user_id'] );
 			$row['user_name'] = $user ? $user->display_name : '—';
-			$row['date_i18n'] = date_i18n( 'Y/m/d H:i', strtotime( $row['created_at'] ) );
+			$row['date_i18n'] = self::format_time( (string) $row['created_at'] );
 		}
 
 		return [ 'rows' => $rows, 'total' => $total ];
