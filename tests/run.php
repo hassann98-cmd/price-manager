@@ -531,6 +531,77 @@ test( 'تداخل: حذف/افزودن قیمت ویژه', function () {
 } );
 
 /* -------------------------------------------------------------------------
+ * ۸-۲) برنامه‌ریزی Rollback وقتی یک محصول در Batch چند بار عوض شده
+ *      (تجمیع ویرایش‌های inline — P2-29)
+ * ---------------------------------------------------------------------- */
+
+/** ردیف لاگ ساختگی برای تست plan_rollback(). */
+function log_row( int $id, int $product, string $type, string $old, string $new, int $parent = 0 ): array {
+	return [
+		'id'           => $id,
+		'product_id'   => $product,
+		'parent_id'    => $parent,
+		'product_name' => 'محصول ' . $product,
+		'sku'          => 'SKU-' . $product,
+		'price_type'   => $type,
+		'old_price'    => $old,
+		'new_price'    => $new,
+	];
+}
+
+test( 'rollback/plan: یک محصول چند بار تغییر کرده → برگشت به «قبل از Batch»', function () {
+	stub_reset();
+	$rows = [
+		log_row( 1, 10, 'regular', '100', '110' ),
+		log_row( 2, 10, 'regular', '110', '120' ),
+		log_row( 3, 20, 'regular', '50', '60' ),
+	];
+	// قیمت فعلی = همان چیزی که آخرین ردیف نوشته بود.
+	$plan = WAPM_Logger::plan_rollback( $rows, [ '10:regular' => '120', '20:regular' => '60' ] );
+
+	eq( 2, count( $plan['writes'] ), 'برای هر محصول فقط یک نوشتن' );
+	eq( '100', $plan['writes'][1]['restore_to'], 'مقدار قبل از کل Batch (نه قبل از ردیف دوم)' );
+	eq( '120', $plan['writes'][1]['from'], 'لاگ بازگردانی از آخرین قیمت Batch شروع می‌شود' );
+	eq( '50', $plan['writes'][3]['restore_to'], 'محصول دوم مستقل است' );
+	eq( [ 2 ], $plan['settled'], 'ردیف تکراری تسویه می‌شود ولی چیزی نمی‌نویسد' );
+	eq( 0, count( $plan['conflicts'] ), 'بدون تداخل' );
+} );
+
+test( 'rollback/plan: قیمتِ بعد از Batch عوض شده → تعارض با آخرین نرخ Batch', function () {
+	stub_reset();
+	$rows = [
+		log_row( 1, 10, 'regular', '100', '110' ),
+		log_row( 2, 10, 'regular', '110', '120' ),
+	];
+	// کاربر بعد از Batch قیمت را ۱۳۰ کرده است.
+	$plan = WAPM_Logger::plan_rollback( $rows, [ '10:regular' => '130' ] );
+
+	eq( 0, count( $plan['writes'] ), 'هیچ نوشتنی نباید برنامه‌ریزی شود' );
+	eq( 1, count( $plan['conflicts'] ), 'یک تعارض برای هر محصول (نه هر ردیف)' );
+	eq( '120', $plan['conflicts'][0]['batch_price'], 'ملاک، آخرین قیمت Batch است' );
+	eq( '130', $plan['conflicts'][0]['current'], 'قیمت فعلی گزارش می‌شود' );
+
+	$forced = WAPM_Logger::plan_rollback( $rows, [ '10:regular' => '130' ], true );
+	eq( 1, count( $forced['writes'] ), 'با force نوشتن انجام می‌شود' );
+	eq( 0, count( $forced['conflicts'] ), 'با force تعارضی ثبت نمی‌شود' );
+} );
+
+test( 'rollback/plan: محصول حذف‌شده و انواع مختلف قیمت', function () {
+	stub_reset();
+	$rows = [
+		log_row( 1, 10, 'regular', '100', '110' ),
+		log_row( 2, 10, 'sale', '', '99' ),
+		log_row( 3, 30, 'regular', '10', '20' ), // محصول حذف شده (در $current نیست)
+	];
+	$plan = WAPM_Logger::plan_rollback( $rows, [ '10:regular' => '110', '10:sale' => '99' ] );
+
+	eq( 2, count( $plan['writes'] ), 'قیمت اصلی و ویژه جدا نوشته می‌شوند' );
+	eq( '', $plan['writes'][2]['restore_to'], 'حذف قیمت ویژه هم قابل بازگردانی است' );
+	eq( [ 3 ], $plan['settled'], 'ردیف محصول حذف‌شده تسویه می‌شود' );
+	eq( 0, count( $plan['conflicts'] ), 'محصول حذف‌شده تعارض نمی‌سازد' );
+} );
+
+/* -------------------------------------------------------------------------
  * ۸) ترب — نرمال‌سازی، استخراج کد، تطبیق (توابع خالص)
  * ---------------------------------------------------------------------- */
 
