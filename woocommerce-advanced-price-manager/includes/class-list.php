@@ -279,6 +279,22 @@ class WAPM_List {
 		];
 		$stock_status = $product->get_stock_status();
 
+		// آخرین تغییر قیمت (مهر زمانی که WAPM_Logger::log روی محصول می‌گذارد).
+		$last_change       = (string) get_post_meta( $product->get_id(), '_wapm_last_changed', true );
+		$last_change_label = '';
+		$last_change_days  = null;
+		if ( '' !== $last_change ) {
+			$last_ts = strtotime( $last_change );
+			if ( $last_ts ) {
+				$last_change_days = (int) floor( max( 0, current_time( 'timestamp' ) - $last_ts ) / DAY_IN_SECONDS );
+				$last_change_label = sprintf(
+					/* translators: %s: human time diff, e.g. "3 days" */
+					__( '%s پیش', 'wapm' ),
+					human_time_diff( $last_ts, current_time( 'timestamp' ) )
+				);
+			}
+		}
+
 		$regular = $product->get_regular_price( 'edit' );
 		$sale    = $product->get_sale_price( 'edit' );
 
@@ -312,6 +328,9 @@ class WAPM_List {
 			'stock_quantity'     => $product->get_stock_quantity(),
 			'stock_status'       => $stock_status,
 			'stock_status_label' => $stock_labels[ $stock_status ] ?? $stock_status,
+			'last_change'        => $last_change,
+			'last_change_label'  => $last_change_label,
+			'last_change_days'   => $last_change_days,
 			'categories'         => $categories,
 			'category_ids'       => $category_ids,
 			'brand_names'        => $brand_names,

@@ -74,6 +74,16 @@ class WAPM_Logger {
 			],
 			[ '%s', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s' ]
 		);
+
+		/*
+		 * مهر «آخرین تغییر قیمت» روی خود محصول.
+		 * برای ستون «آخرین تغییر» در لیست: خواندنش از جدول لاگ برای هر ردیف یعنی
+		 * یک کوئری سنگین در هر ردیف؛ با یک متا، ستون بدون کوئری اضافه ساخته می‌شود.
+		 */
+		$product_id = absint( $data['product_id'] ?? 0 );
+		if ( $product_id ) {
+			update_post_meta( $product_id, '_wapm_last_changed', current_time( 'mysql' ) );
+		}
 	}
 
 	/**
