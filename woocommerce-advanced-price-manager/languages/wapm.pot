@@ -252,7 +252,7 @@ msgstr ""
 msgid "افزودن دسته"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/woocommerce-advanced-price-manager.php:55
+#: woocommerce-advanced-price-manager/woocommerce-advanced-price-manager.php:56
 msgid "افزونه WooCommerce Advanced Price Manager برای کار کردن به ووکامرس نیاز دارد."
 msgstr ""
 

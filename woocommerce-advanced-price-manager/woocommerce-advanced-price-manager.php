@@ -10,6 +10,7 @@
  * Requires at least: 6.0
  * Requires PHP:      8.0
  * WC requires at least: 7.0
+ * Requires Plugins:  woocommerce
  * License:           GPL-2.0+
  */
 
