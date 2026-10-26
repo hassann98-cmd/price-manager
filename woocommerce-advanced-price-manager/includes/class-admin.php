@@ -74,7 +74,7 @@ class WAPM_Admin {
 			'wapm-admin-boot'       => [ 'wapm-admin-automation', 'wapm-admin-list' ],
 		];
 
-		$deps = [ 'jquery', 'selectWoo' ];
+		$deps = [ 'jquery', 'selectWoo', 'wp-i18n' ];
 		foreach ( $scripts as $handle => $extra ) {
 			$deps = array_merge( $deps, $extra );
 			wp_enqueue_script(
@@ -84,6 +84,14 @@ class WAPM_Admin {
 				WAPM_VERSION,
 				true
 			);
+
+			// ترجمه‌ی رشته‌های داخل JS: فایل‌های JSON تولیدشده با
+			// `wp i18n make-json languages/wapm.pot` در همین پوشه می‌نشینند.
+			// بدون این فراخوانی، `wp.i18n.__` در فرانت همان متن اصلی را
+			// برمی‌گرداند (هیچ خطایی رخ نمی‌دهد، فقط ترجمه نمی‌شود).
+			if ( function_exists( 'wp_set_script_translations' ) ) {
+				wp_set_script_translations( $handle, 'wapm', WAPM_PATH . 'languages' );
+			}
 		}
 
 		$brand_taxonomy = class_exists( 'WAPM_List' ) ? WAPM_List::get_brand_taxonomy() : '';
