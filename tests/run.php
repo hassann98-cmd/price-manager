@@ -1730,6 +1730,21 @@ test( 'لیست: پاسخ «کپی محصول» وضعیت پیش‌نویس ر�
 	eq( 'publish', WAPM_List::duplicate_result( 323, 'publish' )['status'], 'کپی منتشرشده' );
 } );
 
+test( 'لیست: ویرایش inline با شناسه‌ی صفر درخواست بی‌معنا نمی‌سازد', function () {
+	stub_reset();
+
+	// رگرسیون: ورودی حالت «ساده» در جدول `data-id` نداشت؛ درخواست با
+	// `product_id: undefined` می‌رفت و پیام «محصول یافت نشد.» می‌داد، در حالی
+	// که مسیر دوم همان ویرایش قیمت را ذخیره می‌کرد.
+	$zero = WAPM_List::update_field( 0, 'regular_price', '150000' );
+	eq( false, $zero['success'], 'شناسه‌ی صفر رد می‌شود' );
+	ok( false !== mb_strpos( $zero['message'], 'شناسه' ), 'پیام صریح درباره‌ی شناسه', $zero['message'] );
+	ok( false === mb_strpos( $zero['message'], 'یافت نشد' ), 'پیام «یافت نشد» گمراه‌کننده نیست' );
+
+	eq( false, WAPM_List::toggle_manage_stock( 0, true )['success'], 'toggle با شناسه‌ی صفر هم رد می‌شود' );
+	ok( false !== mb_strpos( WAPM_List::toggle_manage_stock( -5, true )['message'], 'شناسه' ), 'شناسه‌ی منفی' );
+} );
+
 test( 'فیلتر/برچسب خودکار: از شرط‌ها ساخته می‌شود', function () {
 	$label = WAPM_List::saved_filter_label( WAPM_List::sanitize_filters( [
 		'torob_status' => 'pricier',
