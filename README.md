@@ -123,6 +123,11 @@ npm run check:css
 python3 tools/build-zip.py --check
 ```
 
+**درباره‌ی ترجمه:** همه‌ی رشته‌های ادمین — چه PHP و چه JS — از `__()` می‌گذرند.
+`make-pot.py` هر دو را استخراج می‌کند؛ بعد از ترجمه، با
+`wp i18n make-json languages/wapm.pot` فایل JSON بسازید تا `wp_set_script_translations`
+(که برای هر اسکریپت ثبت شده) ترجمه‌ی JS را لود کند.
+
 **درباره‌ی ساختار JS:** کد پیشخوان به ماژول‌های کوچک تفکیک شده و از طریق
 `window.WAPMUI` با هم حرف می‌زنند (ترتیب لود در `enqueue` تضمین شده است).
 `npm run smoke:js` با jsdom یک صفحه‌ی وردپرس را شبیه‌سازی می‌کند و مسیرهای
