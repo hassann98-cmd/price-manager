@@ -3,7 +3,7 @@
 قالب این فایل بر اساس [Keep a Changelog](https://keepachangelog.com/fa/1.1.0/) و
 نسخه‌گذاری بر اساس [SemVer](https://semver.org/lang/fa/) است.
 
-## [منتشرنشده] — برنچ توسعه
+## [1.1.0] — ۲۰۲۶-۱۰-۲۶
 
 ### افزودنی‌ها
 
