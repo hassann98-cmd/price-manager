@@ -825,6 +825,73 @@ test( 'ترب/API: ردیف فروشنده با متن قیمت ناسازگار
 	eq( true, $s['unreliable'], 'اختلاف ۱۰ برابری متن/عدد' );
 } );
 
+test( 'ترب/to_bool: پرچم‌های رشته‌ای درست خوانده می‌شوند', function () {
+	stub_reset();
+
+	// مقادیر منفی: در PHP خالی/صفر/«false» همه درست‌نما هستند.
+	foreach ( [ false, 0, 0.0, '0', 'false', 'FALSE', ' false ', 'no', 'off', 'null', '', null ] as $i => $v ) {
+		eq( false, WAPM_Torob::to_bool( $v ), 'مقدار منفی #' . $i );
+	}
+
+	// مقادیر مثبت.
+	foreach ( [ true, 1, 2.5, '1', 'true', 'yes', 'on', 'قیمت' ] as $i => $v ) {
+		eq( true, WAPM_Torob::to_bool( $v ), 'مقدار مثبت #' . $i );
+	}
+
+	eq( false, WAPM_Torob::to_bool( [] ), 'آرایه‌ی خالی' );
+	eq( true, WAPM_Torob::to_bool( [ 1 ] ), 'آرایه‌ی پر' );
+} );
+
+test( 'ترب/API: availability رشته‌ای «false» یعنی ناموجود', function () {
+	stub_reset();
+
+	// قبلاً `false !== "false"` همیشه true بود؛ کالای ناموجود با قیمت طعمه
+	// در محاسبه‌ی «ارزان‌ترین رقیب» شرکت می‌کرد.
+	$s = WAPM_Torob_Api::seller( [
+		'shop_id' => 9, 'shop_name' => 'ناموجود', 'price' => 99000,
+		'price_text' => '۹۹٬۰۰۰ تومان', 'availability' => 'false',
+	] );
+	eq( false, $s['available'], 'رشته‌ی «false» = ناموجود' );
+	eq( 0.0, $s['price'], 'قیمت پاک می‌شود' );
+
+	$s2 = WAPM_Torob_Api::seller( [
+		'shop_id' => 10, 'shop_name' => 'موجود', 'price' => 99000,
+		'price_text' => '۹۹٬۰۰۰ تومان', 'availability' => 'true',
+	] );
+	eq( true, $s2['available'], 'رشته‌ی «true» = موجود' );
+	eq( 99000.0, $s2['price'], 'قیمت حفظ می‌شود' );
+} );
+
+test( 'ترب/API: is_price_unreliable رشته‌ای', function () {
+	stub_reset();
+
+	$s = WAPM_Torob_Api::seller( [
+		'shop_id' => 11, 'shop_name' => 'سالم', 'price' => 1000,
+		'is_price_unreliable' => 'false',
+	] );
+	eq( false, $s['unreliable'], 'رشته‌ی «false» = معتبر' );
+
+	$s2 = WAPM_Torob_Api::seller( [
+		'shop_id' => 12, 'shop_name' => 'مشکوک', 'price' => 1000,
+		'is_price_unreliable' => '1',
+	] );
+	eq( true, $s2['unreliable'], 'رشته‌ی «1» = نامعتبر' );
+} );
+
+test( 'ترب/sellers: پرچم‌های رشته‌ای فید/بوکمارکلت', function () {
+	stub_reset();
+
+	$res = sellers( [
+		[ 'shop_id' => 1, 'shop_name' => 'موجود', 'price' => 700, 'available' => 'true', 'unreliable' => 'false' ],
+		[ 'shop_id' => 2, 'shop_name' => 'ناموجود', 'price' => 300, 'available' => 'false' ],
+	] );
+
+	eq( 1, $res['count'], 'فقط موجود' );
+	eq( 1, $res['hidden'], 'ناموجود شمرده شد' );
+	eq( 700.0, $res['list'][0]['price'], 'قیمت موجود' );
+	eq( false, $res['list'][0]['unreliable'], '«false» رشته‌ای پرچم نمی‌زند' );
+} );
+
 /* -------------------------------------------------------------------------
  * ۱۳) ترب — تصمیم‌گیری با پرچم‌های موجودی/اعتبار
  * ---------------------------------------------------------------------- */

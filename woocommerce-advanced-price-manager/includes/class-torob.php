@@ -294,6 +294,40 @@ class WAPM_Torob {
 	}
 
 	/**
+	 * تبدیل یک مقدار ورودی (از API، فید CSV، یا بوکمارکلت) به بولین.
+	 *
+	 * چرا لازم است: ترب و فیدهای CSV مقدارهای پرچمی را گاهی بولین و گاهی رشته
+	 * می‌فرستند — `"false"` و `"0"` در PHP **درست‌نما** هستند و `false !== "false"`
+	 * هم true است؛ نتیجه این بود که کالای ناموجود «موجود» و قیمت مشکوک «سالم»
+	 * شمرده می‌شد. این تابع همان تصمیم را یک‌جا و صریح می‌گیرد.
+	 *
+	 * @param mixed $value مقدار خام
+	 * @return bool
+	 */
+	public static function to_bool( $value ): bool {
+		if ( is_bool( $value ) ) {
+			return $value;
+		}
+
+		if ( is_int( $value ) || is_float( $value ) ) {
+			return $value > 0;
+		}
+
+		if ( is_string( $value ) ) {
+			$text = strtolower( trim( $value ) );
+
+			// مقادیر «خالی/منفی» که در JSON، CSV و HTML یکسان به کار می‌روند.
+			return ! in_array( $text, [ '', '0', 'false', 'no', 'off', 'null', 'none', 'n/a' ], true );
+		}
+
+		if ( is_array( $value ) ) {
+			return ! empty( $value );
+		}
+
+		return (bool) $value;
+	}
+
+	/**
 	 * تبدیل ارقام فارسی/عربی به لاتین (بدون intl).
 	 */
 	public static function to_ascii_digits( string $s ): string {
@@ -1157,8 +1191,8 @@ class WAPM_Torob {
 				$shop_name = (string) ( $s['shop_name'] ?? $s['seller_name'] ?? $s['name'] ?? '' );
 
 				// پرچم‌هایی که از API ترب می‌آید (فیدهای قدیمی این‌ها را ندارند).
-				$available  = ! array_key_exists( 'available', $s ) || false !== $s['available'];
-				$unreliable = ! empty( $s['unreliable'] ) || ! empty( $s['is_price_unreliable'] );
+				$available  = ! array_key_exists( 'available', $s ) || self::to_bool( $s['available'] );
+				$unreliable = self::to_bool( $s['unreliable'] ?? false ) || self::to_bool( $s['is_price_unreliable'] ?? false );
 				$last       = (string) ( $s['last_change'] ?? $s['last_price_change_date'] ?? '' );
 			} elseif ( is_numeric( $s ) ) {
 				$shop_id   = 0;

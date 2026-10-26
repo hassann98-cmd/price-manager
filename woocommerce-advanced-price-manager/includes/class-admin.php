@@ -1463,6 +1463,21 @@ class WAPM_Admin {
 		return item;
 	}
 
+	/**
+	 * پرچم‌های ترب را به بولین تبدیل می‌کند.
+	 *
+	 * ترب در بعضی پاسخ‌ها `availability` را رشته می‌فرستد؛ `"false" !== false`
+	 * یعنی کالای ناموجود «موجود» شمرده می‌شد. این‌جا با لیست صریح مقادیر منفی
+	 * یکسان‌سازی می‌شود (هم‌خوان با WAPM_Torob::to_bool در سرور).
+	 */
+	function truthy(value, fallback){
+		if (value === undefined || value === null || value === '') { return fallback; }
+		if (typeof value === 'boolean') { return value; }
+		if (typeof value === 'number') { return value > 0; }
+		return ['0', 'false', 'no', 'off', 'null', 'none', 'n/a']
+			.indexOf(String(value).trim().toLowerCase()) === -1;
+	}
+
 	/** فروشنده‌ها را به شکل سبک تبدیل می‌کند (حداکثر ۴۰ ردیف ارزان‌ترین). */
 	function slimSellers(rows){
 		var out = [];
@@ -1473,8 +1488,8 @@ class WAPM_Admin {
 				shop_id: Number(r.shop_id),
 				shop_name: String(r.shop_name || '').slice(0, 80),
 				price: price,
-				available: r.availability !== false,
-				unreliable: !!r.is_price_unreliable,
+				available: truthy(r.availability, true),
+				unreliable: truthy(r.is_price_unreliable, false),
 				last_change: String(r.last_price_change_date || '').slice(0, 40)
 			});
 		});

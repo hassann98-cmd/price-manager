@@ -460,8 +460,9 @@ class WAPM_Torob_Api {
 			return null;
 		}
 
-		$available  = false !== ( $row['availability'] ?? true );
-		$unreliable = ! empty( $row['is_price_unreliable'] );
+		// پرچم‌ها ممکن است بولین یا رشته باشند ("false" در PHP درست‌نما است).
+		$available  = ! array_key_exists( 'availability', $row ) || WAPM_Torob::to_bool( $row['availability'] );
+		$unreliable = WAPM_Torob::to_bool( $row['is_price_unreliable'] ?? false );
 
 		$price = isset( $row['price'] ) && is_numeric( $row['price'] ) ? (float) $row['price'] : 0.0;
 
