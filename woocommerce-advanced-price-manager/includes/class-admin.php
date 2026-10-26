@@ -1120,6 +1120,16 @@ class WAPM_Admin {
 		body.set('meta', JSON.stringify(meta || {}));
 
 		return fetch(ENDPOINT, { method: 'POST', body: body, credentials: 'omit' })
+			.then(function(r){
+				if (r.status === 429) {
+					// محدودیت نرخ (فروشگاه بزرگ) — یک بار صبر کن و دوباره بفرست.
+					return delay(6000).then(function(){
+						return fetch(ENDPOINT, { method: 'POST', body: body, credentials: 'omit' });
+					});
+				}
+				if (!r.ok) { throw new Error('HTTP ' + r.status); }
+				return r;
+			})
 			.then(function(r){ return r.json(); });
 	}
 

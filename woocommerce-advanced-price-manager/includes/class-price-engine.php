@@ -523,6 +523,17 @@ class WAPM_Price_Engine {
 			$changed += self::apply_single( $product, $s, $batch_id, $operation, $ctx );
 		}
 
+		// ستون/فیلتر «قیمت ترب» از متای ذخیره‌شده می‌خواند. اکشن save خودش این را
+		// بازمحاسبه می‌کند، ولی در همان درخواست ممکن است قیمت مؤثر از کش قدیمی
+		// خوانده شود (مخصوصاً والد متغیر بعد از تغییر واریشن‌ها). پس صریح و پس از
+		// پاک‌کردن ترنزینت‌ها یک بار دیگر محاسبه می‌کنیم.
+		if ( class_exists( 'WAPM_Torob' ) ) {
+			if ( function_exists( 'wc_delete_product_transients' ) ) {
+				wc_delete_product_transients( $product_id );
+			}
+			WAPM_Torob::refresh_diff_meta( $product_id );
+		}
+
 		return $changed;
 	}
 
