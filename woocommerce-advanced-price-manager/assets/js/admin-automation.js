@@ -9,6 +9,7 @@
 	var runLabel = UI.runLabel, state = UI.state, runBatchLoop = UI.runBatchLoop;
 	var readFilters = UI.readFilters, readSettings = UI.readSettings;
 	var writeFilters = UI.writeFilters, writeSettings = UI.writeSettings;
+	var __ = UI.__;
 
 	/**
 	 * فراخوانی تنبل تابعی از ماژول دیگر.
@@ -167,7 +168,7 @@
 			filters: readFilters('schedule'),
 			settings: readSettings('schedule')
 		};
-		if (!schedule.start) { wapmToast('تاریخ شروع الزامی است.', 'warning'); return; }
+		if (!schedule.start) { wapmToast(__('تاریخ شروع الزامی است.'), 'warning'); return; }
 		ajax('save_schedule', { schedule: JSON.stringify(schedule) }).done(function (res) {
 			if (res.success) {
 				state.schedules = res.data.schedules;

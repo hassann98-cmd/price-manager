@@ -13,6 +13,7 @@
 	var listState = UI.listState;
 	var loadProductList = UI.loadProductList;
 	var updateRowInDom = UI.updateRowInDom;
+	var __ = UI.__;
 
 	/**
 	 * فراخوانی تنبل تابعی از ماژول دیگر.
@@ -227,11 +228,11 @@
 	});
 
 	$('#wapm-torob-regen-token').on('click', function () {
-		if (!window.confirm('بوکمارکلت فعلی از کار می‌افتد و باید دوباره ساخته شود. مطمئنید؟')) { return; }
+		if (!window.confirm(__('بوکمارکلت فعلی از کار می‌افتد و باید دوباره ساخته شود. مطمئنید؟'))) { return; }
 		var $btn = $(this).prop('disabled', true);
 		ajax('torob_regenerate_token', {}).done(function (res) {
 			if (res.success) {
-				wapmToast('توکن جدید ساخته شد. صفحه را رفرش کنید تا لینک بوکمارکلت جدید را ببینید و دوباره به نوار بوکمارک بکشید.', 'info', { ttl: 12000 });
+				wapmToast(__('توکن جدید ساخته شد. صفحه را رفرش کنید تا لینک بوکمارکلت جدید را ببینید و دوباره به نوار بوکمارک بکشید.'), 'info', { ttl: 12000 });
 			} else {
 				wapmToast((res.data && res.data.message) || WAPM.i18n.error, 'error');
 			}
@@ -262,7 +263,7 @@
 
 			var rows = res.data.rows || [];
 			if (!rows.length) {
-				$out.html('<div class="notice notice-warning inline"><p>' + esc(res.data.message || 'فروشگاهی پیدا نشد.') + '</p></div>');
+				$out.html('<div class="notice notice-warning inline"><p>' + esc(res.data.message || __('فروشگاهی پیدا نشد.')) + '</p></div>');
 				return;
 			}
 
@@ -288,7 +289,7 @@
 	$('#wapm-torob-verify').on('click', function () {
 		var shopId = parseInt($('#wapm-torob-shop-id').val(), 10) || 0;
 		if (!shopId) {
-			wapmToast('اول شناسه‌ی فروشگاه را وارد کنید.', 'warning');
+			wapmToast(__('اول شناسه‌ی فروشگاه را وارد کنید.'), 'warning');
 			return;
 		}
 
@@ -592,7 +593,7 @@
 
 		if (skipped.length) {
 			var s = skipped[0];
-			return '<div class="wapm-align-skip">' + esc(s.label || s.reason || 'امکان هم‌ترازی نیست') + '</div>';
+			return '<div class="wapm-align-skip">' + esc(s.label || s.reason || __('امکان هم‌ترازی نیست')) + '</div>';
 		}
 
 		var rows = data.rows || [];
@@ -1084,7 +1085,7 @@
 		var rows  = pickedRows($area).filter(function (r) { return r.product_id > 0; });
 
 		if (!rows.length) {
-			wapmToast('برای هر ردیف اول محصول ووکامرس را انتخاب کنید.', 'warning');
+			wapmToast(__('برای هر ردیف اول محصول ووکامرس را انتخاب کنید.'), 'warning');
 			return;
 		}
 
@@ -1166,7 +1167,7 @@
 				return;
 			}
 			applyTorobStats(res.data);
-			wapmToast(res.data.message || 'حذف شد.', 'success');
+			wapmToast(res.data.message || __('حذف شد.'), 'success');
 			loadTorobUnmatched({});
 		}).fail(function () {
 			wapmToast(WAPM.i18n.error, 'error');
@@ -1177,7 +1178,7 @@
 	});
 
 	$('#wapm-torob-unmatched-clear').on('click', function () {
-		if (!window.confirm('کل لیست تطبیق‌نیافته‌ها پاک شود؟ (داده‌ی محصولات متصل‌شده دست نمی‌خورد)')) { return; }
+		if (!window.confirm(__('کل لیست تطبیق‌نیافته‌ها پاک شود؟ (داده‌ی محصولات متصل‌شده دست نمی‌خورد)'))) { return; }
 		var $btn = $(this).prop('disabled', true);
 		ajax('torob_clear_unmatched', {}).done(function (res) {
 			if (res.success) { applyTorobStats(res.data); }
@@ -1194,7 +1195,7 @@
 		var productId = $sel.val();
 
 		if (!productId) {
-			wapmToast('اول محصول ووکامرس را انتخاب کنید.', 'warning');
+			wapmToast(__('اول محصول ووکامرس را انتخاب کنید.'), 'warning');
 			$btn.prop('disabled', false);
 			return;
 		}
@@ -1248,7 +1249,7 @@
 	/* ---- جداکردن از ترب (از جدول لیست یا هر جای دیگر) ---- */
 
 	$(document).on('click', '.wapm-torob-unlink', function () {
-		if (!window.confirm('اتصال این محصول به ترب حذف شود؟ (قیمت رقیب پاک می‌شود ولی قیمت خودتان تغییری نمی‌کند)')) { return; }
+		if (!window.confirm(__('اتصال این محصول به ترب حذف شود؟ (قیمت رقیب پاک می‌شود ولی قیمت خودتان تغییری نمی‌کند)'))) { return; }
 
 		var $btn = $(this).prop('disabled', true);
 		var id = $btn.data('id');

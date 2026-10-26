@@ -16,6 +16,22 @@ window.WAPMUI = window.WAPMUI || {};
 	'use strict';
 
 	/**
+	 * ترجمه‌ی رشته‌های داخل JS.
+	 *
+	 * چرا: پیام‌ها در جاوااسکریپت بودند و `.pot` فقط PHP را می‌دید، پس هیچ مترجمی
+	 * نمی‌توانست آن‌ها را ترجمه کند. حالا از `wp.i18n` استفاده می‌شود (وابسته به
+	 * اسکریپت wp-i18n) و `wp_set_script_translations` فایل ترجمه‌ی JSON را وصل
+	 * می‌کند. اگر wp-i18n نبود (محیط تست یا نسخه‌ی قدیمی)، همان متن فارسی
+	 * برگردانده می‌شود.
+	 */
+	function __(text, domain) {
+		if (window.wp && window.wp.i18n && typeof window.wp.i18n.__ === 'function') {
+			return window.wp.i18n.__(text, domain || 'wapm');
+		}
+		return text;
+	}
+
+	/**
 	 * فراخوانی تنبل تابعی از ماژول دیگر.
 	 *
 	 * چرا: فایل‌ها به ترتیب لود می‌شوند و بعضی ماژول‌ها به تابعی وابسته‌اند که در
@@ -433,6 +449,7 @@ window.WAPMUI = window.WAPMUI || {};
 	UI.fmt            = fmt;
 	UI.runLabel       = runLabel;
 	UI.esc            = esc;
+	UI.__            = __;
 	UI.wapmToast      = wapmToast;
 	UI.readFilters    = readFilters;
 	UI.readSettings   = readSettings;

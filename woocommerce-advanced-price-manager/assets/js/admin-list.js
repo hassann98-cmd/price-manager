@@ -10,6 +10,7 @@
 	var ajax = UI.ajax, esc = UI.esc, fmt = UI.fmt, wapmToast = UI.wapmToast;
 	var state = UI.state;
 	var readFilters = UI.readFilters, readSettings = UI.readSettings;
+	var __ = UI.__;
 
 	/**
 	 * فراخوانی تنبل تابعی از ماژول دیگر.
@@ -590,7 +591,7 @@
 			}
 			renderSavedFilters(res.data.rows);
 			closeSaveNamePop();
-			wapmToast(res.data.message || 'ذخیره شد.', 'success');
+			wapmToast(res.data.message || __('ذخیره شد.'), 'success');
 		}).fail(function () {
 			wapmToast(WAPM.i18n.error, 'error');
 		}).always(function () { $btn.prop('disabled', false); });
@@ -601,7 +602,7 @@
 		if (!id) { return; }
 
 		var row = savedFilters.filter(function (r) { return r.id === id; })[0];
-		if (!window.confirm('فیلتر «' + ((row && row.name) || id) + '» حذف شود؟')) { return; }
+		if (!window.confirm(__('فیلتر «') + ((row && row.name) || id) + '» حذف شود؟')) { return; }
 
 		var $btn = $(this).prop('disabled', true);
 
@@ -612,7 +613,7 @@
 			}
 			$('#wapm-list-saved-filters').val('');
 			renderSavedFilters(res.data.rows);
-			wapmToast(res.data.message || 'حذف شد.', 'info');
+			wapmToast(res.data.message || __('حذف شد.'), 'info');
 		}).fail(function () {
 			wapmToast(WAPM.i18n.error, 'error');
 		}).always(function () { $btn.prop('disabled', false); });
@@ -634,7 +635,7 @@
 		$('.wapm-save-mode-btn').removeClass('bg-white text-primary-600 shadow-md').addClass('text-slate-500');
 		$(this).addClass('bg-white text-primary-600 shadow-md').removeClass('text-slate-500');
 		if (listState.saveMode === 'auto' && Object.keys(listState.pending).length) {
-			wapmToast('برخی تغییرات هنوز ذخیره نشده‌اند. ابتدا «ذخیره تغییرات» را بزنید.', 'warning');
+			wapmToast(__('برخی تغییرات هنوز ذخیره نشده‌اند. ابتدا «ذخیره تغییرات» را بزنید.'), 'warning');
 		}
 	});
 
@@ -904,7 +905,7 @@
 
 			// کپی معمولاً «پیش‌نویس» است و در این لیست (فقط منتشرشده‌ها) دیده
 			// نمی‌شود؛ پس به‌جای بارگذاری بی‌اثر لیست، پیام + راه ویرایش می‌دهیم.
-			wapmToast(data.message || 'کپی ساخته شد.', published ? 'success' : 'warning', {
+			wapmToast(data.message || __('کپی ساخته شد.'), published ? 'success' : 'warning', {
 				actionLabel: data.edit_url ? 'ویرایش کپی' : null,
 				action: data.edit_url ? function () { window.open(data.edit_url, '_blank'); } : null
 			});
@@ -1013,7 +1014,7 @@
 
 			var ids = res.data.ids || [];
 			if (!ids.length) {
-				wapmToast('با این فیلتر محصولی پیدا نشد.', 'warning');
+				wapmToast(__('با این فیلتر محصولی پیدا نشد.'), 'warning');
 				return;
 			}
 
@@ -1049,7 +1050,7 @@
 	$('#wapm-list-bulk-run').on('click', function () {
 		var action = $('#wapm-list-bulk-select').val();
 		var ids = Object.keys(listState.selected);
-		if (!action) { wapmToast('یک عملیات انتخاب کنید.', 'warning'); return; }
+		if (!action) { wapmToast(__('یک عملیات انتخاب کنید.'), 'warning'); return; }
 		if (!ids.length) { return; }
 
 		var confirmMsg = (action === 'trash')
@@ -1121,7 +1122,7 @@
 	function bpOpen() {
 		var ids = Object.keys(listState.selected || {});
 		if (!ids.length) {
-			wapmToast('ابتدا در جدول، محصول‌ها را تیک بزنید.', 'warning');
+			wapmToast(__('ابتدا در جدول، محصول‌ها را تیک بزنید.'), 'warning');
 			return;
 		}
 
@@ -1217,7 +1218,7 @@
 	$('#wapm-bp-preview-btn').on('click', function () {
 		var settings = bpSettings();
 		if (settings.mode !== 'percent' && !(Number(settings.amount) > 0)) {
-			wapmToast('مقدار/قیمت هدف را وارد کنید.', 'warning');
+			wapmToast(__('مقدار/قیمت هدف را وارد کنید.'), 'warning');
 			return;
 		}
 
@@ -1249,7 +1250,7 @@
 				$('#wapm-bp-apply-btn').prop('disabled', bpState.total === 0);
 
 				if (bpState.warn) {
-					wapmToast('در پیش‌نمایش ' + fmt(bpState.warn) + ' قیمت افت بیش از ۹۰٪ دارد. قبل از اعمال نگاه کنید.', 'warning');
+					wapmToast(__('در پیش‌نمایش ') + fmt(bpState.warn) + ' قیمت افت بیش از ۹۰٪ دارد. قبل از اعمال نگاه کنید.', 'warning');
 				}
 			})
 			.fail(function () {
@@ -1262,7 +1263,7 @@
 
 	$('#wapm-bp-apply-btn').on('click', function () {
 		if (!bpState.total) { return; }
-		if (bpState.warn && !window.confirm('در پیش‌نمایش ' + bpState.warn + ' قیمت افت شدید دارد. ادامه می‌دهید؟')) { return; }
+		if (bpState.warn && !window.confirm(__('در پیش‌نمایش ') + bpState.warn + ' قیمت افت شدید دارد. ادامه می‌دهید؟')) { return; }
 
 		var ids = bpState.ids.slice();
 		if (!ids.length) { return; }
@@ -1347,7 +1348,7 @@
 			wapmToast(msg, res.success ? 'success' : 'error', { ttl: 12000 });
 
 			if (res.success && res.data.conflicts && Object.keys(res.data.conflicts).length) {
-				var $t = wapmToast('برای بازگردانی اجباری (پاک‌کردن تغییرات بعدی) دوباره بزنید.', 'warning', { ttl: 15000 });
+				var $t = wapmToast(__('برای بازگردانی اجباری (پاک‌کردن تغییرات بعدی) دوباره بزنید.'), 'warning', { ttl: 15000 });
 				if ($t) {
 					$('<div class="wapm-toast__actions"></div>')
 						.append($('<button type="button" class="wapm-toast__btn">بازگردانی اجباری</button>').on('click', function () {
@@ -1405,7 +1406,7 @@
 
 	$('#wapm-import-btn').on('click', function () {
 		var file = $('#wapm-import-file')[0].files[0];
-		if (!file) { wapmToast('فایلی انتخاب نشده است.', 'warning'); return; }
+		if (!file) { wapmToast(__('فایلی انتخاب نشده است.'), 'warning'); return; }
 
 		var fd = new FormData();
 		fd.append('action', 'wapm_import_csv');

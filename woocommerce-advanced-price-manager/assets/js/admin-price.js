@@ -8,6 +8,7 @@
 	var ajax = UI.ajax, esc = UI.esc, fmt = UI.fmt, wapmToast = UI.wapmToast;
 	var state = UI.state, runBatchLoop = UI.runBatchLoop;
 	var readFilters = UI.readFilters, readSettings = UI.readSettings;
+	var __ = UI.__;
 
 	/**
 	 * فراخوانی تنبل تابعی از ماژول دیگر.

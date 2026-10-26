@@ -10,6 +10,7 @@
 	var readFilters = UI.readFilters;
 	var listState = UI.listState;
 	var loadProductList = UI.loadProductList;
+	var __ = UI.__;
 
 	/**
 	 * فراخوانی تنبل تابعی از ماژول دیگر.
@@ -139,7 +140,7 @@
 
 	$('#wapm-stock-apply-btn').on('click', function () {
 		if (!stockState.previewed) { return; }
-		if (!window.confirm('موجودی ' + stockState.previewed + ' محصول تغییر می‌کند. ادامه می‌دهید؟')) { return; }
+		if (!window.confirm(__('موجودی ') + stockState.previewed + ' محصول تغییر می‌کند. ادامه می‌دهید؟')) { return; }
 
 		var payload = stockTargetsPayload();
 		var ids = payload.ids && payload.ids.length
@@ -149,7 +150,7 @@
 		// در حالت فیلتر، پیش‌نمایش شناسه‌ها را برمی‌گرداند؛ همان‌ها را اعمال می‌کنیم
 		// تا بین پیش‌نمایش و اعمال، لیست عوض نشود.
 		if (!ids.length) {
-			wapmToast('ابتدا پیش‌نمایش بگیرید.', 'warning');
+			wapmToast(__('ابتدا پیش‌نمایش بگیرید.'), 'warning');
 			return;
 		}
 
@@ -203,7 +204,7 @@
 
 		var ids = sdSelectedIds();
 		if (!ids.length) {
-			wapmToast('ابتدا در جدول، محصول‌ها را تیک بزنید.', 'warning');
+			wapmToast(__('ابتدا در جدول، محصول‌ها را تیک بزنید.'), 'warning');
 			return;
 		}
 
@@ -254,11 +255,11 @@
 		var op = sdOperation();
 
 		if (op.unit === 'percent' && !(Number(op.amount) > 0 && Number(op.amount) <= 100)) {
-			wapmToast('درصد باید بین ۱ تا ۱۰۰ باشد.', 'warning');
+			wapmToast(__('درصد باید بین ۱ تا ۱۰۰ باشد.'), 'warning');
 			return;
 		}
 		if (op.unit === 'count' && op.amount === '') {
-			wapmToast('مقدار را وارد کنید.', 'warning');
+			wapmToast(__('مقدار را وارد کنید.'), 'warning');
 			return;
 		}
 
@@ -303,7 +304,7 @@
 
 	$('#wapm-sd-apply').on('click', function () {
 		if (sdState.running || !sdState.will) { return; }
-		if (!window.confirm('موجودی ' + sdState.will + ' مورد تغییر می‌کند. ادامه می‌دهید؟')) { return; }
+		if (!window.confirm(__('موجودی ') + sdState.will + ' مورد تغییر می‌کند. ادامه می‌دهید؟')) { return; }
 
 		var op = sdOperation();
 		var ids = sdState.ids.slice();
@@ -392,7 +393,7 @@
 		ajax('stock_logs', { paged: 1 }).done(function (res) {
 			if (!res.success) { return; }
 			stockState.lastBatch = res.data.last_batch || '';
-			$('#wapm-stock-last-batch').text(stockState.lastBatch || 'هیچ Batch قابل بازگردانی نیست');
+			$('#wapm-stock-last-batch').text(stockState.lastBatch || __('هیچ Batch قابل بازگردانی نیست'));
 			$('#wapm-stock-undo-last-btn').prop('disabled', !stockState.lastBatch);
 		});
 	}
@@ -401,7 +402,7 @@
 		if (!batch) { return; }
 		// $btn اختیاری است: از اعلان (toast) هم صدا زده می‌شود و آن‌جا دکمه‌ای نیست.
 		$btn = $btn && $btn.length ? $btn : $();
-		if (!window.confirm('موجودی‌های این Batch به مقدار قبل برمی‌گردند. ادامه می‌دهید؟')) { return; }
+		if (!window.confirm(__('موجودی‌های این Batch به مقدار قبل برمی‌گردند. ادامه می‌دهید؟'))) { return; }
 
 		$btn.prop('disabled', true);
 		ajax('stock_undo', { batch_id: batch }).done(function (res) {
@@ -428,7 +429,7 @@
 
 	$(document).on('click', '.wapm-stock-undo-force', function () {
 		var batch = $(this).data('batch');
-		if (!window.confirm('حتی تغییراتی که بعد از این عملیات انجام شده‌اند بازنویسی می‌شوند. مطمئن هستید؟')) { return; }
+		if (!window.confirm(__('حتی تغییراتی که بعد از این عملیات انجام شده‌اند بازنویسی می‌شوند. مطمئن هستید؟'))) { return; }
 		ajax('stock_undo', { batch_id: batch, force: 1 }).done(function (res) {
 			var msg = res.success ? res.data.message : ((res.data && res.data.message) || WAPM.i18n.error);
 			$('#wapm-stock-undo-result').html('<div class="notice notice-' + (res.success ? 'success' : 'error') + ' inline"><p>' + esc(msg) + '</p></div>');
@@ -451,7 +452,7 @@
 
 			var d = res.data;
 			stockState.lastBatch = d.last_batch || '';
-			$('#wapm-stock-last-batch').text(stockState.lastBatch || 'هیچ Batch قابل بازگردانی نیست');
+			$('#wapm-stock-last-batch').text(stockState.lastBatch || __('هیچ Batch قابل بازگردانی نیست'));
 			$('#wapm-stock-undo-last-btn').prop('disabled', !stockState.lastBatch);
 
 			$tbody.empty();
@@ -506,7 +507,7 @@
 	function stockImport(apply) {
 		var input = $('#wapm-stock-import-file')[0];
 		var file = input && input.files ? input.files[0] : null;
-		if (!file) { wapmToast('فایلی انتخاب نشده است.', 'warning'); return; }
+		if (!file) { wapmToast(__('فایلی انتخاب نشده است.'), 'warning'); return; }
 
 		var fd = new FormData();
 		fd.append('action', 'wapm_stock_import');
