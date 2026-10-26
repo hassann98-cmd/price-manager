@@ -98,6 +98,14 @@ function wp_date( $format, $timestamp = null ) {
 	return gmdate( $format, null === $timestamp ? time() : (int) $timestamp );
 }
 
+function sanitize_key( $key ) {
+	return preg_replace( '/[^a-z0-9_\-]/', '', strtolower( (string) $key ) );
+}
+
+function wp_generate_password( $length = 12, $special = true, $extra = false ) {
+	return substr( str_repeat( 'abc123xyz', 10 ), 0, max( 1, (int) $length ) );
+}
+
 function admin_url( $path = '' ) {
 	return 'https://example.test/wp-admin/' . ltrim( (string) $path, '/' );
 }
@@ -191,6 +199,8 @@ require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-to
 require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-stock.php';
 require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-list.php';
 require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-queue.php';
+require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-product-handler.php';
+require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-rules.php';
 
 /* -------------------------------------------------------------------------
  * چارچوب تست کوچک
@@ -1359,6 +1369,60 @@ test( 'موجودی/expand_ids: انتخاب همه‌ی نتایج هم از ه
 /* -------------------------------------------------------------------------
  * ۱۶) فیلترهای ذخیره‌شده‌ی لیست
  * ---------------------------------------------------------------------- */
+
+test( 'قوانین: اجرای خودکار فقط برای قانون فعالِ خودکار و سررسیدشده', function () {
+	stub_reset();
+	$now = 1_700_000_000;
+
+	update_option( 'wapm_rules', [
+		[ 'id' => 'r1', 'title' => 'دستی', 'priority' => 10, 'enabled' => true, 'auto' => false, 'last_run' => 0 ],
+		[ 'id' => 'r2', 'title' => 'خودکار', 'priority' => 5, 'enabled' => true, 'auto' => true, 'last_run' => 0 ],
+		[ 'id' => 'r3', 'title' => 'غیرفعال', 'priority' => 1, 'enabled' => false, 'auto' => true, 'last_run' => 0 ],
+		[ 'id' => 'r4', 'title' => 'تازه اجرا شده', 'priority' => 2, 'enabled' => true, 'auto' => true, 'last_run' => $now - 3600 ],
+		[ 'id' => 'r5', 'title' => 'منقضی', 'priority' => 3, 'enabled' => true, 'auto' => true, 'last_run' => 0, 'start' => '2020-01-01T00:00', 'end' => '2020-02-01T00:00' ],
+	], false );
+
+	$due = WAPM_Rules::due_auto_rules( $now );
+	$ids = array_map( static fn( $r ) => $r['id'], $due );
+
+	eq( [ 'r2' ], $ids, 'فقط قانون خودکار و سررسیدشده' );
+} );
+
+test( 'قوانین: فاصله‌ی اجرای خودکار و ثبت زمان اجرا', function () {
+	stub_reset();
+	$now = 1_700_000_000;
+
+	eq( DAY_IN_SECONDS, WAPM_Rules::auto_interval(), 'فاصله‌ی پیش‌فرض روزانه' );
+
+	update_option( 'wapm_rules', [
+		[ 'id' => 'a', 'title' => 'خودکار', 'priority' => 1, 'enabled' => true, 'auto' => true, 'last_run' => 0 ],
+	], false );
+
+	eq( 1, count( WAPM_Rules::due_auto_rules( $now ) ), 'بار اول سررسید است' );
+
+	WAPM_Rules::mark_auto_run( 'a', $now );
+	eq( 0, count( WAPM_Rules::due_auto_rules( $now + HOUR_IN_SECONDS ) ), 'یک ساعت بعد هنوز نه' );
+	eq( 1, count( WAPM_Rules::due_auto_rules( $now + DAY_IN_SECONDS ) ), 'یک روز بعد سررسید است' );
+} );
+
+test( 'قوانین: ویرایش قانون زمان آخرین اجرای خودکار را پاک نمی‌کند', function () {
+	stub_reset();
+	$now = 1_700_000_000;
+
+	update_option( 'wapm_rules', [
+		[ 'id' => 'keep', 'title' => 'قانون', 'priority' => 1, 'enabled' => true, 'auto' => true, 'last_run' => $now ],
+	], false );
+
+	$saved = WAPM_Rules::save_rule( [ 'id' => 'keep', 'title' => 'قانون ویرایش‌شده', 'priority' => 1, 'enabled' => true, 'auto' => true ] );
+
+	eq( $now, $saved['last_run'], 'last_run حفظ شد' );
+	eq( 0, count( WAPM_Rules::due_auto_rules( $now ) ), 'بلافاصله دوباره اجرا نمی‌شود' );
+
+	// قانون تازه (بدون id) با auto خاموش ذخیره می‌شود.
+	$fresh = WAPM_Rules::save_rule( [ 'title' => 'تازه', 'priority' => 2, 'enabled' => true ] );
+	eq( false, $fresh['auto'], 'پیش‌فرض: دستی' );
+	eq( 0, $fresh['last_run'], 'بدون اجرا' );
+} );
 
 test( 'صف: بدون Action Scheduler به wp-cron برمی‌گردد و idempotent است', function () {
 	stub_reset();

@@ -28,6 +28,11 @@ class WAPM_Rules {
 			'title'    => sanitize_text_field( $raw['title'] ?? '' ),
 			'priority' => intval( $raw['priority'] ?? 10 ),
 			'enabled'  => ! empty( $raw['enabled'] ),
+			// اجرای خودکار: قبلاً «قوانین» فقط با دکمه‌ی دستی کار می‌کردند و
+			// «اولویت»/«بازه اعتبار» القای خودکاری می‌داد. حالا خودکار بودن
+			// یک انتخاب صریح است (پیش‌فرض: خاموش) و در جدول هم نمایش داده می‌شود.
+			'auto'     => ! empty( $raw['auto'] ),
+			'last_run' => 0,
 			'start'    => sanitize_text_field( $raw['start'] ?? '' ), // اختیاری: قبل از این تاریخ اجرا نشود
 			'end'      => sanitize_text_field( $raw['end'] ?? '' ),   // اختیاری: بعد از این تاریخ اجرا نشود
 			'filters'  => WAPM_Product_Handler::sanitize_filters( (array) ( $raw['filters'] ?? [] ) ),
@@ -37,8 +42,11 @@ class WAPM_Rules {
 		$replaced = false;
 		foreach ( $rules as $i => $existing ) {
 			if ( $existing['id'] === $rule['id'] ) {
-				$rules[ $i ] = $rule;
-				$replaced    = true;
+				// زمان آخرین اجرای خودکار با ویرایش قانون از بین نمی‌رود؛
+				// وگرنه هر ویرایش، اجرای خودکار بعدی را بلافاصله جلو می‌انداخت.
+				$rule['last_run'] = (int) ( $existing['last_run'] ?? 0 );
+				$rules[ $i ]      = $rule;
+				$replaced         = true;
 				break;
 			}
 		}
@@ -91,6 +99,123 @@ class WAPM_Rules {
 			return false;
 		}
 		return true;
+	}
+
+	/**
+	 * فاصله‌ی پیش‌فرض بین دو اجرای خودکار یک قانون (ثانیه).
+	 *
+	 * چرا روزانه و نه ساعتی: قانونی مثل «+۵٪» اگر هر ساعت اجرا شود، در یک روز
+	 * ۸۰٪ گران‌تر می‌شود. اجرای روزانه قابل پیش‌بینی است و با فیلتر
+	 * `wapm_rules_auto_interval` عوض می‌شود.
+	 */
+	public static function auto_interval(): int {
+		return max( HOUR_IN_SECONDS, (int) apply_filters( 'wapm_rules_auto_interval', DAY_IN_SECONDS ) );
+	}
+
+	/**
+	 * قوانینی که همین حالا باید خودکار اجرا شوند (به ترتیب اولویت).
+	 *
+	 * شرط‌ها: فعال && خودکار && داخل بازه‌ی اعتبار && فاصله از اجرای قبلی گذشته.
+	 *
+	 * @return array<int,array>
+	 */
+	public static function due_auto_rules( int $now = 0 ): array {
+		$now   = $now > 0 ? $now : current_time( 'timestamp' );
+		$gap   = self::auto_interval();
+		$due   = [];
+
+		foreach ( self::all() as $rule ) { // all() با اولویت مرتب است.
+			if ( empty( $rule['enabled'] ) || empty( $rule['auto'] ) ) {
+				continue;
+			}
+			if ( ! self::is_rule_active_now( $rule ) ) {
+				continue;
+			}
+
+			$last = (int) ( $rule['last_run'] ?? 0 );
+			if ( $last > 0 && ( $now - $last ) < $gap ) {
+				continue;
+			}
+
+			$due[] = $rule;
+		}
+
+		return $due;
+	}
+
+	/**
+	 * ثبت زمان اجرای خودکار یک قانون.
+	 */
+	public static function mark_auto_run( string $id, int $now = 0 ): void {
+		$rules = self::all();
+		$now   = $now > 0 ? $now : current_time( 'timestamp' );
+
+		foreach ( $rules as $i => $rule ) {
+			if ( $rule['id'] === $id ) {
+				$rules[ $i ]['last_run'] = $now;
+			}
+		}
+
+		update_option( self::OPTION, $rules, false );
+	}
+
+	/**
+	 * اجرای خودکار قوانین سررسیدشده (از کرون/صف صدا زده می‌شود).
+	 *
+	 * محدودیت زمانی و سقف صفحه دارد تا اجرای cron سایت را قفل نکند؛ اگر کار
+	 * تمام نشد، دفعه‌ی بعد ادامه می‌دهد (قانون `last_run` نمی‌خورد).
+	 *
+	 * @param int $max_seconds سقف زمانی این اجرا
+	 * @param int $max_pages   سقف صفحه برای هر قانون
+	 * @return array{ran:int,processed:int,left:int}
+	 */
+	public static function run_auto( int $max_seconds = 120, int $max_pages = 200 ): array {
+		$started   = time();
+		$ran       = 0;
+		$processed = 0;
+		$due       = self::due_auto_rules();
+
+		foreach ( $due as $rule ) {
+			if ( ( time() - $started ) >= $max_seconds ) {
+				break;
+			}
+
+			$batch_id = 'rule_auto_' . wp_generate_password( 10, false );
+			$paged    = 1;
+			$done     = false;
+
+			for ( $i = 0; $i < $max_pages; $i++ ) {
+				$result = self::run_rule_batch( $rule, $batch_id, $paged );
+				$processed += (int) ( $result['processed'] ?? 0 );
+
+				if ( ! empty( $result['skipped'] ) ) {
+					$done = true; // خارج از بازه‌ی اعتبار — اجرا لازم نیست.
+					break;
+				}
+
+				if ( ! empty( $result['done'] ) ) {
+					$done = true;
+					break;
+				}
+
+				$paged++;
+
+				if ( ( time() - $started ) >= $max_seconds ) {
+					break;
+				}
+			}
+
+			if ( $done ) {
+				self::mark_auto_run( $rule['id'] );
+				$ran++;
+			}
+		}
+
+		return [
+			'ran'       => $ran,
+			'processed' => $processed,
+			'left'      => max( 0, count( $due ) - $ran ),
+		];
 	}
 
 	public static function run_rule_batch( array $rule, string $batch_id, int $paged, int $per_page = 25 ): array {

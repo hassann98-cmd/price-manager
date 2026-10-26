@@ -131,6 +131,27 @@ class WAPM_Scheduler {
 					self::update_schedule( $schedule );
 				}
 			}
+
+			// ۳) قوانین خودکار (P1-11).
+			//
+			// قبلاً تب «قوانین» فقط با دکمه‌ی «اجرا» کار می‌کرد؛ «اولویت» و «بازه
+			// اعتبار» خودکار بودن را القا می‌کردند. حالا قانونی که صریحاً «خودکار»
+			// علامت خورده، این‌جا و داخل همین قفل اجرا می‌شود (نه در اجرای موازی).
+			if ( class_exists( 'WAPM_Rules' ) ) {
+				$result = WAPM_Rules::run_auto();
+				if ( $result['ran'] > 0 || $result['left'] > 0 ) {
+					update_option(
+						'wapm_rules_last_auto',
+						[
+							'at'        => current_time( 'mysql' ),
+							'ran'       => (int) $result['ran'],
+							'processed' => (int) $result['processed'],
+							'left'      => (int) $result['left'],
+						],
+						false
+					);
+				}
+			}
 		} finally {
 			self::release_lock();
 		}

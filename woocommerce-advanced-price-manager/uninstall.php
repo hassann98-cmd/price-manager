@@ -98,6 +98,8 @@ function wapm_uninstall_site(): void {
 		'wapm_schedules_lock',
 		// موتور زمان‌بندی (Action Scheduler / wp-cron).
 		'wapm_queue_engine',
+		// گزارش آخرین اجرای خودکار قوانین.
+		'wapm_rules_last_auto',
 		// ترب — تنظیمات و آمار.
 		'wapm_torob_settings',
 		'wapm_torob_shop_id',

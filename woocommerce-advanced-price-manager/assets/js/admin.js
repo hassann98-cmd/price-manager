@@ -32,6 +32,19 @@
 	}
 
 	/**
+	 * timestamp یونیکس (ثانیه) → تاریخ/ساعت محلی کاربر.
+	 * برای نمایش «آخرین اجرای خودکار» قانون.
+	 */
+	function runLabel(ts) {
+		if (!ts) { return '—'; }
+		try {
+			return new Date(Number(ts) * 1000).toLocaleString('fa-IR', { dateStyle: 'short', timeStyle: 'short' });
+		} catch (e) {
+			return '—';
+		}
+	}
+
+	/**
 	 * escape کامل برای متن *و* مقدار attribute.
 	 * نسخه‌ی قبلی از jQuery(.text().html()) استفاده می‌کرد که «"» و «'» را
 	 * escape نمی‌کند؛ نتیجه این بود که نام دسته/برند حاوی " مارک‌آپ را می‌شکست.
@@ -606,7 +619,7 @@
 	function renderRules() {
 		var $tbody = $('#wapm-rules-table tbody').empty();
 		if (!state.rules.length) {
-			$tbody.append('<tr><td colspan="4">—</td></tr>');
+			$tbody.append('<tr><td colspan="5">—</td></tr>');
 			return;
 		}
 		state.rules.forEach(function (r) {
@@ -614,10 +627,15 @@
 				? '<span class="wapm-badge wapm-badge-on">' + WAPM.i18n.enabled + '</span>'
 				: '<span class="wapm-badge wapm-badge-off">' + WAPM.i18n.disabled + '</span>';
 			var dates = (r.start || r.end) ? '<br><small>' + esc(r.start || '…') + ' ← ' + esc(r.end || '…') + '</small>' : '';
+			var lastRun = r.last_run ? '<br><small>' + 'آخرین اجرای خودکار: ' + esc(runLabel(r.last_run)) + '</small>' : '';
+			var auto = r.auto
+				? '<span class="wapm-badge wapm-badge-on" title="در زمان‌بندی ساعتانه اجرا می‌شود">خودکار</span>' + lastRun
+				: '<span class="wapm-badge wapm-badge-off" title="فقط با دکمه‌ی اجرا">دستی</span>';
 			$tbody.append('<tr data-id="' + esc(r.id) + '">' +
 				'<td>' + esc(r.title || r.id) + legacyScopeWarning(r.settings) + dates + '</td>' +
 				'<td>' + esc(r.priority) + '</td>' +
 				'<td>' + badge + '</td>' +
+				'<td>' + auto + '</td>' +
 				'<td>' +
 				'<button type="button" class="button button-small wapm-rule-run">' + WAPM.i18n.run + '</button> ' +
 				'<button type="button" class="button button-small wapm-rule-toggle" data-enabled="' + (r.enabled ? 1 : 0) + '">' + (r.enabled ? WAPM.i18n.disabled : WAPM.i18n.enabled) + '</button> ' +
@@ -636,6 +654,7 @@
 			end: $('#wapm-rule-end').val(),
 			// قبلاً همیشه true بود؛ نتیجه: ویرایش یک قانون غیرفعال، آن را بی‌صدا فعال می‌کرد.
 			enabled: $('#wapm-rule-enabled').is(':checked'),
+			auto: $('#wapm-rule-auto').is(':checked'),
 			filters: readFilters('rule'),
 			settings: readSettings('rule')
 		};
@@ -646,6 +665,7 @@
 				$('#wapm-rule-id').val('');
 				$('#wapm-rule-title').val('');
 				$('#wapm-rule-enabled').prop('checked', true);
+				$('#wapm-rule-auto').prop('checked', false);
 				wapmToast(WAPM.i18n.done, 'success');
 			} else {
 				wapmToast((res.data && res.data.message) || WAPM.i18n.error, 'error');
@@ -679,6 +699,7 @@
 		$('#wapm-rule-start').val(rule.start || '');
 		$('#wapm-rule-end').val(rule.end || '');
 		$('#wapm-rule-enabled').prop('checked', !!rule.enabled);
+		$('#wapm-rule-auto').prop('checked', !!rule.auto);
 		writeFilters('rule', rule.filters || {});
 		writeSettings('rule', rule.settings || {});
 		$('html, body').animate({ scrollTop: $('#wapm-tab-rules').offset().top - 60 }, 300);

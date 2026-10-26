@@ -721,6 +721,13 @@ class WAPM_Admin {
 							</td>
 						</tr>
 						<tr>
+							<th><?php esc_html_e( 'اجرای خودکار', 'wapm' ); ?></th>
+							<td>
+								<label><input type="checkbox" id="wapm-rule-auto"> <?php esc_html_e( 'این قانون هر روز خودکار اجرا شود', 'wapm' ); ?></label>
+								<p class="description"><?php esc_html_e( 'پیش‌فرض خاموش است: قانون فقط با دکمه‌ی «اجرا» اعمال می‌شود. با روشن‌کردن، در زمان‌بندی ساعتانه‌ی افزونه و به ترتیب اولویت اجرا می‌شود (فاصله‌ی پیش‌فرض: ۲۴ ساعت).', 'wapm' ); ?></p>
+							</td>
+						</tr>
+						<tr>
 							<th><?php esc_html_e( 'بازه اعتبار (اختیاری)', 'wapm' ); ?></th>
 							<td>
 								<?php esc_html_e( 'از:', 'wapm' ); ?> <input type="datetime-local" id="wapm-rule-start">
@@ -739,6 +746,25 @@ class WAPM_Admin {
 
 				<div class="wapm-card">
 					<h2><?php esc_html_e( 'قوانین ثبت‌شده', 'wapm' ); ?></h2>
+					<?php
+					$last_auto = get_option( 'wapm_rules_last_auto', [] );
+					if ( is_array( $last_auto ) && ! empty( $last_auto['at'] ) ) :
+						?>
+						<p class="description">
+							<?php
+							printf(
+								/* translators: 1: date/time, 2: number of rules, 3: number of products */
+								esc_html__( 'آخرین اجرای خودکار: %1$s — %2$d قانون، %3$d محصول.', 'wapm' ),
+								esc_html( (string) $last_auto['at'] ),
+								(int) ( $last_auto['ran'] ?? 0 ),
+								(int) ( $last_auto['processed'] ?? 0 )
+							);
+							if ( ! empty( $last_auto['left'] ) ) {
+								echo ' ' . esc_html__( 'بخشی از کار به اجرای بعدی موکول شد.', 'wapm' );
+							}
+							?>
+						</p>
+					<?php endif; ?>
 					<div id="wapm-progress-rule" class="wapm-progress" style="display:none">
 						<div class="wapm-progress-bar"><span style="width:0%"></span></div>
 						<p class="wapm-progress-text"></p>
@@ -748,6 +774,7 @@ class WAPM_Admin {
 							<th><?php esc_html_e( 'عنوان', 'wapm' ); ?></th>
 							<th><?php esc_html_e( 'اولویت', 'wapm' ); ?></th>
 							<th><?php esc_html_e( 'وضعیت', 'wapm' ); ?></th>
+							<th><?php esc_html_e( 'خودکار', 'wapm' ); ?></th>
 							<th><?php esc_html_e( 'عملیات', 'wapm' ); ?></th>
 						</tr></thead>
 						<tbody></tbody>
