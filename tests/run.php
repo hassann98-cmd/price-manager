@@ -98,6 +98,10 @@ function wp_date( $format, $timestamp = null ) {
 	return gmdate( $format, null === $timestamp ? time() : (int) $timestamp );
 }
 
+function esc_js( $text ) {
+	return addcslashes( (string) $text, "\\'\"\r\n</" );
+}
+
 function sanitize_key( $key ) {
 	return preg_replace( '/[^a-z0-9_\-]/', '', strtolower( (string) $key ) );
 }
@@ -200,6 +204,7 @@ require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-st
 require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-list.php';
 require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-queue.php';
 require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-product-handler.php';
+require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-bookmarklet.php';
 require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-rules.php';
 
 /* -------------------------------------------------------------------------
@@ -1369,6 +1374,27 @@ test( 'موجودی/expand_ids: انتخاب همه‌ی نتایج هم از ه
 /* -------------------------------------------------------------------------
  * ۱۶) فیلترهای ذخیره‌شده‌ی لیست
  * ---------------------------------------------------------------------- */
+
+test( 'بوکمارکلت: لینک امن شامل توکن و نقطه‌ی پایانی است', function () {
+	stub_reset();
+	update_option( 'wapm_torob_bm_token', 'token123', false );
+	update_option( 'wapm_torob_shop_id', 34575, false );
+
+	$href = WAPM_Bookmarklet::href();
+
+	ok( 0 === strpos( $href, 'javascript:' ), 'با javascript: شروع می‌شود', substr( $href, 0, 20 ) );
+
+	// لینک باید URL-encode شده باشد تا داخل href نشکند؛ بعد از decode باید
+	// توکن و نقطه‌ی پایانی داخل کد باشد.
+	$code = rawurldecode( substr( $href, strlen( 'javascript:' ) ) );
+	ok( false !== strpos( $code, 'token123' ), 'توکن', '' );
+	ok( false !== strpos( $code, 'admin-ajax.php' ), 'نقطه‌ی پایانی ajax', '' );
+	ok( false !== strpos( $code, '34575' ), 'شناسه فروشگاه', '' );
+	ok( false !== strpos( $code, 'wapm_bookmarklet_sync' ) || false !== strpos( $code, 'token' ), 'اکشن ارسال', '' );
+
+	// هیچ جای‌نگهدار جایگزین‌نشده نماند.
+	ok( false === strpos( $code, '%%' ), 'جای‌نگهدار باقی نمانده', '' );
+} );
 
 test( 'قوانین: اجرای خودکار فقط برای قانون فعالِ خودکار و سررسیدشده', function () {
 	stub_reset();

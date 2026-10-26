@@ -73,6 +73,7 @@ final class WAPM_Plugin {
 		require_once WAPM_PATH . 'includes/class-queue.php';
 		require_once WAPM_PATH . 'includes/class-scheduler.php';
 		require_once WAPM_PATH . 'includes/class-ajax.php';
+		require_once WAPM_PATH . 'includes/class-bookmarklet.php';
 		require_once WAPM_PATH . 'includes/class-admin.php';
 
 		WAPM_Logger::maybe_upgrade();
