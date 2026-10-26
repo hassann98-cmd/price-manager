@@ -44,6 +44,8 @@ class WAPM_Ajax {
 			'torob_refresh_product',
 			'torob_align',
 			'torob_api_reset',
+			'torob_gap',
+			'torob_refresh_batch',
 			'stock_preview',
 			'stock_apply',
 			'stock_logs',
@@ -83,6 +85,10 @@ class WAPM_Ajax {
 		// نام قدیمی بالا برای بوکمارکلت‌هایی که قبلاً ساخته شده‌اند حفظ شده است.
 		add_action( 'wp_ajax_wapm_torob_ingest', [ $this, 'torob_ingest' ] );
 		add_action( 'wp_ajax_nopriv_wapm_torob_ingest', [ $this, 'torob_ingest' ] );
+
+		// فهرست «محصولات بدون قیمت رقیب» برای بوکمارکلت (اجرای هدفمند، نه کل کاتالوگ).
+		add_action( 'wp_ajax_wapm_torob_missing_list', [ $this, 'torob_missing_list' ] );
+		add_action( 'wp_ajax_nopriv_wapm_torob_missing_list', [ $this, 'torob_missing_list' ] );
 	}
 
 	/**
@@ -806,6 +812,14 @@ class WAPM_Ajax {
 			'shop_id'           => WAPM_Torob::get_shop_id(),
 			'can_identify_shop' => WAPM_Torob::can_identify_shop(),
 			'api'               => class_exists( 'WAPM_Torob_Api' ) ? WAPM_Torob_Api::state() : null,
+			// شکاف داده: چند محصول قیمت رقیب ندارند یا داده‌شان کهنه شده.
+			// بدون این دو عدد، «همگام‌سازی کامل شد ولی قیمتی نیست» یک معمای
+			// بی‌سرنخ برای کاربر است.
+			'gap'               => [
+				'missing' => WAPM_Torob::count_competitor_gap( 'missing' ),
+				'stale'   => WAPM_Torob::count_competitor_gap( 'stale' ),
+			],
+			'auto'              => WAPM_Torob::auto_state(),
 		];
 	}
 
@@ -1316,6 +1330,141 @@ class WAPM_Ajax {
 		$this->guard();
 		WAPM_Torob_Api::clear_cooldown();
 		wp_send_json_success( [ 'state' => WAPM_Torob_Api::state() ] );
+	}
+
+	/**
+	 * فهرست محصولات نیازمند بررسی قیمت رقیب + شمارنده‌ها.
+	 *
+	 * چرا یک اکشن جدا: هم دکمه‌ی «به‌روزرسانی گروهی» و هم بنر وضعیت به همین
+	 * اعداد نیاز دارند، و گرفتنشان از آمار کلی (که هر بار سه کوئری است) کار
+	 * درست نیست.
+	 */
+	public function torob_gap(): void {
+		$this->guard();
+
+		$mode = sanitize_key( wp_unslash( $_POST['mode'] ?? 'all' ) );
+		if ( ! in_array( $mode, [ 'missing', 'stale', 'all' ], true ) ) {
+			$mode = 'all';
+		}
+
+		// سقف ۲۰۰۰: بیشتر از بودجه‌ی یک روز است و لیست بزرگ‌تر فقط حافظه‌ی
+		// مرورگر را پر می‌کند؛ بوکمارکلت مسیر مناسب کاتالوگ‌های بزرگ است.
+		$ids = WAPM_Torob::competitor_gap_ids( $mode, 2000 );
+
+		wp_send_json_success( [
+			'mode'    => $mode,
+			'missing' => WAPM_Torob::count_competitor_gap( 'missing' ),
+			'stale'   => WAPM_Torob::count_competitor_gap( 'stale' ),
+			'total'   => count( $ids ),
+			'ids'     => $ids,
+			'auto'    => WAPM_Torob::auto_state(),
+			'api'     => WAPM_Torob_Api::state(),
+		] );
+	}
+
+	/**
+	 * تازه‌سازی گروهی قیمت رقبا از API — چند محصول در هر درخواست.
+	 *
+	 * کلاینت لیست شناسه‌ها را یک‌بار می‌گیرد و دسته‌دسته می‌فرستد؛ این‌طور
+	 * صفحه‌بندی کوئری وسط کار جابه‌جا نمی‌شود (هر محصول موفق از لیست «بدون
+	 * قیمت رقیب» بیرون می‌رود و اندیس‌ها تغییر می‌کردند).
+	 */
+	public function torob_refresh_batch(): void {
+		$this->guard();
+
+		$raw = wp_unslash( $_POST['ids'] ?? '[]' );
+		$ids = json_decode( (string) $raw, true );
+		if ( ! is_array( $ids ) ) {
+			wp_send_json_error( [ 'message' => __( 'فهرست محصولات نامعتبر است.', 'wapm' ) ] );
+		}
+
+		$ids = array_values( array_unique( array_filter( array_map( 'absint', $ids ) ) ) );
+		// سقف ۱۰: هر محصول یک درخواست به ترب است و فاصله‌ی حداقلی کلاینت
+		// (MIN_INTERVAL) باید رعایت شود؛ دسته‌های بزرگ‌تر فقط تایم‌اوت می‌سازند.
+		$ids = array_slice( $ids, 0, 10 );
+
+		$done    = [];
+		$failed  = [];
+		$blocked = false;
+		$state   = null;
+		$stop    = '';
+
+		// این سه خطا یعنی «ادامه‌دادن بی‌فایده (یا مضر) است»: بلاک موقت، ته‌کشیدن
+		// بودجه‌ی روزانه و صفحه‌ی کپچا. بقیه‌ی خطاها مخصوص یک محصول‌اند و حلقه
+		// باید ادامه بدهد.
+		$stop_codes = [ 'torob_blocked', 'torob_budget', 'torob_captcha' ];
+
+		foreach ( $ids as $id ) {
+			$result = WAPM_Torob::refresh_product( (int) $id );
+
+			if ( is_wp_error( $result ) ) {
+				$code = $result->get_error_code();
+				if ( in_array( $code, $stop_codes, true ) ) {
+					$blocked = true;
+					$stop    = $result->get_error_message();
+					$state   = WAPM_Torob_Api::state();
+					break;
+				}
+				$failed[] = [
+					'id'      => (int) $id,
+					'code'    => $code,
+					'message' => $result->get_error_message(),
+				];
+				continue;
+			}
+
+			$done[] = (int) $id;
+		}
+
+		wp_send_json_success( [
+			'done'    => $done,
+			'failed'  => $failed,
+			'blocked' => $blocked,
+			'message' => $stop,
+			'api'     => null !== $state ? $state : WAPM_Torob_Api::state(),
+			'stats'   => $this->torob_stats_payload(),
+		] );
+	}
+
+	/**
+	 * فهرست «محصولات بدون قیمت رقیب» برای بوکمارکلت (بدون سشن ادمین).
+	 *
+	 * چرا لازم است: حالت «کامل» کل کاتالوگ را دوباره واکشی می‌کند؛ برای
+	 * فروشگاهی با ۲۰۰۰ محصول یعنی ۲۰۰۰ درخواست در حالی که شاید فقط ۵۰ محصول
+	 * قیمت رقیب نداشته باشند. توکن همان توکن ورود داده است.
+	 */
+	public function torob_missing_list(): void {
+		if ( isset( $_SERVER['HTTP_ORIGIN'] ) && 'https://torob.com' === $_SERVER['HTTP_ORIGIN'] ) {
+			header( 'Access-Control-Allow-Origin: https://torob.com' );
+		}
+
+		$token       = sanitize_text_field( wp_unslash( $_POST['token'] ?? '' ) );
+		$saved_token = WAPM_Torob::get_bookmarklet_token();
+
+		if ( '' === $token || ! $saved_token || ! hash_equals( $saved_token, $token ) ) {
+			wp_send_json_error( [ 'message' => __( 'توکن نامعتبر است.', 'wapm' ) ], 403 );
+		}
+
+		$limit = min( 500, max( 1, absint( $_POST['limit'] ?? 200 ) ) );
+		$ids   = WAPM_Torob::competitor_gap_ids( 'all', $limit );
+
+		$items = [];
+		foreach ( $ids as $id ) {
+			$prk = (string) get_post_meta( (int) $id, WAPM_Torob::META_PRK, true );
+			if ( '' === $prk ) {
+				continue;
+			}
+			$items[] = [
+				'prk'  => $prk,
+				'name' => (string) get_the_title( (int) $id ),
+			];
+		}
+
+		wp_send_json_success( [
+			'items'   => $items,
+			'total'   => count( $items ),
+			'missing' => WAPM_Torob::count_competitor_gap( 'missing' ),
+		] );
 	}
 
 	/**
