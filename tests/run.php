@@ -92,6 +92,7 @@ $GLOBALS['wapm_options'] = [];
 require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-price-engine.php';
 require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-logger.php';
 require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-torob.php';
+require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-torob-api.php';
 
 /* -------------------------------------------------------------------------
  * چارچوب تست کوچک
@@ -674,6 +675,144 @@ test( 'ترب/هدف: صفرِ عمدی کاربر برای زیربرش حفظ 
 	$s = settings( [ 'source' => 'torob', 'torob_undercut' => 0 ] );
 	eq( 0.0, $s['torob_undercut'], '۰ حفظ شد' );
 	eq( 1000.0, WAPM_Price_Engine::torob_target_price( 1000.0, $s ), 'برابر رقیب' );
+} );
+
+/* -------------------------------------------------------------------------
+ * ۱۲) ترب — API: پارس قیمت و نرمال‌سازی ردیف‌ها
+ * ---------------------------------------------------------------------- */
+
+test( 'ترب/API: پارس قیمت فارسی با جداکننده', function () {
+	stub_reset();
+	eq( 8680000.0, WAPM_Torob_Api::parse_price_text( 'از ۸٫۶۸۰٫۰۰۰ تومان' ), 'با پیشوند «از»' );
+	eq( 1990000.0, WAPM_Torob_Api::parse_price_text( '۱٫۹۹۰٫۰۰۰ تومان' ), 'بدون پیشوند' );
+	eq( 500000.0, WAPM_Torob_Api::parse_price_text( '500,000 تومان' ), 'لاتین با کاما' );
+} );
+
+test( 'ترب/API: پارس قیمت — «ریال» به تومان تبدیل می‌شود', function () {
+	stub_reset();
+	// اگر روزی ترب واحد را عوض کند، داده باید بی‌صدا ۱۰ برابر نشود.
+	eq( 10.0, WAPM_Torob_Api::parse_price_text( '۱۰۰ ریال' ), 'ریال → تومان' );
+} );
+
+test( 'ترب/API: پارس قیمت بدون رقم → null', function () {
+	stub_reset();
+	eq( null, WAPM_Torob_Api::parse_price_text( 'ناموجود' ), 'متن بدون عدد' );
+	eq( null, WAPM_Torob_Api::parse_price_text( '' ), 'خالی' );
+} );
+
+test( 'ترب/API: کارت محصول از لیست فروشگاه', function () {
+	stub_reset();
+	$card = WAPM_Torob_Api::card( [
+		'random_key'              => 'd0640307-e9ca-4f25-9331-b76f9bba682c',
+		'name1'                   => 'شارژر شیائومی',
+		'price'                   => 1990000,
+		'price_text'              => '۱٫۹۹۰٫۰۰۰ تومان',
+		'web_client_absolute_url' => '/p/d0640307-e9ca-4f25-9331-b76f9bba682c/x/',
+	] );
+	eq( 'd0640307-e9ca-4f25-9331-b76f9bba682c', $card['prk'], 'prk' );
+	eq( 1990000.0, $card['price'], 'قیمت (قیمت خود فروشگاه)' );
+	eq( 'https://torob.com/p/d0640307-e9ca-4f25-9331-b76f9bba682c/x/', $card['url'], 'آدرس کامل' );
+} );
+
+test( 'ترب/API: کارت با متن قیمت ناسازگار → قیمت دور ریخته می‌شود', function () {
+	stub_reset();
+	// عدد ۱٬۰۰۰ ولی متن ۱۰٬۰۰۰ → ۱۰ برابر اختلاف: یا واحد عوض شده یا داده خراب.
+	$card = WAPM_Torob_Api::card( [
+		'random_key' => 'aaaaaaaa-1111-2222-3333-444444444444',
+		'name1'      => 'محصول',
+		'price'      => 1000,
+		'price_text' => '۱۰٫۰۰۰ تومان',
+	] );
+	eq( null, $card['price'], 'قیمت نامعتبر → null (نه مقایسه‌ی ۱۰ برابری)' );
+} );
+
+test( 'ترب/API: کارت بدون prk → null', function () {
+	stub_reset();
+	eq( null, WAPM_Torob_Api::card( [ 'name1' => 'بدون شناسه', 'price' => 100 ] ), 'ردیف بی‌شناسه' );
+} );
+
+test( 'ترب/API: ردیف فروشنده — ناموجود و قیمت طعمه', function () {
+	stub_reset();
+	$s1 = WAPM_Torob_Api::seller( [
+		'shop_id' => 5, 'shop_name' => 'فروشگاه', 'price' => 1000,
+		'price_text' => '۱٬۰۰۰ تومان', 'availability' => false,
+	] );
+	eq( false, $s1['available'], 'ناموجود' );
+	eq( 0.0, $s1['price'], 'قیمت ناموجود صفر می‌شود' );
+
+	$s2 = WAPM_Torob_Api::seller( [
+		'shop_id' => 6, 'shop_name' => 'طعمه', 'price' => 1000,
+		'price_text' => '۱٬۰۰۰ تومان', 'is_price_unreliable' => true,
+	] );
+	eq( true, $s2['unreliable'], 'پرچم قیمت نامعتبر' );
+	eq( 1000.0, $s2['price'], 'قیمت حفظ می‌شود (فقط علامت می‌خورد)' );
+} );
+
+test( 'ترب/API: ردیف فروشنده با متن قیمت ناسازگار → نامعتبر', function () {
+	stub_reset();
+	$s = WAPM_Torob_Api::seller( [
+		'shop_id' => 7, 'shop_name' => 'شک', 'price' => 500,
+		'price_text' => '۵٬۰۰۰ تومان',
+	] );
+	eq( true, $s['unreliable'], 'اختلاف ۱۰ برابری متن/عدد' );
+} );
+
+/* -------------------------------------------------------------------------
+ * ۱۳) ترب — تصمیم‌گیری با پرچم‌های موجودی/اعتبار
+ * ---------------------------------------------------------------------- */
+
+test( 'ترب/sellers: ناموجود در لیست نمی‌آید ولی شمرده می‌شود', function () {
+	stub_reset();
+	$res = sellers( [
+		[ 'shop_id' => 1, 'shop_name' => 'الف', 'price' => 500, 'available' => true ],
+		[ 'shop_id' => 2, 'shop_name' => 'ب', 'price' => 300, 'available' => false ],
+	] );
+	eq( 1, $res['count'], 'فقط موجودها' );
+	eq( 1, $res['hidden'], 'ناموجود شمرده شد' );
+	eq( 500.0, $res['list'][0]['price'], 'قیمت موجود' );
+} );
+
+test( 'ترب/sellers: پرچم «قیمت نامعتبر» منتقل می‌شود', function () {
+	stub_reset();
+	$res = sellers( [ [ 'shop_id' => 1, 'shop_name' => 'الف', 'price' => 500, 'unreliable' => true ] ] );
+	eq( true, $res['list'][0]['unreliable'], 'پرچم' );
+} );
+
+test( 'ترب/cheapest: ارزان‌ترین قیمت طعمه نادیده گرفته می‌شود', function () {
+	stub_reset();
+	$s = sellers( [
+		[ 'shop_id' => 99, 'shop_name' => 'ما', 'price' => 900 ],
+		[ 'shop_id' => 5, 'shop_name' => 'طعمه', 'price' => 100, 'unreliable' => true ],
+		[ 'shop_id' => 6, 'shop_name' => 'واقعی', 'price' => 1000 ],
+	] );
+	$r = WAPM_Torob::cheapest_competitor( $s, 99 );
+	eq( 1000.0, $r['competitor'], 'قیمت معتبر، نه ۱۰۰' );
+	eq( 1, $r['unreliable_skipped'], 'یک قیمت نامعتبر رد شد' );
+	eq( 2, $r['others'], 'هر دو رقیب شمرده شدند' );
+} );
+
+test( 'ترب/cheapest: اگر همه‌ی رقبا نامعتبر باشند → رقیب نامعلوم', function () {
+	stub_reset();
+	$s = sellers( [
+		[ 'shop_id' => 99, 'shop_name' => 'ما', 'price' => 900 ],
+		[ 'shop_id' => 5, 'shop_name' => 'طعمه ۱', 'price' => 100, 'unreliable' => true ],
+		[ 'shop_id' => 6, 'shop_name' => 'طعمه ۲', 'price' => 200, 'unreliable' => true ],
+	] );
+	$r = WAPM_Torob::cheapest_competitor( $s, 99 );
+	eq( null, $r['competitor'], 'مبنا ندارد' );
+	eq( 2, $r['unreliable_skipped'], 'هر دو رد شدند' );
+	ok( $r['shop_known'], 'فروشگاه خودمان شناسایی شد' );
+} );
+
+test( 'ترب/cheapest: داده‌ی قدیمی فید (بدون پرچم) مثل قبل کار می‌کند', function () {
+	stub_reset();
+	$s = sellers( [
+		[ 'shop_id' => 99, 'shop_name' => 'ما', 'price' => 900 ],
+		[ 'shop_id' => 5, 'shop_name' => 'رقیب', 'price' => 800 ],
+	] );
+	$r = WAPM_Torob::cheapest_competitor( $s, 99 );
+	eq( 800.0, $r['competitor'], 'سازگاری با فید قدیمی' );
+	eq( 0, $r['unreliable_skipped'], 'چیزی رد نشد' );
 } );
 
 /* -------------------------------------------------------------------------
