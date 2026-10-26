@@ -11,6 +11,11 @@ class WAPM_Rules {
 
 	const OPTION = 'wapm_rules';
 
+	/**
+	 * همه‌ی قوانین، مرتب‌شده بر اساس اولویت (کم = زودتر).
+	 *
+	 * @return array<int,array>
+	 */
 	public static function all(): array {
 		$rules = get_option( self::OPTION, [] );
 		if ( ! is_array( $rules ) ) {
@@ -20,6 +25,16 @@ class WAPM_Rules {
 		return $rules;
 	}
 
+	/**
+	 * ساخت/به‌روزرسانی یک قانون از ورودی خام فرم.
+	 *
+	 * فیلترها و تنظیمات از همان sanitizerهای موتور قیمت رد می‌شوند تا قانونی که
+	 * از فرم می‌آید با قانونی که از API می‌آید یک شکل باشد. `last_run` با
+	 * ویرایش بازنویسی نمی‌شود (وگرنه هر ویرایش، اجرای خودکار بعدی را جلو
+	 * می‌انداخت).
+	 *
+	 * @return array قانون ذخیره‌شده
+	 */
 	public static function save_rule( array $raw ): array {
 		$rules = self::all();
 
@@ -58,11 +73,17 @@ class WAPM_Rules {
 		return $rule;
 	}
 
+	/**
+	 * حذف یک قانون با شناسه (اگر نباشد، بی‌اثر است).
+	 */
 	public static function delete_rule( string $id ): void {
 		$rules = array_values( array_filter( self::all(), fn( $r ) => $r['id'] !== $id ) );
 		update_option( self::OPTION, $rules, false );
 	}
 
+	/**
+	 * روشن/خاموش کردن قانون بدون دست‌زدن به بقیه‌ی فیلدها.
+	 */
 	public static function toggle_rule( string $id, bool $enabled ): void {
 		$rules = self::all();
 		foreach ( $rules as &$r ) {
@@ -73,6 +94,9 @@ class WAPM_Rules {
 		update_option( self::OPTION, $rules, false );
 	}
 
+	/**
+	 * یک قانون با شناسه، یا null.
+	 */
 	public static function get_rule( string $id ): ?array {
 		foreach ( self::all() as $r ) {
 			if ( $r['id'] === $id ) {
@@ -83,12 +107,10 @@ class WAPM_Rules {
 	}
 
 	/**
-	 * اجرای یک قانون به صورت Batch (یک صفحه در هر فراخوانی Ajax).
-	 *
-	 * @return array{processed:int,total:int,done:bool,batch_id:string}
-	 */
-	/**
 	 * آیا قانون در بازه زمانی مجاز است؟
+	 *
+	 * `start`/`end` اختیاری‌اند و با `strtotime` خوانده می‌شوند؛ رشته‌ی
+	 * نامعتبر (strtotime = false) به‌معنای «بدون محدودیت» است، نه «همیشه غیرفعال».
 	 */
 	public static function is_rule_active_now( array $rule ): bool {
 		$now = current_time( 'timestamp' );
@@ -218,6 +240,16 @@ class WAPM_Rules {
 		];
 	}
 
+	/**
+	 * اجرای یک قانون به صورت Batch (یک صفحه در هر فراخوانی Ajax).
+	 *
+	 * صفحه‌به‌صفحه اجرا می‌شود تا هر درخواست کوتاه بماند و کاربر در اجرای
+	 * دستی، پیشرفت را ببیند. `skipped` یعنی قانون بیرون از بازه‌ی اعتبار است.
+	 *
+	 * @param int $paged    شماره‌ی صفحه (از ۱)
+	 * @param int $per_page تعداد محصول در هر صفحه
+	 * @return array{processed:int,total:int,done:bool,batch_id:string,skipped?:string}
+	 */
 	public static function run_rule_batch( array $rule, string $batch_id, int $paged, int $per_page = 25 ): array {
 		if ( ! self::is_rule_active_now( $rule ) ) {
 			return [ 'processed' => 0, 'total' => 0, 'done' => true, 'batch_id' => $batch_id, 'skipped' => 'date_window' ];
