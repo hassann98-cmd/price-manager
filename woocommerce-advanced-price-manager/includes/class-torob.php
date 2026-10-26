@@ -788,7 +788,7 @@ class WAPM_Torob {
 	 * @param array  $items  [{name, prk, sellers:[{shop_id, price, shop_name}], our_price?}]
 	 * @param array  $meta   اطلاعات آماری منبع: pages, discovered, version
 	 * @param string $mode   full = عنوان + قیمت رقبا | catalog = فقط «قیمت ما از دید ترب»
-	 * @return array{matched:int,checked:int,unmatched:int,skipped:int,needs_shop_id:bool,ambiguous:int,source:string}
+	 * @return array{matched:int,checked:int,unmatched:int,skipped:int,no_sellers:int,needs_shop_id:bool,ambiguous:int,source:string}
 	 *
 	 * حالت `catalog` برای همگام‌سازی از روی «لیست محصولات فروشگاه» در ترب است: در آن
 	 * لیست `price` قیمت خودمان است و فروشنده‌ای در دست نیست. در این حالت:
@@ -808,6 +808,7 @@ class WAPM_Torob {
 			'checked'       => 0,
 			'unmatched'     => 0,
 			'skipped'       => 0,
+			'no_sellers'    => 0, // ردیف‌هایی که داده‌ی فروشنده نداشتند (پاک نمی‌شوند)
 			'ambiguous'     => 0,
 			'needs_shop_id' => ! self::can_identify_shop(),
 			'source'        => $source,
@@ -909,10 +910,16 @@ class WAPM_Torob {
 				continue;
 			}
 
-			update_post_meta( $product_id, self::META_CHECKED, $checked );
+			// ---- حالت کامل ----
+			$sellers = self::seller_payload( $item );
+			if ( null === $sellers ) {
+				$stats['no_sellers']++;
+				continue;
+			}
 
-			$sellers = self::extract_sellers( $item['sellers'] ?? [] );
-			$prices  = self::cheapest_competitor( $sellers, $shop_id, $shop_name );
+			$prices = self::cheapest_competitor( $sellers, $shop_id, $shop_name );
+
+			update_post_meta( $product_id, self::META_CHECKED, $checked );
 
 			$our_price = $prices['ours'];
 			if ( null === $our_price && isset( $item['our_price'] ) && is_numeric( $item['our_price'] ) && (float) $item['our_price'] > 0 ) {
@@ -940,11 +947,8 @@ class WAPM_Torob {
 
 			self::refresh_diff_meta( $product_id );
 
-			// «قیمت بررسی‌شده» یعنی داده‌ی فروشنده هم گرفته شده است؛ ردیفی که
-			// فقط عنوان/prk داشت نباید آمار را خوش‌بینانه نشان دهد.
-			if ( $sellers['count'] > 0 ) {
-				$stats['checked']++;
-			}
+			// «قیمت بررسی‌شده» = ردیفی که واقعاً داده‌ی فروشنده داشت.
+			$stats['checked']++;
 		}
 
 		// حالت کاتالوگ، آمار «قیمت رقیب» را بازنویسی نمی‌کند.
@@ -983,6 +987,7 @@ class WAPM_Torob {
 				'unmatched'         => (int) $stats['unmatched'],
 				'ambiguous'         => (int) $stats['ambiguous'],
 				'skipped'           => (int) $stats['skipped'],
+				'no_sellers'        => (int) $stats['no_sellers'],
 				'discovered'        => $discovered,
 				'pages'             => $pages,
 				'version'           => sanitize_text_field( (string) ( $meta['version'] ?? '' ) ),
@@ -1006,6 +1011,28 @@ class WAPM_Torob {
 	/** سازگاری با نسخه‌ی قبلی (بوکمارکلت‌های قدیمی همین اکشن را صدا می‌زنند). */
 	public static function ingest_bookmarklet_batch( array $items ): array {
 		return self::ingest( $items, 'bookmarklet' );
+	}
+
+	/**
+	 * داده‌ی فروشنده‌های یک ردیف ورودی، یا null وقتی که قابل اعتماد نیست.
+	 *
+	 * چرا null و نه آرایه‌ی خالی: یک خطای موقت (بلاک شدن ترب، قطع شبکه، پاسخ
+	 * ناقص) نباید «قیمت رقیب» را پاک کند و هم‌زمان زمان بررسی را «حالا» کند؛
+	 * وگرنه محصول با برچسب «فقط ما در ترب» در فهرست می‌نشیند و داده‌ی سالم قبلی
+	 * هم از دست می‌رود. آرایه‌ی خالی هم «هیچ فروشنده‌ای نبود» است، نه «نمی‌دانم»؛
+	 * پس همان هم null می‌شود و داده‌ی قبلی دست‌نخورده می‌ماند و با گذشت زمان
+	 * خودش «کهنه» می‌شود.
+	 *
+	 * @return array{count:int,list:array,hidden:int}|null
+	 */
+	public static function seller_payload( array $item ): ?array {
+		if ( ! array_key_exists( 'sellers', $item ) ) {
+			return null;
+		}
+
+		$sellers = self::extract_sellers( $item['sellers'] ?? [] );
+
+		return $sellers['count'] > 0 ? $sellers : null;
 	}
 
 	/**

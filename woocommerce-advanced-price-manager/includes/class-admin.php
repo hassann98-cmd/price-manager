@@ -1204,6 +1204,7 @@ class WAPM_Admin {
 			__( 'صفحات خوانده‌شده', 'wapm' ) => (int) $last['pages'],
 			__( 'تطبیق‌خورده', 'wapm' )     => (int) $last['matched'],
 			__( 'قیمت بررسی‌شده', 'wapm' )   => (int) $last['checked'],
+			__( 'بدون داده‌ی فروشنده', 'wapm' ) => (int) ( $last['no_sellers'] ?? 0 ),
 			__( 'تطبیق‌نیافته', 'wapm' )    => (int) $last['unmatched'],
 			__( 'مبهم (نیاز به بررسی)', 'wapm' ) => (int) ( $last['ambiguous'] ?? 0 ),
 		];
@@ -1236,7 +1237,7 @@ class WAPM_Admin {
 		$js = <<<'JS'
 (function(){
 	'use strict';
-	var VERSION  = '3.0';
+	var VERSION  = '3.1';
 	var API      = 'https://api.torob.com';
 	var ENDPOINT = "%%ENDPOINT%%";
 	var TOKEN    = "%%TOKEN%%";
@@ -1360,15 +1361,23 @@ class WAPM_Admin {
 
 	/* ---------- ساخت داده ---------- */
 
+	/**
+	 * یک کارت ترب → ردیف ورودی سرور.
+	 *
+	 * نکته‌ی مهم: `sellers === null` یعنی «فهرست فروشنده‌ها را نگرفتم» (خطای
+	 * موقت). در این حالت کلید sellers را نمی‌فرستیم تا سرور قیمت قبلیِ رقیب را
+	 * پاک نکند؛ آرایه‌ی خالی یعنی «گرفتم و هیچ فروشنده‌ای نبود» و این دو یکی نیستند.
+	 */
 	function cardToItem(card, sellers){
 		var url = card.web_client_absolute_url || '';
-		return {
+		var item = {
 			prk: card.random_key || '',
 			name: card.name1 || '',
 			our_price: Number(card.price) || null,
-			url: url ? 'https://torob.com' + url : '',
-			sellers: sellers || []
+			url: url ? 'https://torob.com' + url : ''
 		};
+		if (sellers) { item.sellers = sellers; }
+		return item;
 	}
 
 	/** فروشنده‌ها را به شکل سبک تبدیل می‌کند (حداکثر ۴۰ ردیف ارزان‌ترین). */
@@ -1521,7 +1530,7 @@ class WAPM_Admin {
 
 			for (; i < cards.length && !state.stopped; i++) {
 				var card = cards[i];
-				var sellers = [];
+				var sellers = null;   // null = «گرفتن فروشنده‌ها ناموفق بود»
 
 				if (state.mode === 'full') {
 					say('صفحه ' + (state.page + 1) + ' — محصول ' + (i + 1) + ' از ' + cards.length +
@@ -1535,8 +1544,10 @@ class WAPM_Admin {
 						sellers = slimSellers(sdata.results);
 					} catch (err) {
 						if (err && err.code === 490) { throw err; }
-						// خطای یک محصول نباید کل کار را متوقف کند.
-						sellers = [];
+						// خطای یک محصول نباید کل کار را متوقف کند، ولی نباید
+						// «فروشنده‌ای نبود» هم تلقی شود: sellers = null می‌ماند
+						// تا سرور داده‌ی قبلی را دست‌نخورده نگه دارد.
+						sellers = null;
 					}
 
 					await delay(jitter(900));

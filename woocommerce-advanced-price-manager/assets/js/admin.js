@@ -2300,6 +2300,7 @@
 			['صفحات خوانده‌شده', fmt(last.pages || 0)],
 			['تطبیق‌خورده', fmt(last.matched || 0)],
 			['قیمت بررسی‌شده', fmt(last.checked || 0)],
+			['بدون داده‌ی فروشنده', fmt(last.no_sellers || 0)],
 			['تطبیق‌نیافته', fmt(last.unmatched || 0)],
 			['مبهم (نیاز به بررسی)', fmt(last.ambiguous || 0)]
 		];
