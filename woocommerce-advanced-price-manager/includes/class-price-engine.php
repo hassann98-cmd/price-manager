@@ -206,7 +206,7 @@ class WAPM_Price_Engine {
 	 *
 	 * @return array{competitor:float,target:float,ref:float,factor:float,checked_at:string,age_days:int,skip:?string}|null
 	 */
-	public static function torob_context( WC_Product $product, array $s ): ?array {
+	public static function torob_context( WC_Product $product, array $s, bool $use_category_rules = true ): ?array {
 		if ( ! self::uses_torob( $s ) || ! class_exists( 'WAPM_Torob' ) ) {
 			return null;
 		}
@@ -216,6 +216,25 @@ class WAPM_Price_Engine {
 
 		if ( ! $data || $data['competitor_min'] <= 0 ) {
 			return null; // بدون داده‌ی تازه‌ی ترب، قیمتی تغییر نمی‌کند.
+		}
+
+		/*
+		 * زیربرش مخصوص دسته (اگر برای یکی از دسته‌های محصول قاعده‌ای تعریف شده
+		 * باشد) جای مقدار عمومی می‌نشیند. هم پیش‌نمایش و هم اعمال از همین‌جا رد
+		 * می‌شوند، پس عدد نمایش‌داده‌شده همان عدد ذخیره‌شده است.
+		 *
+		 * `$use_category_rules = false` فقط در «هم‌تراز با ترب» استفاده می‌شود:
+		 * آنجا کاربر عدد را صریح در همان لحظه وارد کرده و بی‌خبر عوض‌شدنش
+		 * (بدون توضیح در UI) گیج‌کننده است.
+		 */
+		if ( $use_category_rules ) {
+			$undercut = WAPM_Torob::undercut_for_product(
+				$ref_id,
+				(float) ( $s['torob_undercut'] ?? 0 ),
+				(string) ( $s['torob_undercut_mode'] ?? 'percent' )
+			);
+			$s['torob_undercut']      = $undercut['value'];
+			$s['torob_undercut_mode'] = $undercut['mode'];
 		}
 
 		$competitor = (float) $data['competitor_min'];

@@ -148,6 +148,52 @@
 
 	/* ---- ۱) تنظیمات ---- */
 
+	/* ---- زیربرش مخصوص دسته ---- */
+
+	/** ردیف جدید زیربرش (همان ساختار مارک‌آپ سمت PHP). */
+	function undercutRowHtml(categories) {
+		var options = '';
+		(categories || []).forEach(function (term) {
+			options += '<option value="' + esc(term.id) + '">' + esc(term.text) + '</option>';
+		});
+
+		return '<div class="wapm-undercut-row">' +
+			'<select class="wapm-undercut-cat">' + options + '</select>' +
+			'<input type="number" class="wapm-undercut-value small-text" min="0" step="any" value="2">' +
+			'<select class="wapm-undercut-mode">' +
+			'<option value="percent">درصد</option><option value="fixed">تومان</option>' +
+			'</select>' +
+			'<button type="button" class="button wapm-undercut-remove" aria-label="حذف قاعده">×</button>' +
+			'</div>';
+	}
+
+	/** خواندن ردیف‌ها برای ذخیره (سرور هم دوباره پاک‌سازی می‌کند). */
+	function collectUndercutRules() {
+		var rules = [];
+
+		$('#wapm-torob-cat-undercuts .wapm-undercut-row').each(function () {
+			var $row = $(this);
+			var termId = Number($row.find('.wapm-undercut-cat').val()) || 0;
+			if (!termId) { return; }
+
+			rules.push({
+				term_id: termId,
+				value: $row.find('.wapm-undercut-value').val() || 0,
+				mode: $row.find('.wapm-undercut-mode').val() || 'percent'
+			});
+		});
+
+		return rules;
+	}
+
+	$('#wapm-torob-add-undercut').on('click', function () {
+		$('#wapm-torob-cat-undercuts').append(undercutRowHtml(WAPM.category_terms));
+	});
+
+	$(document).on('click', '.wapm-undercut-remove', function () {
+		$(this).closest('.wapm-undercut-row').remove();
+	});
+
 	$('#wapm-torob-save-settings').on('click', function () {
 		var $btn = $(this).prop('disabled', true);
 
@@ -157,7 +203,8 @@
 			fresh_days: $('#wapm-torob-fresh-days').val(),
 			tolerance_pct: $('#wapm-torob-tolerance').val(),
 			exclude_categories: $('#wapm-torob-exclude-categories').val() || [],
-			exclude_brands: $('#wapm-torob-exclude-brands').val() || []
+			exclude_brands: $('#wapm-torob-exclude-brands').val() || [],
+			category_undercuts: JSON.stringify(collectUndercutRules())
 		}).done(function (res) {
 			if (!res.success) {
 				wapmToast((res.data && res.data.message) || WAPM.i18n.error, 'error');

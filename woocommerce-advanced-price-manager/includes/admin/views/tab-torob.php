@@ -85,6 +85,35 @@ if ( ! defined( 'ABSPATH' ) ) {
 							</td>
 						</tr>
 						<?php endif; ?>
+						<tr>
+							<th><?php esc_html_e( 'زیربرش مخصوص دسته', 'wapm' ); ?></th>
+							<td>
+								<?php $wapm_undercut_rules = (array) WAPM_Torob::settings()['category_undercuts']; ?>
+								<div id="wapm-torob-cat-undercuts">
+									<?php foreach ( $wapm_undercut_rules as $wapm_rule ) : ?>
+										<div class="wapm-undercut-row">
+											<select class="wapm-undercut-cat">
+												<?php foreach ( (array) $categories as $cat ) : ?>
+													<option value="<?php echo esc_attr( (string) $cat->term_id ); ?>" <?php echo (int) $cat->term_id === (int) $wapm_rule['term_id'] ? 'selected' : ''; ?>>
+														<?php echo esc_html( $cat->name ); ?>
+													</option>
+												<?php endforeach; ?>
+											</select>
+											<input type="number" class="wapm-undercut-value small-text" min="0" step="any" value="<?php echo esc_attr( (string) $wapm_rule['value'] ); ?>">
+											<select class="wapm-undercut-mode">
+												<option value="percent" <?php echo 'percent' === $wapm_rule['mode'] ? 'selected' : ''; ?>><?php esc_html_e( 'درصد', 'wapm' ); ?></option>
+												<option value="fixed" <?php echo 'fixed' === $wapm_rule['mode'] ? 'selected' : ''; ?>><?php esc_html_e( 'تومان', 'wapm' ); ?></option>
+											</select>
+											<button type="button" class="button wapm-undercut-remove" aria-label="<?php esc_attr_e( 'حذف قاعده', 'wapm' ); ?>">×</button>
+										</div>
+									<?php endforeach; ?>
+								</div>
+								<p>
+									<button type="button" class="button" id="wapm-torob-add-undercut"><?php esc_html_e( 'افزودن دسته', 'wapm' ); ?></button>
+								</p>
+								<p class="description"><?php esc_html_e( 'برای دسته‌ای که با منطق دیگری قیمت می‌خورد (مثلاً «لوازم جانبی: ۵٪ زیر رقیب»). اولین قاعده‌ای که با دسته‌های محصول بخواند اعمال می‌شود؛ بقیه‌ی محصولات همان «مقدار زیربرش» تب تغییر قیمت را می‌گیرند.', 'wapm' ); ?></p>
+							</td>
+						</tr>
 					</table>
 					<p>
 						<button type="button" class="button button-primary" id="wapm-torob-save-settings"><?php esc_html_e( 'ذخیره تنظیمات', 'wapm' ); ?></button>

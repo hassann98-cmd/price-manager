@@ -770,6 +770,10 @@ class WAPM_Ajax {
 			'tolerance_pct' => $_POST['tolerance_pct'] ?? null,
 			'exclude_categories' => $_POST['exclude_categories'] ?? null,
 			'exclude_brands'     => $_POST['exclude_brands'] ?? null,
+			// ردیف‌های «زیربرش مخصوص دسته» به‌صورت JSON از فرم می‌آیند.
+			'category_undercuts' => isset( $_POST['category_undercuts'] )
+				? json_decode( wp_unslash( $_POST['category_undercuts'] ), true )
+				: null,
 		] );
 
 		wp_send_json_success( array_merge( $this->torob_stats_payload(), [
@@ -1267,7 +1271,8 @@ class WAPM_Ajax {
 
 			// دلیل رد‌شدن را خودمان می‌سازیم؛ پیش‌نمایش عمداً «ردیف خالی» می‌دهد
 			// و کاربر باید بداند چرا.
-			$ctx = WAPM_Price_Engine::torob_context( $product, $settings );
+			// در هم‌ترازی، مقدار صریح کاربر ملاک است (نه قاعده‌ی دسته).
+			$ctx = WAPM_Price_Engine::torob_context( $product, $settings, false );
 			if ( null === $ctx || ! empty( $ctx['skip'] ) ) {
 				$reason    = (string) ( $ctx['skip'] ?? 'no_data' );
 				$skipped[] = [

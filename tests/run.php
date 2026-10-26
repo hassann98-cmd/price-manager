@@ -1811,6 +1811,71 @@ test( 'CSV مقایسه‌ی ترب: اکشن، ستون‌ها و فیلتره�
 	ok( false !== strpos( $view, 'wapm-torob-export-btn' ), 'دکمه در تب CSV هست' );
 } );
 
+test( 'زیربرش مخصوص دسته: پاک‌سازی قاعده‌ها', function () {
+	$rules = WAPM_Torob::sanitize_undercut_rules( [
+		[ 'term_id' => 5, 'value' => 3, 'mode' => 'percent' ],
+		[ 'term_id' => '5', 'value' => 9, 'mode' => 'fixed' ],   // تکراری → حذف
+		[ 'term_id' => 0, 'value' => 2 ],                        // بدون دسته
+		[ 'term_id' => 7, 'value' => -4, 'mode' => 'چیز' ],      // مقدار منفی + واحد نامعتبر
+		'چیز-نامعتبر',
+	] );
+
+	eq( 2, count( $rules ), 'دو قاعده‌ی معتبر' );
+	eq( 5, $rules[0]['term_id'], 'اولین قاعده‌ی تکراری می‌ماند' );
+	eq( 3.0, $rules[0]['value'], 'مقدار قاعده‌ی اول' );
+	eq( 7, $rules[1]['term_id'], 'قاعده‌ی دوم' );
+	eq( 0.0, $rules[1]['value'], 'منفی → صفر' );
+	eq( 'percent', $rules[1]['mode'], 'واحد نامعتبر → درصد' );
+
+	eq( [], WAPM_Torob::sanitize_undercut_rules( 'چیز' ), 'ورودی غیرآرایه' );
+} );
+
+test( 'زیربرش مخصوص دسته: انتخاب قاعده‌ی مؤثر', function () {
+	$rules = [
+		[ 'term_id' => 12, 'value' => 5, 'mode' => 'percent' ],
+		[ 'term_id' => 30, 'value' => 8000, 'mode' => 'fixed' ],
+	];
+
+	$hit = WAPM_Torob::pick_undercut( [ 7, 12 ], $rules, 1.0, 'percent' );
+	eq( 5.0, $hit['value'], 'قاعده‌ی دسته‌ی ۱۲' );
+	eq( 'percent', $hit['mode'], 'واحد' );
+	eq( 12, $hit['term_id'], 'شناسه‌ی قاعده' );
+
+	// دو قاعده‌ی منطبق: اولی در ترتیب فهرست برنده است (رفتار قطعی، نه تصادفی).
+	$both = WAPM_Torob::pick_undercut( [ 30, 12 ], $rules, 1.0, 'percent' );
+	eq( 12, $both['term_id'], 'اولین قاعده در فهرست' );
+
+	$fallback = WAPM_Torob::pick_undercut( [ 99 ], $rules, 2.5, 'fixed' );
+	eq( 0, $fallback['term_id'], 'بدون قاعده' );
+	eq( 2.5, $fallback['value'], 'مقدار عمومی' );
+	eq( 'fixed', $fallback['mode'], 'واحد عمومی' );
+
+	eq( 1.0, WAPM_Torob::pick_undercut( [], [], 1.0, 'percent' )['value'], 'فهرست خالی' );
+} );
+
+test( 'زیربرش مخصوص دسته: در تنظیمات ذخیره و نرمال می‌شود', function () {
+	$GLOBALS['wapm_options'] = [];
+
+	WAPM_Torob::save_settings( [
+		'exclude_categories' => [ 3 ],
+		'category_undercuts' => [
+			[ 'term_id' => '8', 'value' => '4.5', 'mode' => 'fixed' ],
+			[ 'term_id' => 8, 'value' => 1, 'mode' => 'percent' ],
+		],
+	] );
+
+	$saved = WAPM_Torob::settings();
+
+	eq( 1, count( $saved['category_undercuts'] ), 'تکراری حذف شد' );
+	eq( 8, $saved['category_undercuts'][0]['term_id'], 'شناسه‌ی عددی' );
+	eq( 4.5, $saved['category_undercuts'][0]['value'], 'مقدار عددی' );
+	eq( 'fixed', $saved['category_undercuts'][0]['mode'], 'واحد' );
+
+	// ذخیره‌ی جزئی (فرم بدون این بخش) قاعده‌ها را پاک نمی‌کند.
+	WAPM_Torob::save_settings( [ 'fresh_days' => 9 ] );
+	eq( 1, count( WAPM_Torob::settings()['category_undercuts'] ), 'قاعده‌ها حفظ شدند' );
+} );
+
 test( 'استثنای دسته/برند: اشتراک شناسه‌ها', function () {
 	eq( true, WAPM_Torob::matches_exclusion( [ 5, 7 ], [ 7 ] ), 'دسته‌ی مستثنا' );
 	eq( false, WAPM_Torob::matches_exclusion( [ 5 ], [ 7 ] ), 'بی‌ربط' );

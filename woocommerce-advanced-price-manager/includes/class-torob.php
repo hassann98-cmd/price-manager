@@ -115,6 +115,8 @@ class WAPM_Torob {
 			// دسته/برندهایی که از قیمت‌گذاری خودکار ترب مستثنا هستند.
 			'exclude_categories' => [],
 			'exclude_brands'     => [],
+			// زیربرش مخصوص هر دسته: [ ['term_id'=>5,'value'=>3,'mode'=>'percent'], ... ]
+			'category_undercuts' => [],
 		];
 	}
 
@@ -131,6 +133,8 @@ class WAPM_Torob {
 			$value                 = is_array( $settings[ $key ] ) ? $settings[ $key ] : [];
 			$settings[ $key ]      = array_values( array_unique( array_filter( array_map( 'absint', $value ) ) ) );
 		}
+
+		$settings['category_undercuts'] = self::sanitize_undercut_rules( $settings['category_undercuts'] );
 
 		return $settings;
 	}
@@ -149,6 +153,9 @@ class WAPM_Torob {
 			'exclude_brands' => isset( $raw['exclude_brands'] )
 				? array_map( 'absint', (array) $raw['exclude_brands'] )
 				: $current['exclude_brands'],
+			'category_undercuts' => isset( $raw['category_undercuts'] )
+				? self::sanitize_undercut_rules( $raw['category_undercuts'] )
+				: $current['category_undercuts'],
 		];
 
 		update_option( self::OPTION_SETTINGS, $next, false );
@@ -774,6 +781,91 @@ class WAPM_Torob {
 	 * احتمالاً یکی ریال است و دیگری تومان (یا داده اشتباه است). در این حالت نه
 	 * قیمت‌گذاری خودکار باید انجام شود و نه درصد اختلاف نمایش داده شود.
 	 */
+	/**
+	 * پاک‌سازی فهرست «زیربرش مخصوص دسته».
+	 *
+	 * قاعده‌ها: `term_id` مثبت، مقدار نامنفی، `mode` فقط percent|fixed، و برای هر
+	 * دسته فقط **اولین** قاعده می‌ماند (ترتیب فهرست = اولویت کاربر؛ سکوت در برابر
+	 * دو قاعده‌ی متناقض بدترین رفتار است).
+	 *
+	 * @param mixed $raw ورودی خام از فرم/آپشن
+	 * @return array<int, array{term_id:int,value:float,mode:string}>
+	 */
+	public static function sanitize_undercut_rules( $raw ): array {
+		$rules = [];
+		$seen  = [];
+
+		foreach ( (array) $raw as $row ) {
+			if ( ! is_array( $row ) ) {
+				continue;
+			}
+
+			$term_id = absint( $row['term_id'] ?? 0 );
+			if ( $term_id <= 0 || isset( $seen[ $term_id ] ) ) {
+				continue;
+			}
+
+			$mode  = in_array( $row['mode'] ?? '', [ 'percent', 'fixed' ], true ) ? (string) $row['mode'] : 'percent';
+			$value = max( 0, (float) ( $row['value'] ?? 0 ) );
+
+			$seen[ $term_id ] = true;
+			$rules[]          = [ 'term_id' => $term_id, 'value' => $value, 'mode' => $mode ];
+		}
+
+		return $rules;
+	}
+
+	/**
+	 * انتخاب زیربرش مؤثر برای یک محصول (تابع خالص).
+	 *
+	 * اولین قاعده‌ای که با یکی از دسته‌های محصول بخواند برنده است؛ اگر هیچ‌کدام
+	 * نبود، مقدار عمومی همان تنظیمات قیمت‌گذاری برمی‌گردد.
+	 *
+	 * @param int[] $term_ids        دسته‌های محصول
+	 * @param array $rules           خروجی sanitize_undercut_rules()
+	 * @param float $fallback_value  زیربرش عمومی
+	 * @param string $fallback_mode  واحد زیربرش عمومی
+	 * @return array{value:float,mode:string,term_id:int}
+	 */
+	public static function pick_undercut( array $term_ids, array $rules, float $fallback_value, string $fallback_mode ): array {
+		$term_ids = array_map( 'intval', $term_ids );
+
+		foreach ( $rules as $rule ) {
+			if ( in_array( (int) $rule['term_id'], $term_ids, true ) ) {
+				return [
+					'value'   => (float) $rule['value'],
+					'mode'    => (string) $rule['mode'],
+					'term_id' => (int) $rule['term_id'],
+				];
+			}
+		}
+
+		return [ 'value' => $fallback_value, 'mode' => $fallback_mode, 'term_id' => 0 ];
+	}
+
+	/**
+	 * زیربرش مؤثر یک محصول (با خواندن دسته‌ها و تنظیمات).
+	 *
+	 * برای واریشن، دسته‌های والد ملاک است (واریشن معمولاً دسته ندارد).
+	 *
+	 * @return array{value:float,mode:string,term_id:int}
+	 */
+	public static function undercut_for_product( int $product_id, float $fallback_value, string $fallback_mode ): array {
+		$rules = (array) ( self::settings()['category_undercuts'] ?? [] );
+
+		if ( ! $rules ) {
+			return [ 'value' => $fallback_value, 'mode' => $fallback_mode, 'term_id' => 0 ];
+		}
+
+		if ( ! function_exists( 'wp_get_post_terms' ) ) {
+			return [ 'value' => $fallback_value, 'mode' => $fallback_mode, 'term_id' => 0 ];
+		}
+
+		$term_ids = wp_get_post_terms( $product_id, 'product_cat', [ 'fields' => 'ids' ] );
+
+		return self::pick_undercut( is_array( $term_ids ) ? $term_ids : [], $rules, $fallback_value, $fallback_mode );
+	}
+
 	/**
 	 * آیا این فهرست شناسه با فهرست استثناها اشتراک دارد؟ (تابع خالص)
 	 *

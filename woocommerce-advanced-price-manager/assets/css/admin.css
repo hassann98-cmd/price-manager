@@ -1680,3 +1680,24 @@
 	font-weight: 800;
 	color: var(--wapm-warn-600, #b54708);
 }
+
+/* ---- زیربرش مخصوص دسته (تب ترب) ---- */
+
+.wapm-undercut-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 6px;
+	flex-wrap: wrap;
+}
+
+.wapm-undercut-row .wapm-undercut-cat {
+	min-width: 200px;
+}
+
+.wapm-undercut-row .wapm-undercut-remove {
+	min-width: 30px;
+	line-height: 1;
+	color: var(--wapm-danger-600);
+	border-color: #fecdca;
+}
