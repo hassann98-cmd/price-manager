@@ -34,6 +34,23 @@ class WAPM_Product_Handler {
 	}
 
 	/**
+	 * پاک‌سازی نام taxonomy (شامل taxonomyهای فارسی).
+	 *
+	 * چرا `sanitize_key()` کافی نیست: آن تابع فقط `a-z0-9_-` را نگه می‌دارد، پس
+	 * ویژگی‌های ووکامرس با نام فارسی مثل `pa_برند` به `pa_` تبدیل می‌شد؛ بعد
+	 * `taxonomy_exists( 'pa_' )` منفی می‌شد و فیلتر برند بی‌صدا حذف می‌شد —
+	 * یعنی «همه‌ی محصولات» به‌جای «محصولات آن برند». این‌جا حروف فارسی، عربی،
+	 * ZWNJ (نیم‌فاصله) و حروف لاتین مجازند و بقیه حذف می‌شوند.
+	 */
+	public static function sanitize_taxonomy( $raw ): string {
+		if ( ! is_string( $raw ) ) {
+			return '';
+		}
+		$clean = preg_replace( '/[^a-zA-Z0-9_\-\x{0600}-\x{06FF}\x{200C}]/u', '', trim( $raw ) );
+		return is_string( $clean ) ? $clean : '';
+	}
+
+	/**
 	 * فیلترهای ورودی را پاک‌سازی می‌کند.
 	 */
 	public static function sanitize_filters( array $raw ): array {
@@ -44,9 +61,9 @@ class WAPM_Product_Handler {
 			'scope'         => $scope,
 			'product_ids'   => array_map( 'absint', (array) ( $raw['product_ids'] ?? [] ) ),
 			'category_ids'  => array_map( 'absint', (array) ( $raw['category_ids'] ?? [] ) ),
-			'brand_tax'     => sanitize_key( $raw['brand_tax'] ?? '' ),
+			'brand_tax'     => self::sanitize_taxonomy( $raw['brand_tax'] ?? '' ),
 			'brand_ids'     => array_map( 'absint', (array) ( $raw['brand_ids'] ?? [] ) ),
-			'attribute_tax' => sanitize_text_field( $raw['attribute_tax'] ?? '' ),
+			'attribute_tax' => self::sanitize_taxonomy( $raw['attribute_tax'] ?? '' ),
 			'attribute_ids' => array_map( 'absint', (array) ( $raw['attribute_ids'] ?? [] ) ),
 			'stock_filter'  => in_array( $raw['stock_filter'] ?? '', [ 'none', 'below', 'above' ], true ) ? $raw['stock_filter'] : 'none',
 			'stock_value'   => max( 0, intval( $raw['stock_value'] ?? 0 ) ),

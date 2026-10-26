@@ -148,6 +148,13 @@ function sanitize_key( $key ) {
 	return preg_replace( '/[^a-z0-9_\-]/', '', strtolower( (string) $key ) );
 }
 
+/** دفتر taxonomy‌های موجود در تست (برای گاردهای انتخاب هدف). */
+$GLOBALS['wapm_taxonomies'] = [ 'product_cat', 'pa_brand', 'pa_برند', 'pa_اندازه' ];
+
+function taxonomy_exists( $taxonomy ) {
+	return in_array( (string) $taxonomy, $GLOBALS['wapm_taxonomies'], true );
+}
+
 function wp_generate_password( $length = 12, $special = true, $extra = false ) {
 	return substr( str_repeat( 'abc123xyz', 10 ), 0, max( 1, (int) $length ) );
 }
@@ -1884,6 +1891,22 @@ test( 'اسکریپت‌های ادمین: نام فایل‌ها با فایل�
 			ok( isset( $scripts[ $dep ] ), "وابستگی {$dep} برای {$handle} تعریف شده" );
 		}
 	}
+} );
+
+test( 'محصولات هدف: taxonomy فارسی (pa_برند) با sanitize_key پاک نمی‌شود', function () {
+	// رگرسیون: sanitize_key( 'pa_برند' ) === 'pa_' بود ⇒ taxonomy_exists منفی
+	// ⇒ فیلتر برند بی‌صدا حذف می‌شد و بازه روی همه‌ی محصولات باز می‌شد.
+	eq( 'pa_', sanitize_key( 'pa_برند' ), 'پیش‌فرض: sanitize_key فارسی را می‌خورد' );
+	eq( 'pa_برند', WAPM_Product_Handler::sanitize_taxonomy( 'pa_برند' ), 'برند فارسی حفظ می‌شود' );
+	eq( 'pa_اندازه', WAPM_Product_Handler::sanitize_taxonomy( ' pa_اندازه ' ), 'ویژگی فارسی حفظ می‌شود' );
+	eq( 'pa_brand', WAPM_Product_Handler::sanitize_taxonomy( 'pa_brand' ), 'لاتین دست‌نخورده' );
+	eq( 'pa_برند', WAPM_Product_Handler::sanitize_taxonomy( 'pa_\"برند\'<>;' ), 'نویسه‌های خطرناک حذف می‌شوند' );
+	eq( 'script', WAPM_Product_Handler::sanitize_taxonomy( '"><script' ), 'فقط نویسه‌های مجاز می‌مانند' );
+	eq( '', WAPM_Product_Handler::sanitize_taxonomy( [ 'x' ] ), 'ورودی غیررشته‌ای' );
+
+	$f = WAPM_Product_Handler::sanitize_filters( [ 'scope' => 'brand', 'brand_tax' => 'pa_برند', 'brand_ids' => [ 5 ] ] );
+	eq( 'pa_برند', $f['brand_tax'], 'sanitize_filters تاکسونومی برند را حفظ می‌کند' );
+	eq( 'pa_اندازه', WAPM_Product_Handler::sanitize_filters( [ 'attribute_tax' => 'pa_اندازه' ] )['attribute_tax'], 'ویژگی هم' );
 } );
 
 test( 'حذف افزونه: جدول‌ها، کرون و نگهبان WP_UNINSTALL_PLUGIN', function () {
