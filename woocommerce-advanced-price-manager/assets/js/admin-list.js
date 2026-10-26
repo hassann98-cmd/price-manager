@@ -642,6 +642,7 @@
 	/* ---- ویرایش inline قیمت/موجودی ---- */
 
 	function updateRowInDom(row) {
+		if (!row || row.id === undefined || row.id === null) { return; }
 		for (var i = 0; i < listState.lastRows.length; i++) {
 			if (String(listState.lastRows[i].id) === String(row.id)) { listState.lastRows[i] = row; break; }
 		}
@@ -685,6 +686,31 @@
 	}
 
 	function applyEdit(id, field, value) {
+		// شناسه‌ی نامعتبر ⇒ هیچ درخواستی نرود.
+		//
+		// رگرسیون واقعی: سلول قیمت در حالت «ساده» به inputی تبدیل می‌شد که
+		// `data-id` نداشت؛ هندلر سراسری `change` هم آن را می‌گرفت و درخواستی با
+		// `product_id: undefined` می‌رفت. سرور «محصول یافت نشد.» برمی‌گرداند و
+		// کاربر پیام قرمز می‌دید، در حالی که هندلر blur همان سلول قیمت را درست
+		// ذخیره کرده بود (قیمت واقعاً عوض می‌شد، ولی پیام خطا می‌ماند).
+		if (id === undefined || id === null || '' === id || !/^\d+$/.test(String(id)) || '0' === String(id)) {
+			rerenderCurrent();
+			return;
+		}
+		if (!field) { rerenderCurrent(); return; }
+
+		// مقدار بدون تغییر ⇒ درخواست و لاگ بی‌مورد نساز.
+		var known = findRowById(id);
+		if (known) {
+			var prev = (field === 'regular_price') ? known.regular_price
+				: (field === 'sale_price') ? known.sale_price
+				: (field === 'stock_quantity') ? known.stock_quantity : null;
+			if (prev !== null && prev !== undefined && String(prev) === String(value)) {
+				rerenderCurrent();
+				return;
+			}
+		}
+
 		if (listState.saveMode === 'manual') {
 			listState.pending[id] = listState.pending[id] || {};
 			listState.pending[id][field] = value;
@@ -706,28 +732,55 @@
 		saveField(id, field, value);
 	}
 
-	// حالت «ساده»: کلیک روی سلول تبدیل به input می‌شود
+	// حالت «ساده»: کلیک روی سلول تبدیل به input می‌شود.
+	//
+	// دو نکته که هر دو باگ واقعی بودند:
+	//
+	// ۱) input باید `data-id`/`data-field` داشته باشد. نسخه‌ی قبلی نداشت ولی
+	//    کلاس `wapm-price-input` را داشت، پس هندلر سراسری `change` (مربوط به
+	//    حالت «اکسل») آن را هم می‌گرفت و `update_field` را با
+	//    `product_id: undefined` می‌فرستاد ⇒ سرور «محصول یافت نشد.» برمی‌گرداند
+	//    و کاربر پیام قرمز می‌دید، هرچند هندلر blur همان سلول قیمت را درست
+	//    ذخیره کرده بود.
+	// ۲) ذخیره در حالت ساده فقط با blur انجام می‌شود؛ ورودی‌های
+	//    `wapm-price-input--simple` از هندلر `change` نادیده گرفته می‌شوند تا هر
+	//    ویرایش دقیقاً یک درخواست بفرستد.
 	$(document).on('click', '#wapm-list-tbody .wapm-price-display', function () {
 		if (listState.viewMode !== 'simple') { return; }
 		var $cell = $(this);
+		if ($cell.closest('td').find('input.wapm-price-input').length) { return; }
+
 		var id = $cell.data('id');
 		var field = $cell.data('field');
-		var value = $cell.data('value');
-		var $input = $('<input type="number" step="any" min="0" class="wapm-price-input">').val(value);
+		if (!id || !field) { return; }
+
+		var $input = $('<input type="number" step="any" min="0" class="wapm-price-input wapm-price-input--simple">')
+			.attr({ 'data-id': id, 'data-field': field })
+			.val($cell.data('value'));
 		$cell.replaceWith($input);
 		$input.trigger('focus');
-		$input[0].select();
+		if ($input[0] && $input[0].select) { $input[0].select(); }
 
-		$input.on('blur', function () { applyEdit(id, field, $input.val()); });
 		$input.on('keydown', function (e) {
-			if (e.key === 'Enter') { $input.trigger('blur'); }
-			if (e.key === 'Escape') { $input.off('blur'); rerenderCurrent(); }
+			if (e.key === 'Enter') { e.preventDefault(); $input.trigger('blur'); }
+			if (e.key === 'Escape') { $input.data('cancelled', true); $input.trigger('blur'); }
+		});
+
+		$input.on('blur', function () {
+			var value = $input.val();
+			var rowId = $input.attr('data-id');
+			var rowField = $input.attr('data-field');
+			$input.off('blur');
+			if ($input.data('cancelled') || !rowId) { rerenderCurrent(); return; }
+			applyEdit(rowId, rowField, value);
 		});
 	});
 
 	// حالت «اکسل»: تغییر مستقیم input
 	$(document).on('change', '#wapm-list-tbody .wapm-price-input', function () {
 		var $input = $(this);
+		// ورودی حالت «ساده» فقط با blur ذخیره می‌شود (وگرنه دو درخواست می‌رفت).
+		if ($input.hasClass('wapm-price-input--simple')) { return; }
 		applyEdit($input.data('id'), $input.data('field'), $input.val());
 	});
 
