@@ -41,7 +41,8 @@ class WAPM_Torob {
 	const OPTION_TOKEN     = 'wapm_torob_bm_token';  // سازگاری با نسخه‌ی قبل
 	const OPTION_SETTINGS  = 'wapm_torob_settings';
 	const OPTION_UNMATCHED = 'wapm_torob_unmatched';
-	const OPTION_LAST_SYNC = 'wapm_torob_last_sync';
+	const OPTION_LAST_SYNC    = 'wapm_torob_last_sync';
+	const OPTION_LAST_CATALOG = 'wapm_torob_last_catalog'; // همگام‌سازی کاتالوگ (قیمت ما از دید ترب)
 
 	const INDEX_TRANSIENT = 'wapm_torob_title_index';
 
@@ -54,7 +55,8 @@ class WAPM_Torob {
 	const META_SELLERS      = '_wapm_torob_sellers';       // تعداد فروشنده‌ها
 	const META_SELLERS_LIST = '_wapm_torob_sellers_list';  // JSON: ارزان‌ترین فروشنده‌ها
 	const META_URL          = '_wapm_torob_url';
-	const META_CHECKED      = '_wapm_torob_checked_at';
+	const META_CHECKED      = '_wapm_torob_checked_at';    // آخرین داده‌ی رقیب
+	const META_OUR_CHECKED  = '_wapm_torob_our_checked';    // آخرین همگام‌سازی کاتالوگ (قیمت ما از دید ترب)
 	const META_SOURCE       = '_wapm_torob_source';        // bookmarklet | feed | api | manual
 	const META_LINK         = '_wapm_torob_link';          // auto | manual
 	const META_STATUS       = '_wapm_torob_status';        // برای فیلتر/مرتب‌سازی SQL
@@ -212,6 +214,20 @@ class WAPM_Torob {
 
 	public static function get_last_sync_time(): string {
 		return (string) self::get_last_sync()['at'];
+	}
+
+	/**
+	 * آخرین همگام‌سازی کاتالوگ (جدا از آخرین دریافت قیمت رقیب).
+	 *
+	 * چرا جدا: کاتالوگ فقط «قیمت ما از دید ترب» را می‌آورد و اگر همان رکورد
+	 * همگام‌سازی اصلی را بازنویسی کند، کاربر فکر می‌کند قیمت رقبا تازه شده است.
+	 */
+	public static function get_last_catalog(): array {
+		$raw = get_option( self::OPTION_LAST_CATALOG, [] );
+		return array_merge(
+			[ 'at' => '', 'items' => 0, 'pages' => 0, 'matched' => 0, 'source' => '' ],
+			is_array( $raw ) ? $raw : []
+		);
 	}
 
 	/* ---------- نرمال‌سازی و تطبیق ---------- */
@@ -770,9 +786,17 @@ class WAPM_Torob {
 	 *
 	 * @param array  $items  [{name, prk, sellers:[{shop_id, price, shop_name}], our_price?}]
 	 * @param array  $meta   اطلاعات آماری منبع: pages, discovered, version
+	 * @param string $mode   full = عنوان + قیمت رقبا | catalog = فقط «قیمت ما از دید ترب»
 	 * @return array{matched:int,checked:int,unmatched:int,skipped:int,needs_shop_id:bool,ambiguous:int,source:string}
+	 *
+	 * حالت `catalog` برای همگام‌سازی از روی «لیست محصولات فروشگاه» در ترب است: در آن
+	 * لیست `price` قیمت خودمان است و فروشنده‌ای در دست نیست. در این حالت:
+	 *  - `META_OUR_PRICE` به‌روز می‌شود → ناسازگاری فید قابل تشخیص می‌شود،
+	 *  - ولی `META_CHECKED` دست نمی‌خورد؛ وگرنه قیمت کهنه‌ی رقیب «تازه» جلوه می‌کرد
+	 *    و مبنای تغییر خودکار قیمت می‌شد.
 	 */
-	public static function ingest( array $items, string $source = 'bookmarklet', array $meta = [] ): array {
+	public static function ingest( array $items, string $source = 'bookmarklet', array $meta = [], string $mode = 'full' ): array {
+		$catalog_only = ( 'catalog' === $mode );
 		$settings  = self::settings();
 		$shop_id   = (int) self::get_shop_id();
 		$shop_name = self::normalize( self::get_shop_name() );
@@ -789,6 +813,9 @@ class WAPM_Torob {
 		];
 
 		$items = array_slice( $items, 0, 500 ); // سقف امنیتی در هر درخواست.
+
+		$discovered_catalog = isset( $meta['catalog_total'] ) ? (int) $meta['catalog_total'] : count( $items );
+		$pages_catalog      = isset( $meta['pages'] ) ? (int) $meta['pages'] : 0;
 
 		foreach ( $items as $item ) {
 			if ( ! is_array( $item ) ) {
@@ -861,9 +888,19 @@ class WAPM_Torob {
 			}
 			update_post_meta( $product_id, self::META_URL, 'https://torob.com/p/' . rawurlencode( $prk ) . '/' );
 			update_post_meta( $product_id, self::META_SOURCE, $source );
-			update_post_meta( $product_id, self::META_CHECKED, $checked );
 
 			$stats['matched']++;
+
+			// ---- حالت کاتالوگ: فقط «قیمت ما از دید ترب» ----
+			if ( $catalog_only ) {
+				if ( isset( $item['our_price'] ) && is_numeric( $item['our_price'] ) && (float) $item['our_price'] > 0 ) {
+					update_post_meta( $product_id, self::META_OUR_PRICE, (string) (float) $item['our_price'] );
+				}
+				update_post_meta( $product_id, self::META_OUR_CHECKED, $checked );
+				continue;
+			}
+
+			update_post_meta( $product_id, self::META_CHECKED, $checked );
 
 			$sellers = self::extract_sellers( $item['sellers'] ?? [] );
 			$prices  = self::cheapest_competitor( $sellers, $shop_id, $shop_name );
@@ -874,6 +911,9 @@ class WAPM_Torob {
 			}
 
 			update_post_meta( $product_id, self::META_OUR_PRICE, null === $our_price ? '' : (string) $our_price );
+			if ( null !== $our_price ) {
+				update_post_meta( $product_id, self::META_OUR_CHECKED, $checked );
+			}
 			update_post_meta( $product_id, self::META_SELLERS, (string) $sellers['count'] );
 			update_post_meta(
 				$product_id,
@@ -898,6 +938,24 @@ class WAPM_Torob {
 			}
 		}
 
+		// حالت کاتالوگ، آمار «قیمت رقیب» را بازنویسی نمی‌کند.
+		if ( $catalog_only ) {
+			update_option(
+				self::OPTION_LAST_CATALOG,
+				[
+					'at'      => $checked,
+					'items'   => $discovered_catalog,
+					'pages'   => $pages_catalog,
+					'matched' => (int) $stats['matched'],
+					'source'  => $source,
+				],
+				false
+			);
+
+			self::flush_index();
+			return $stats;
+		}
+
 		// ثبت آمار همگام‌سازی + تشخیص تغییر ساختار صفحه‌ی ترب.
 		$previous      = self::get_last_sync();
 		$discovered    = isset( $meta['discovered'] ) ? (int) $meta['discovered'] : count( $items );
@@ -919,6 +977,7 @@ class WAPM_Torob {
 				'discovered'        => $discovered,
 				'pages'             => $pages,
 				'version'           => sanitize_text_field( (string) ( $meta['version'] ?? '' ) ),
+				'mode'              => $mode,
 				// تا وقتی همگام‌سازیِ بعدی محصولی پیدا نکند، هشدار باقی می‌ماند.
 				'structure_warning' => $structure_hit || ( ! empty( $previous['structure_warning'] ) && $discovered <= 0 ),
 				'unmatched_total'   => count( self::unmatched() ),
@@ -948,11 +1007,22 @@ class WAPM_Torob {
 	public static function extract_sellers( $raw ): array {
 		$out = [];
 
+		$hidden = 0; // ناموجود یا بی‌قیمت: در شمارش نمایش داده نمی‌شود.
+
 		foreach ( (array) $raw as $s ) {
+			$available  = true;
+			$unreliable = false;
+			$last       = '';
+
 			if ( is_array( $s ) ) {
 				$shop_id   = (int) ( $s['shop_id'] ?? $s['shopId'] ?? 0 );
 				$price     = (float) ( $s['price'] ?? 0 );
 				$shop_name = (string) ( $s['shop_name'] ?? $s['seller_name'] ?? $s['name'] ?? '' );
+
+				// پرچم‌هایی که از API ترب می‌آید (فیدهای قدیمی این‌ها را ندارند).
+				$available  = ! array_key_exists( 'available', $s ) || false !== $s['available'];
+				$unreliable = ! empty( $s['unreliable'] ) || ! empty( $s['is_price_unreliable'] );
+				$last       = (string) ( $s['last_change'] ?? $s['last_price_change_date'] ?? '' );
 			} elseif ( is_numeric( $s ) ) {
 				$shop_id   = 0;
 				$price     = (float) $s;
@@ -961,20 +1031,24 @@ class WAPM_Torob {
 				continue;
 			}
 
-			if ( $price <= 0 ) {
+			// قیمت ناموجود مبنای مقایسه نیست.
+			if ( ! $available || $price <= 0 ) {
+				$hidden++;
 				continue;
 			}
 
 			$out[] = [
-				'shop_id'   => $shop_id,
-				'shop_name' => sanitize_text_field( $shop_name ),
-				'price'     => $price,
+				'shop_id'    => $shop_id,
+				'shop_name'  => sanitize_text_field( $shop_name ),
+				'price'      => $price,
+				'unreliable' => $unreliable,
+				'last'       => $last,
 			];
 		}
 
 		usort( $out, fn( $a, $b ) => $a['price'] <=> $b['price'] );
 
-		return [ 'count' => count( $out ), 'list' => $out ];
+		return [ 'count' => count( $out ), 'list' => $out, 'hidden' => $hidden ];
 	}
 
 	/**
@@ -988,6 +1062,7 @@ class WAPM_Torob {
 		$ours       = null;
 		$competitor = null;
 		$others     = 0;
+		$unreliable_skipped = 0;
 
 		foreach ( $list as $seller ) {
 			$is_ours = false;
@@ -1005,6 +1080,14 @@ class WAPM_Torob {
 			}
 
 			$others++;
+
+			// خودِ ترب بعضی قیمت‌ها را «طعمه/کهنه» علامت می‌زند؛ مبنای تصمیم
+			// قیمت‌گذاری نمی‌شوند، وگرنه قیمت ما را دنبال یک عدد بی‌اعتبار می‌بردیم.
+			if ( ! empty( $seller['unreliable'] ) ) {
+				$unreliable_skipped++;
+				continue;
+			}
+
 			if ( null === $competitor || (float) $seller['price'] < $competitor ) {
 				$competitor = (float) $seller['price'];
 			}
@@ -1013,18 +1096,20 @@ class WAPM_Torob {
 		$shop_known = ( $shop_id > 0 || '' !== $normalized_shop_name );
 
 		return [
-			'ours'       => $ours,
-			'competitor' => $shop_known ? $competitor : null,
-			'shop_known' => $shop_known,
-			'others'     => $others,
+			'ours'               => $ours,
+			'competitor'         => $shop_known ? $competitor : null,
+			'shop_known'         => $shop_known,
+			'others'             => $others,
+			'unreliable_skipped' => $unreliable_skipped,
 		];
 	}
 
 	private static function top_sellers_for_storage( array $list ): array {
 		return array_slice( array_map( fn( $s ) => [
-			'shop_id'   => (int) $s['shop_id'],
-			'price'     => (float) $s['price'],
-			'shop_name' => (string) $s['shop_name'],
+			'shop_id'    => (int) $s['shop_id'],
+			'price'      => (float) $s['price'],
+			'shop_name'  => (string) $s['shop_name'],
+			'unreliable' => ! empty( $s['unreliable'] ),
 		], $list ), 0, self::MAX_SELLERS_STORED );
 	}
 
@@ -1120,6 +1205,18 @@ class WAPM_Torob {
 
 		$sellers_list = json_decode( (string) get_post_meta( $product_id, self::META_SELLERS_LIST, true ), true );
 
+		// کاتالوگ (قیمت ما از دید ترب) جدا از داده‌ی رقیب تازه‌سازی می‌شود.
+		$our_checked  = (string) get_post_meta( $product_id, self::META_OUR_CHECKED, true );
+		$our_age_days = $our_checked ? (int) floor( ( time() - (int) strtotime( $our_checked ) ) / DAY_IN_SECONDS ) : null;
+
+		// محافظ واحد: اگر قیمت ترب و ووکامرس نسبت ~۱۰ داشته باشند، یا واحد فرق
+		// دارد یا داده اشتباه است. فقط هشدار نمایشی — هیچ تغییر خودکاری نمی‌شود.
+		$unit_suspect = false;
+		if ( null !== $our_torob && $our_torob > 0 && $our_price > 0 ) {
+			$ratio        = $our_price / $our_torob;
+			$unit_suspect = ( $ratio > 8 && $ratio < 12.5 ) || ( $ratio > 0.08 && $ratio < 0.125 );
+		}
+
 		return [
 			'prk'            => $prk,
 			'url'            => (string) get_post_meta( $product_id, self::META_URL, true ),
@@ -1131,6 +1228,9 @@ class WAPM_Torob {
 			'sellers_list'   => is_array( $sellers_list ) ? $sellers_list : [],
 			'checked_at'     => $checked,
 			'age_days'       => $age_days,
+			'our_checked_at' => $our_checked,
+			'our_age_days'   => $our_age_days,
+			'unit_suspect'   => $unit_suspect,
 			'fresh_days'     => (int) $settings['fresh_days'],
 			'status'         => $status,
 			'status_label'   => self::status_label( $status ),
@@ -1182,6 +1282,142 @@ class WAPM_Torob {
 			'age_days'       => $age,
 			'prk'            => $prk,
 		];
+	}
+
+	/* ---------- همگام‌سازی از API ترب ---------- */
+
+	/**
+	 * یک صفحه از کاتالوگ فروشگاهِ خودمان را از API ترب می‌خواند.
+	 *
+	 * این تنها راه «قیمت ما از دید ترب» است: در لیست محصولات فروشگاه، فیلد
+	 * `price` همان قیمتی است که ترب از فروشگاه ما نشان می‌دهد (buy box).
+	 *
+	 * @return array|WP_Error ['page'=>int,'has_more'=>bool,'count'=>int,'items'=>int,'stats'=>array]
+	 */
+	public static function sync_catalog_page( int $page = 0, int $size = 24 ) {
+		$shop_id = (int) self::get_shop_id();
+		if ( $shop_id <= 0 ) {
+			return new WP_Error( 'torob_shop_id', __( 'اول شناسه‌ی فروشگاه در ترب را تنظیم کنید.', 'wapm' ) );
+		}
+		if ( ! class_exists( 'WAPM_Torob_Api' ) ) {
+			return new WP_Error( 'torob_api', __( 'کلاینت API ترب بارگذاری نشده است.', 'wapm' ) );
+		}
+
+		$res = WAPM_Torob_Api::shop_products( $shop_id, $page, $size );
+		if ( is_wp_error( $res ) ) {
+			return $res;
+		}
+
+		$items = [];
+		foreach ( $res['items'] as $card ) {
+			$items[] = [
+				'prk'       => $card['prk'],
+				'name'      => $card['name'],
+				'our_price' => $card['price'],
+				'sellers'   => [],
+			];
+		}
+
+		$stats = self::ingest(
+			$items,
+			'api',
+			[
+				'discovered'    => count( $items ),
+				'catalog_total' => (int) $res['count'],
+				'pages'         => $page + 1,
+				'version'       => '3.0',
+			],
+			'catalog'
+		);
+
+		return [
+			'page'     => (int) $page,
+			'has_more' => (bool) $res['has_more'],
+			'count'    => (int) $res['count'],
+			'items'    => count( $items ),
+			'stats'    => $stats,
+		];
+	}
+
+	/**
+	 * بررسی فوری یک محصول از API (۱ درخواست): همه‌ی فروشنده‌ها، ارزان‌ترین رقیب.
+	 *
+	 * @return array|WP_Error
+	 */
+	public static function refresh_product( int $product_id ) {
+		$prk = (string) get_post_meta( $product_id, self::META_PRK, true );
+		if ( '' === $prk ) {
+			return new WP_Error( 'torob_prk', __( 'این محصول به ترب وصل نیست؛ اول از لیست «تطبیق‌نیافته‌ها» یا با همگام‌سازی کاتالوگ وصلش کنید.', 'wapm' ) );
+		}
+		if ( ! class_exists( 'WAPM_Torob_Api' ) ) {
+			return new WP_Error( 'torob_api', __( 'کلاینت API ترب بارگذاری نشده است.', 'wapm' ) );
+		}
+
+		$res = WAPM_Torob_Api::product_sellers( $prk );
+		if ( is_wp_error( $res ) ) {
+			return $res;
+		}
+		if ( 0 === $res['count'] ) {
+			return new WP_Error( 'torob_empty', __( 'ترب برای این محصول فروشنده‌ای برنگرداند.', 'wapm' ) );
+		}
+
+		$name = (string) get_post_meta( $product_id, self::META_NAME, true );
+		if ( '' === $name ) {
+			$name = (string) get_the_title( $product_id );
+		}
+
+		$stats = self::ingest(
+			[
+				[
+					'prk'     => $prk,
+					'name'    => $name,
+					'sellers' => $res['sellers'],
+				],
+			],
+			'api',
+			[ 'discovered' => 1, 'pages' => 1, 'version' => '3.0' ]
+		);
+
+		return [
+			'stats'   => $stats,
+			'sellers' => $res['count'],
+			'row'     => self::get_row_data( $product_id ),
+		];
+	}
+
+	/**
+	 * تأیید شناسه‌ی فروشگاه با API و ذخیره‌ی نام/وضعیت آن.
+	 *
+	 * @return array|WP_Error
+	 */
+	public static function verify_shop( int $shop_id ) {
+		if ( ! class_exists( 'WAPM_Torob_Api' ) ) {
+			return new WP_Error( 'torob_api', __( 'کلاینت API ترب بارگذاری نشده است.', 'wapm' ) );
+		}
+
+		$info = WAPM_Torob_Api::shop_details( $shop_id );
+		if ( is_wp_error( $info ) ) {
+			return $info;
+		}
+
+		self::save_shop_id( (string) $shop_id );
+		if ( '' !== $info['name'] && '' === trim( self::get_shop_name() ) ) {
+			self::save_settings( [ 'shop_name' => $info['name'] ] );
+		}
+
+		if ( $info['blocked'] ) {
+			return new WP_Error(
+				'torob_shop_blocked',
+				sprintf(
+					/* translators: 1: shop name, 2: block note */
+					__( 'فروشگاه «%1$s» در ترب فعال نیست (%2$s). تا فعال‌شدن، محصولات شما در ترب نمایش داده نمی‌شوند و مقایسه معنی ندارد.', 'wapm' ),
+					$info['name'],
+					$info['block_note']
+				)
+			);
+		}
+
+		return $info;
 	}
 
 	/* ---------- فید CSV ---------- */

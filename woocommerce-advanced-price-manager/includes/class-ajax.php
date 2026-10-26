@@ -31,6 +31,11 @@ class WAPM_Ajax {
 			'torob_ignore_unmatched',
 			'torob_clear_unmatched',
 			'torob_import_feed',
+			'torob_find_shops',
+			'torob_verify_shop',
+			'torob_sync_catalog',
+			'torob_refresh_product',
+			'torob_api_reset',
 			'count_targets',
 			'preview',
 			'dry_run',
@@ -234,9 +239,11 @@ class WAPM_Ajax {
 			'matched'           => WAPM_Torob::count_matched(),
 			'unmatched'         => count( WAPM_Torob::unmatched() ),
 			'last_sync'         => $last,
+			'last_catalog'      => WAPM_Torob::get_last_catalog(),
 			'settings'          => WAPM_Torob::settings(),
 			'shop_id'           => WAPM_Torob::get_shop_id(),
 			'can_identify_shop' => WAPM_Torob::can_identify_shop(),
+			'api'               => class_exists( 'WAPM_Torob_Api' ) ? WAPM_Torob_Api::state() : null,
 		];
 	}
 
@@ -368,6 +375,119 @@ class WAPM_Ajax {
 		] );
 	}
 
+	/* ---------- ترب از طریق API (api.torob.com) ---------- */
+
+	/**
+	 * جستجوی فروشگاه با نام — برای پیدا کردن شناسه‌ی فروشگاه بدون گشتن در URL.
+	 */
+	public function torob_find_shops(): void {
+		$this->guard();
+
+		$q = sanitize_text_field( wp_unslash( $_POST['q'] ?? '' ) );
+		if ( mb_strlen( $q ) < 2 ) {
+			wp_send_json_error( [ 'message' => __( 'حداقل دو حرف از نام فروشگاه را بنویسید.', 'wapm' ) ] );
+		}
+
+		$rows = WAPM_Torob_Api::find_shops( $q );
+		$state = WAPM_Torob_Api::state();
+
+		if ( ! $rows ) {
+			wp_send_json_success( [
+				'rows'  => [],
+				'state' => $state,
+				'message' => $state['blocked']
+					? sprintf( __( 'ترب درخواست را محدود کرده است؛ حدود %d دقیقه دیگر تلاش کنید.', 'wapm' ), $state['minutes_left'] )
+					: __( 'فروشگاهی با این نام پیدا نشد. نام را همان‌طور که در ترب می‌بینید وارد کنید.', 'wapm' ),
+			] );
+		}
+
+		wp_send_json_success( [ 'rows' => $rows, 'state' => $state ] );
+	}
+
+	/**
+	 * تأیید شناسه‌ی فروشگاه با API و ذخیره‌ی آن (نام، دامنه، وضعیت فعال بودن).
+	 */
+	public function torob_verify_shop(): void {
+		$this->guard();
+
+		$shop_id = absint( $_POST['shop_id'] ?? 0 );
+		$info    = WAPM_Torob::verify_shop( $shop_id );
+
+		if ( is_wp_error( $info ) ) {
+			wp_send_json_error( [
+				'message' => $info->get_error_message(),
+				'state'   => WAPM_Torob_Api::state(),
+			] );
+		}
+
+		wp_send_json_success( array_merge( $this->torob_stats_payload(), [
+			'shop'  => $info,
+			'state' => WAPM_Torob_Api::state(),
+		] ) );
+	}
+
+	/**
+	 * یک صفحه از کاتالوگ فروشگاه در ترب (۱ درخواست API به‌ازای هر ۲۴ محصول).
+	 * جاوااسکریپت صفحه‌به‌صفحه صدا می‌زند تا هر درخواست کوتاه بماند.
+	 */
+	public function torob_sync_catalog(): void {
+		$this->guard();
+
+		$page = max( 0, absint( $_POST['page'] ?? 0 ) );
+		$size = min( 50, max( 1, absint( $_POST['size'] ?? 24 ) ) );
+
+		$result = WAPM_Torob::sync_catalog_page( $page, $size );
+
+		if ( is_wp_error( $result ) ) {
+			wp_send_json_error( [
+				'message' => $result->get_error_message(),
+				'code'    => $result->get_error_code(),
+				'state'   => WAPM_Torob_Api::state(),
+			] );
+		}
+
+		wp_send_json_success( array_merge( $result, [
+			'stats_payload' => $this->torob_stats_payload(),
+			'api'           => WAPM_Torob_Api::state(),
+		] ) );
+	}
+
+	/**
+	 * بررسی فوری یک محصول از API (۱ درخواست): ارزان‌ترین رقیب و قیمت ما در ترب.
+	 */
+	public function torob_refresh_product(): void {
+		$this->guard();
+
+		$product_id = absint( $_POST['product_id'] ?? 0 );
+		$result     = WAPM_Torob::refresh_product( $product_id );
+
+		if ( is_wp_error( $result ) ) {
+			wp_send_json_error( [
+				'message' => $result->get_error_message(),
+				'state'   => WAPM_Torob_Api::state(),
+			] );
+		}
+
+		wp_send_json_success( array_merge( $result, [
+			'stats_payload' => $this->torob_stats_payload(),
+			'api'           => WAPM_Torob_Api::state(),
+			'message'       => sprintf(
+				/* translators: %d: sellers */
+				__( 'بررسی شد — %d فروشنده در ترب.', 'wapm' ),
+				(int) $result['sellers']
+			),
+		] ) );
+	}
+
+	/**
+	 * پاک کردن کول‌داون دستی (وقتی کاربر می‌داند بلاک تمام شده است).
+	 */
+	public function torob_api_reset(): void {
+		$this->guard();
+		WAPM_Torob_Api::clear_cooldown();
+		wp_send_json_success( [ 'state' => WAPM_Torob_Api::state() ] );
+	}
+
 	/**
 	 * ورود داده از منابع بیرونی (بوکمارکلت/فید/اسکریپت) — بدون سشن ادمین.
 	 * احراز هویت با توکن اختصاصی + محدودیت نرخ + سقف حجم.
@@ -413,7 +533,9 @@ class WAPM_Ajax {
 		$meta = json_decode( (string) wp_unslash( $_POST['meta'] ?? '{}' ), true );
 		$meta = is_array( $meta ) ? $meta : [];
 
-		$stats = WAPM_Torob::ingest( $items, $source, $meta );
+		// بوکمارکلت حالت «فقط کاتالوگ» (قیمت خودمان از دید ترب) را هم می‌فرستد.
+		$mode  = ( isset( $meta['mode'] ) && 'catalog' === $meta['mode'] ) ? 'catalog' : 'full';
+		$stats = WAPM_Torob::ingest( $items, $source, $meta, $mode );
 
 		wp_send_json_success( array_merge( $stats, [
 			'unmatched_total' => count( WAPM_Torob::unmatched() ),
