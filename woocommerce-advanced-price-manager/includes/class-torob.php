@@ -695,6 +695,20 @@ class WAPM_Torob {
 	 * درصد اختلاف قیمت ما با ارزان‌ترین رقیب.
 	 * مثبت = ما گران‌تریم. null = قابل محاسبه نیست.
 	 */
+	/**
+	 * محافظ واحد: اگر قیمت ما و قیمت ترب حدوداً ۱۰ برابر فاصله داشته باشند،
+	 * احتمالاً یکی ریال است و دیگری تومان (یا داده اشتباه است). در این حالت نه
+	 * قیمت‌گذاری خودکار باید انجام شود و نه درصد اختلاف نمایش داده شود.
+	 */
+	public static function unit_suspect( float $our_price, float $competitor ): bool {
+		if ( $our_price <= 0 || $competitor <= 0 ) {
+			return false;
+		}
+		$ratio = $our_price / $competitor;
+
+		return ( $ratio > 8 && $ratio < 12.5 ) || ( $ratio > 0.08 && $ratio < 0.125 );
+	}
+
 	public static function diff_pct( float $our_price, ?float $competitor_price ): ?float {
 		if ( $our_price <= 0 || null === $competitor_price || $competitor_price <= 0 ) {
 			return null;
@@ -1311,11 +1325,7 @@ class WAPM_Torob {
 
 		// محافظ واحد: اگر قیمت ترب و ووکامرس نسبت ~۱۰ داشته باشند، یا واحد فرق
 		// دارد یا داده اشتباه است. فقط هشدار نمایشی — هیچ تغییر خودکاری نمی‌شود.
-		$unit_suspect = false;
-		if ( null !== $our_torob && $our_torob > 0 && $our_price > 0 ) {
-			$ratio        = $our_price / $our_torob;
-			$unit_suspect = ( $ratio > 8 && $ratio < 12.5 ) || ( $ratio > 0.08 && $ratio < 0.125 );
-		}
+		$unit_suspect = null !== $our_torob ? self::unit_suspect( $our_price, (float) $our_torob ) : false;
 
 		return [
 			'prk'            => $prk,
