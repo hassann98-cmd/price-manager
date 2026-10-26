@@ -1790,6 +1790,38 @@ test( 'رشته: هیچ فایل افزونه‌ای مستقیم mb_* صدا ن
  * ۱۹) «هم‌تراز با ترب» — تنظیمات، برچسب دلیل و ثبت اکشن
  * ---------------------------------------------------------------------- */
 
+test( 'پرچم‌ها: ناسازگاری فید و واحد مشکوک (همان چیزی که ستون نشان می‌دهد)', function () {
+	$same = WAPM_Torob::price_flags( 1000000, 1000000, 1 );
+	eq( false, $same['mismatch'], 'قیمت یکسان = بدون ناسازگاری' );
+	eq( false, $same['unit'], 'قیمت یکسان = واحد سالم' );
+
+	$off = WAPM_Torob::price_flags( 1100000, 1000000, 1 );
+	eq( true, $off['mismatch'], '۱۰٪ اختلاف با فید = ناسازگار' );
+
+	$near = WAPM_Torob::price_flags( 1005000, 1000000, 1 );
+	eq( false, $near['mismatch'], '۰٫۵٪ زیر آستانه = ناسازگار نیست' );
+
+	$unit = WAPM_Torob::price_flags( 1000000, 100000, 1 );
+	eq( true, $unit['unit'], 'نسبت ۱۰ = واحد مشکوک' );
+
+	$unknown = WAPM_Torob::price_flags( 500000, null, 1 );
+	eq( false, $unknown['mismatch'], 'بدون قیمت ترب = بدون پرچم' );
+	eq( false, $unknown['unit'], 'بدون قیمت ترب = بدون پرچم واحد' );
+} );
+
+test( 'فیلتر پرچم‌ها در SQL ساخته می‌شود', function () {
+	$mismatch = WAPM_Torob::meta_clause( 'feed_mismatch' );
+	eq( WAPM_Torob::META_FEED_MISMATCH, $mismatch['key'], 'کلید متای ناسازگاری' );
+	eq( '1', $mismatch['value'], 'فقط پرچم‌دارها' );
+
+	$unit = WAPM_Torob::meta_clause( 'unit_suspect' );
+	eq( WAPM_Torob::META_UNIT_SUSPECT, $unit['key'], 'کلید متای واحد' );
+
+	eq( null, WAPM_Torob::meta_clause( 'چیز-ناشناخته' ), 'وضعیت ناشناخته = بدون شرط' );
+	ok( WAPM_Torob::status_label( 'feed_mismatch' ) !== 'feed_mismatch', 'برچسب فارسی دارد' );
+	ok( WAPM_Torob::status_label( 'unit_suspect' ) !== 'unit_suspect', 'برچسب واحد مشکوک' );
+} );
+
 test( 'تاریخچه‌ی قیمت رقیب: فقط تغییرها ثبت می‌شوند (بدون تکرار)', function () {
 	$GLOBALS['wapm_meta'] = [];
 	$id = 501;

@@ -43,6 +43,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 								<option value="cheaper"><?php esc_html_e( '🟢 ارزان‌تر از رقیب', 'wapm' ); ?></option>
 								<option value="equal"><?php esc_html_e( 'برابر با رقیب', 'wapm' ); ?></option>
 								<option value="stale"><?php esc_html_e( 'داده کهنه', 'wapm' ); ?></option>
+								<option value="feed_mismatch"><?php esc_html_e( '⚠ ناسازگاری فید ترب', 'wapm' ); ?></option>
+								<option value="unit_suspect"><?php esc_html_e( '⚠ واحد قیمت مشکوک', 'wapm' ); ?></option>
 								<option value="fresh"><?php esc_html_e( 'داده تازه', 'wapm' ); ?></option>
 								<option value="no_competitor"><?php esc_html_e( 'فقط ما در ترب', 'wapm' ); ?></option>
 								<option value="needs_shop_id"><?php esc_html_e( 'شناسه فروشگاه تنظیم نشده', 'wapm' ); ?></option>

@@ -137,6 +137,8 @@ function wapm_uninstall_site(): void {
 		'_wapm_torob_link',
 		'_wapm_torob_status',
 		'_wapm_torob_diff_pct',
+		'_wapm_torob_feed_mismatch',
+		'_wapm_torob_unit_suspect',
 		'_wapm_torob_price_history',
 	];
 

@@ -62,6 +62,8 @@ class WAPM_Torob {
 	const META_LINK         = '_wapm_torob_link';          // auto | manual
 	const META_STATUS       = '_wapm_torob_status';        // برای فیلتر/مرتب‌سازی SQL
 	const META_DIFF_PCT     = '_wapm_torob_diff_pct';      // درصد اختلاف قیمت ما با ارزان‌ترین رقیب
+	const META_FEED_MISMATCH = '_wapm_torob_feed_mismatch'; // 1 = قیمت ترب از ما با ووکامرس نمی‌خواند
+	const META_UNIT_SUSPECT  = '_wapm_torob_unit_suspect';  // 1 = واحد قیمت مشکوک (تومان/ریال)
 	const META_PRICE_HISTORY = '_wapm_torob_price_history'; // JSON: ۳۰ نقطه‌ی آخر قیمت رقیب
 	const HISTORY_POINTS    = 30;                            // سقف نقطه‌های نگهداری‌شده
 
@@ -644,6 +646,8 @@ class WAPM_Torob {
 			self::META_LINK,
 			self::META_STATUS,
 			self::META_DIFF_PCT,
+			self::META_FEED_MISMATCH,
+			self::META_UNIT_SUSPECT,
 			self::META_PRICE_HISTORY,
 		] as $key ) {
 			delete_post_meta( $product_id, $key );
@@ -665,6 +669,14 @@ class WAPM_Torob {
 		}
 		if ( 'none' === $status ) {
 			return [ 'key' => self::META_PRK, 'compare' => 'NOT EXISTS' ];
+		}
+
+		// پرچم‌های هشدار: مقدار 1/0 در متا ذخیره شده و فیلتر مستقیم SQL است.
+		if ( 'feed_mismatch' === $status || 'unit_suspect' === $status ) {
+			return [
+				'key'   => ( 'feed_mismatch' === $status ) ? self::META_FEED_MISMATCH : self::META_UNIT_SUSPECT,
+				'value' => '1',
+			];
 		}
 
 		if ( 'stale' === $status || 'fresh' === $status ) {
@@ -711,6 +723,13 @@ class WAPM_Torob {
 
 		$has = metadata_exists( 'post', $product_id, self::META_PRK );
 
+		if ( 'feed_mismatch' === $status ) {
+			return '1' === (string) get_post_meta( $product_id, self::META_FEED_MISMATCH, true );
+		}
+		if ( 'unit_suspect' === $status ) {
+			return '1' === (string) get_post_meta( $product_id, self::META_UNIT_SUSPECT, true );
+		}
+
 		switch ( $status ) {
 			case 'any':
 				return $has;
@@ -736,14 +755,31 @@ class WAPM_Torob {
 	/* ---------- وضعیت و اختلاف قیمت ---------- */
 
 	/**
-	 * درصد اختلاف قیمت ما با ارزان‌ترین رقیب.
-	 * مثبت = ما گران‌تریم. null = قابل محاسبه نیست.
-	 */
-	/**
 	 * محافظ واحد: اگر قیمت ما و قیمت ترب حدوداً ۱۰ برابر فاصله داشته باشند،
 	 * احتمالاً یکی ریال است و دیگری تومان (یا داده اشتباه است). در این حالت نه
 	 * قیمت‌گذاری خودکار باید انجام شود و نه درصد اختلاف نمایش داده شود.
 	 */
+	/**
+	 * پرچم‌های نمایشی/فیلتری از قیمت ووکامرس و «قیمت ما از دید ترب».
+	 *
+	 * چرا یک تابع مشترک: ستون جدول و فیلتر SQL باید یک چیز بگویند. اگر آستانه
+	 * در دو جا جدا حساب شود، دیر یا زود فیلتر ردیفی را نشان می‌دهد که هشدار
+	 * ندارد (یا برعکس).
+	 *
+	 * @param float      $our_price     قیمت مؤثر ووکامرس
+	 * @param float|null $our_torob     قیمتی که ترب از ما نشان می‌دهد (اگر معلوم باشد)
+	 * @param float      $tolerance_pct آستانه‌ی ناسازگاری فید (درصد)
+	 * @return array{mismatch:bool,unit:bool}
+	 */
+	public static function price_flags( float $our_price, ?float $our_torob, float $tolerance_pct ): array {
+		$known = ( null !== $our_torob && $our_torob > 0 );
+
+		return [
+			'mismatch' => $known && $our_price > 0 && abs( ( ( $our_price - $our_torob ) / $our_torob ) * 100 ) > $tolerance_pct,
+			'unit'     => $known && self::unit_suspect( $our_price, (float) $our_torob ),
+		];
+	}
+
 	public static function unit_suspect( float $our_price, float $competitor ): bool {
 		if ( $our_price <= 0 || $competitor <= 0 ) {
 			return false;
@@ -753,6 +789,10 @@ class WAPM_Torob {
 		return ( $ratio > 8 && $ratio < 12.5 ) || ( $ratio > 0.08 && $ratio < 0.125 );
 	}
 
+	/**
+	 * درصد اختلاف قیمت ما با ارزان‌ترین رقیب.
+	 * مثبت = ما گران‌تریم. null = قابل محاسبه نیست.
+	 */
 	public static function diff_pct( float $our_price, ?float $competitor_price ): ?float {
 		if ( $our_price <= 0 || null === $competitor_price || $competitor_price <= 0 ) {
 			return null;
@@ -827,6 +867,8 @@ class WAPM_Torob {
 			'pricier'        => __( 'گران‌تر از رقیب', 'wapm' ),
 			'cheaper'        => __( 'ارزان‌تر از رقیب', 'wapm' ),
 			'equal'          => __( 'برابر با رقیب', 'wapm' ),
+			'feed_mismatch'  => __( '⚠ ناسازگاری فید ترب', 'wapm' ),
+			'unit_suspect'   => __( '⚠ واحد قیمت مشکوک', 'wapm' ),
 		];
 		return $labels[ $status ] ?? $status;
 	}
@@ -879,6 +921,8 @@ class WAPM_Torob {
 		if ( ! metadata_exists( 'post', $product_id, self::META_PRK ) ) {
 			delete_post_meta( $product_id, self::META_STATUS );
 			delete_post_meta( $product_id, self::META_DIFF_PCT );
+			delete_post_meta( $product_id, self::META_FEED_MISMATCH );
+			delete_post_meta( $product_id, self::META_UNIT_SUSPECT );
 			return;
 		}
 
@@ -908,6 +952,20 @@ class WAPM_Torob {
 		} else {
 			update_post_meta( $product_id, self::META_DIFF_PCT, (string) $diff );
 		}
+
+		/*
+		 * پرچم‌های «ناسازگاری فید» و «واحد مشکوک» به‌صورت متا ذخیره می‌شوند، نه
+		 * در لحظه‌ی نمایش: فیلتر جدول باید در SQL کار کند، وگرنه روی کاتالوگ
+		 * بزرگ فقط صفحه‌ی جاری فیلتر می‌شد.
+		 */
+		$flags = self::price_flags(
+			(float) $our_price,
+			(float) $data['our_price_torob'] > 0 ? (float) $data['our_price_torob'] : null,
+			(float) self::settings()['tolerance_pct']
+		);
+
+		update_post_meta( $product_id, self::META_FEED_MISMATCH, $flags['mismatch'] ? '1' : '0' );
+		update_post_meta( $product_id, self::META_UNIT_SUSPECT, $flags['unit'] ? '1' : '0' );
 	}
 
 	/* ---------- دریافت داده (هسته) ---------- */
@@ -1641,6 +1699,8 @@ class WAPM_Torob {
 		$age_days   = $checked_ts ? (int) floor( ( time() - $checked_ts ) / DAY_IN_SECONDS ) : null;
 
 		// ناسازگاری فید: قیمتی که ترب از ما نشان می‌دهد با قیمت ووکامرس یکی نیست.
+		$tolerance    = (float) $settings['tolerance_pct'];
+		$flags        = self::price_flags( $our_price, $our_torob, $tolerance );
 		$mismatch_pct = null;
 		if ( null !== $our_torob && $our_torob > 0 && $our_price > 0 ) {
 			$mismatch_pct = round( ( ( $our_price - $our_torob ) / $our_torob ) * 100, 2 );
@@ -1655,7 +1715,7 @@ class WAPM_Torob {
 
 		// محافظ واحد: اگر قیمت ترب و ووکامرس نسبت ~۱۰ داشته باشند، یا واحد فرق
 		// دارد یا داده اشتباه است. فقط هشدار نمایشی — هیچ تغییر خودکاری نمی‌شود.
-		$unit_suspect = null !== $our_torob ? self::unit_suspect( $our_price, (float) $our_torob ) : false;
+		$unit_suspect = $flags['unit'];
 
 		// تاریخچه‌ی قیمت رقیب — فقط ۳۰ نقطه‌ی آخر، برای نمایش روند در لیست/کشو.
 		$history = self::get_price_history( $product_id );
@@ -1681,7 +1741,8 @@ class WAPM_Torob {
 			'status_label'   => self::status_label( $status ),
 			'diff_pct'       => $diff,
 			'mismatch_pct'   => $mismatch_pct,
-			'tolerance_pct'  => (float) $settings['tolerance_pct'],
+			'tolerance_pct'  => $tolerance,
+			'feed_mismatch'  => $flags['mismatch'],
 			'source'         => (string) get_post_meta( $product_id, self::META_SOURCE, true ),
 			'link'           => (string) get_post_meta( $product_id, self::META_LINK, true ),
 			'history'        => $history,

@@ -35,7 +35,7 @@ class WAPM_List {
 			// فیلتر و مرتب‌سازی ترب
 			'torob_status' => in_array(
 				$raw['torob_status'] ?? '',
-				[ 'any', 'none', 'pricier', 'cheaper', 'equal', 'no_competitor', 'needs_shop_id', 'no_price', 'stale', 'fresh' ],
+				[ 'any', 'none', 'pricier', 'cheaper', 'equal', 'no_competitor', 'needs_shop_id', 'no_price', 'stale', 'fresh', 'feed_mismatch', 'unit_suspect' ],
 				true
 			) ? $raw['torob_status'] : '',
 			'orderby'      => in_array(
