@@ -59,8 +59,39 @@ function __( $text, $domain = null ) {
 	return $text;
 }
 
+/* ---- stubهای لازم برای WAPM_Torob (توابع خالص) ---- */
+
+define( 'MINUTE_IN_SECONDS', 60 );
+define( 'HOUR_IN_SECONDS', 3600 );
+define( 'DAY_IN_SECONDS', 86400 );
+
+function sanitize_text_field( $str ) {
+	return trim( preg_replace( '/[\r\n\t]+/', ' ', strip_tags( (string) $str ) ) );
+}
+
+function absint( $v ) {
+	return abs( (int) $v );
+}
+
+function get_option( $key, $default = false ) {
+	return $GLOBALS['wapm_options'][ $key ] ?? $default;
+}
+
+function update_option( $key, $value, $autoload = null ) {
+	$GLOBALS['wapm_options'][ $key ] = $value;
+	return true;
+}
+
+function delete_option( $key ) {
+	unset( $GLOBALS['wapm_options'][ $key ] );
+	return true;
+}
+
+$GLOBALS['wapm_options'] = [];
+
 require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-price-engine.php';
 require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-logger.php';
+require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-torob.php';
 
 /* -------------------------------------------------------------------------
  * چارچوب تست کوچک
@@ -340,6 +371,303 @@ test( 'تداخل: حذف/افزودن قیمت ویژه', function () {
 	ok( same_price( '', '' ), 'هر دو بدون قیمت' );
 	ok( ! same_price( '', '900000' ), 'قبلاً حذف شده بود، حالا قیمت دارد → تداخل' );
 	ok( ! same_price( '900000', '' ), 'قبلاً قیمت داشت، حالا حذف شده → تداخل' );
+} );
+
+/* -------------------------------------------------------------------------
+ * ۸) ترب — نرمال‌سازی، استخراج کد، تطبیق (توابع خالص)
+ * ---------------------------------------------------------------------- */
+
+test( 'ترب/normalize: یکسان‌سازی حروف فارسی و عربی', function () {
+	stub_reset();
+	// ي عربی و ك عربی باید با ی/ک فارسی یکی شوند، وگرنه دو محصول یکسان
+	// هرگز به هم وصل نمی‌شوند.
+	eq( WAPM_Torob::normalize( 'يخچال' ), WAPM_Torob::normalize( 'یخچال' ), 'ي عربی = ی فارسی' );
+	eq( WAPM_Torob::normalize( 'كولر' ), WAPM_Torob::normalize( 'کولر' ), 'ك عربی = ک فارسی' );
+} );
+
+test( 'ترب/normalize: نیم‌فاصله، اعراب و فاصله‌ی اضافه', function () {
+	stub_reset();
+	eq( WAPM_Torob::normalize( 'گوشی‌های   سامسونگ' ), 'گوشی های سامسونگ', 'نیم‌فاصله → فاصله، فاصله‌ی تکراری → یکی' );
+	eq( WAPM_Torob::normalize( 'مَرهی' ), WAPM_Torob::normalize( 'مرهی' ), 'اعراب حذف می‌شود' );
+	eq( 'گوشی سامسونگ', WAPM_Torob::normalize( '  گوشی   سامسونگ  ' ), 'فاصله‌ی ابتدا/انتها' );
+} );
+
+test( 'ترب/normalize: الفبا و ارقام لاتین یکسان می‌شوند', function () {
+	stub_reset();
+	// ش و س جدا می‌مانند (درست است — متفاوت‌اند) ولی ارقام فارسی/عربی
+	// باید به لاتین تبدیل شوند.
+	$n = WAPM_Torob::normalize( 'گوشی سامسونگ ۱۲۸ گیگ' );
+	ok( false !== strpos( $n, '128' ), 'ارقام فارسی → لاتین', $n );
+} );
+
+test( 'ترب/to_ascii_digits: ارقام فارسی و عربی', function () {
+	stub_reset();
+	eq( '123456', WAPM_Torob::to_ascii_digits( '۱۲۳۴۵۶' ), 'فارسی' );
+	eq( '123456', WAPM_Torob::to_ascii_digits( '١٢٣٤٥٦' ), 'عربی' );
+	eq( 'A-42', WAPM_Torob::to_ascii_digits( 'A-42' ), 'لاتین دست‌نخورده' );
+} );
+
+test( 'ترب/extract_codes: الگوی «کد»', function () {
+	stub_reset();
+	$codes = WAPM_Torob::extract_codes( 'یخچال بوش مدل KGN86 کد 123456' );
+	ok( in_array( '123456', $codes, true ), 'کد بعد از «کد»', implode( ',', $codes ) );
+} );
+
+test( 'ترب/extract_codes: عدد انتهایی و مدل حرف+رقم', function () {
+	stub_reset();
+	$codes = WAPM_Torob::extract_codes( 'گوشی سامسونگ Galaxy SM-G991 64GB' );
+	ok( in_array( 'SM-G991', $codes, true ), 'مدل حرف+رقم کامل (نه G991)', implode( ',', $codes ) );
+
+	$codes = WAPM_Torob::extract_codes( 'ماشین لباسشویی 98765' );
+	ok( in_array( '98765', $codes, true ), 'عدد انتهایی', implode( ',', $codes ) );
+} );
+
+test( 'ترب/extract_codes: عنوان بدون کد → آرایه‌ی خالی', function () {
+	stub_reset();
+	eq( [], WAPM_Torob::extract_codes( 'گوشی موبایل سامسونگ' ), 'بدون کد' );
+} );
+
+test( 'ترب/extract_codes: سقف ۵ کد', function () {
+	stub_reset();
+	$codes = WAPM_Torob::extract_codes( 'کد 1111 (2222) 3333 مدل A123 B456' );
+	ok( count( $codes ) <= 5, 'حداکثر ۵ کد', (string) count( $codes ) );
+} );
+
+test( 'ترب/token_similarity: عنوان یکسان = ۱', function () {
+	stub_reset();
+	eq( 1.0, WAPM_Torob::token_similarity( 'گوشی سامسونگ s21', 'گوشی سامسونگ s21' ), 'یکسان' );
+} );
+
+test( 'ترب/token_similarity: عنوان کاملاً متفاوت = ۰', function () {
+	stub_reset();
+	eq( 0.0, WAPM_Torob::token_similarity( 'یخچال بوش', 'گوشی شیائومی' ), 'بی‌اشتراک' );
+} );
+
+test( 'ترب/token_similarity: واژه‌های اضافه‌ی ترب امتیاز را خراب نمی‌کنند', function () {
+	stub_reset();
+	// عنوان ترب معمولاً «گارانتی …» و «کد …» دارد؛ باید همچنان بالا بماند.
+	$score = WAPM_Torob::token_similarity(
+		'گوشی موبایل سامسونگ',
+		'گوشی موبایل سامسونگ گارانتی ۱۸ ماهه کد 12345'
+	);
+	ok( $score >= 0.6, 'امتیاز بالا با واژه‌های اضافه', (string) $score );
+} );
+
+test( 'ترب/token_similarity: رشته‌ی خالی = ۰', function () {
+	stub_reset();
+	eq( 0.0, WAPM_Torob::token_similarity( '', 'گوشی' ), 'خالی' );
+} );
+
+test( 'ترب/diff_pct: محاسبه‌ی درصد اختلاف', function () {
+	stub_reset();
+	eq( 10.0, WAPM_Torob::diff_pct( 1100.0, 1000.0 ), 'گران‌تر ۱۰٪' );
+	eq( -9.09, WAPM_Torob::diff_pct( 1000.0, 1100.0 ), 'ارزان‌تر ۹.۰۹٪' );
+	eq( 0.0, WAPM_Torob::diff_pct( 1000.0, 1000.0 ), 'برابر' );
+} );
+
+test( 'ترب/diff_pct: ورودی نامعتبر → null (نه تقسیم بر صفر)', function () {
+	stub_reset();
+	eq( null, WAPM_Torob::diff_pct( 0.0, 1000.0 ), 'قیمت خودمان صفر' );
+	eq( null, WAPM_Torob::diff_pct( 1000.0, null ), 'رقیب نامعلوم' );
+	eq( null, WAPM_Torob::diff_pct( 1000.0, 0.0 ), 'رقیب صفر' );
+} );
+
+/* -------------------------------------------------------------------------
+ * ۹) ترب — وضعیت مقایسه
+ * ---------------------------------------------------------------------- */
+
+function torob_fresh( array $over = [] ): array {
+	return array_merge( [
+		'has_data'         => true,
+		'shop_known'       => true,
+		'checked_at'       => gmdate( 'Y-m-d H:i:s' ),
+		'competitor_price' => 1000.0,
+	], $over );
+}
+
+test( 'ترب/status: بدون داده → none', function () {
+	stub_reset();
+	eq( 'none', WAPM_Torob::compute_status( [ 'has_data' => false ], 1000.0 ), 'داده‌ای نیست' );
+} );
+
+test( 'ترب/status: شناسه‌ی فروشگاه نامعلوم → needs_shop_id (نه مقایسه‌ی غلط)', function () {
+	stub_reset();
+	// مهم‌ترین محافظ: اگر خودمان را نشناسیم، «رقیب» ممکن است خودمان باشیم.
+	eq( 'needs_shop_id', WAPM_Torob::compute_status( torob_fresh( [ 'shop_known' => false ] ), 1200.0 ), 'بدون شناسه' );
+} );
+
+test( 'ترب/status: داده‌ی قدیمی → stale', function () {
+	stub_reset();
+	$old = gmdate( 'Y-m-d H:i:s', time() - ( 10 * DAY_IN_SECONDS ) );
+	eq( 'stale', WAPM_Torob::compute_status( torob_fresh( [ 'checked_at' => $old ] ), 1200.0 ), '۱۰ روز پیش' );
+
+	// مرز: درست داخل بازه‌ی fresh_days نباید کهنه شود.
+	$inside = gmdate( 'Y-m-d H:i:s', time() - ( 2 * DAY_IN_SECONDS ) );
+	eq( 'pricier', WAPM_Torob::compute_status( torob_fresh( [ 'checked_at' => $inside ] ), 1200.0 ), '۲ روز پیش' );
+} );
+
+test( 'ترب/status: بدون قیمت رقیب → no_competitor (فقط ما)', function () {
+	stub_reset();
+	eq( 'no_competitor', WAPM_Torob::compute_status( torob_fresh( [ 'competitor_price' => null ] ), 1200.0 ), 'null' );
+	eq( 'no_competitor', WAPM_Torob::compute_status( torob_fresh( [ 'competitor_price' => 0.0 ] ), 1200.0 ), 'صفر' );
+} );
+
+test( 'ترب/status: گران‌تر/ارزان‌تر/برابر با آستانه', function () {
+	stub_reset();
+	eq( 'pricier', WAPM_Torob::compute_status( torob_fresh(), 1200.0 ), '۲۰٪ گران‌تر' );
+	eq( 'cheaper', WAPM_Torob::compute_status( torob_fresh(), 800.0 ), '۲۰٪ ارزان‌تر' );
+	eq( 'equal', WAPM_Torob::compute_status( torob_fresh(), 1005.0 ), '۰.۵٪ → برابر' );
+	eq( 'pricier', WAPM_Torob::compute_status( torob_fresh(), 1020.0 ), '۲٪ → گران‌تر' );
+} );
+
+test( 'ترب/status: آستانه‌ی «برابر» قابل تنظیم است', function () {
+	stub_reset();
+	$s = [ 'fresh_days' => 3, 'tolerance_pct' => 5.0, 'shop_name' => '' ];
+	eq( 'equal', WAPM_Torob::compute_status( torob_fresh(), 1030.0, $s ), '۳٪ با آستانه‌ی ۵٪' );
+	eq( 'pricier', WAPM_Torob::compute_status( torob_fresh(), 1060.0, $s ), '۶٪ با آستانه‌ی ۵٪' );
+} );
+
+test( 'ترب/status: قیمت خودمان صفر → no_price', function () {
+	stub_reset();
+	eq( 'no_price', WAPM_Torob::compute_status( torob_fresh(), 0.0 ), 'قیمت نامشخص' );
+} );
+
+/* -------------------------------------------------------------------------
+ * ۱۰) ترب — جداکردن قیمت خودمان از رقیب
+ * ---------------------------------------------------------------------- */
+
+function sellers( array $rows ): array {
+	return WAPM_Torob::extract_sellers( $rows );
+}
+
+test( 'ترب/sellers: فیلتر قیمت صفر و مرتب‌سازی صعودی', function () {
+	stub_reset();
+	$res = sellers( [
+		[ 'shop_id' => 1, 'shop_name' => 'الف', 'price' => 500 ],
+		[ 'shop_id' => 2, 'shop_name' => 'ب', 'price' => 0 ],
+		[ 'shop_id' => 3, 'shop_name' => 'ج', 'price' => 300 ],
+	] );
+	eq( 2, $res['count'], 'ردیف بی‌قیمت حذف شد' );
+	eq( 300.0, $res['list'][0]['price'], 'ارزان‌ترین اول' );
+} );
+
+test( 'ترب/sellers: پذیرش نام‌های جایگزین کلیدها', function () {
+	stub_reset();
+	$res = sellers( [ [ 'shopId' => 7, 'seller_name' => 'فروشگاه هفت', 'price' => '250000' ] ] );
+	eq( 7, $res['list'][0]['shop_id'], 'shopId' );
+	eq( 'فروشگاه هفت', $res['list'][0]['shop_name'], 'seller_name' );
+	eq( 250000.0, $res['list'][0]['price'], 'price رشته‌ای' );
+} );
+
+test( 'ترب/cheapest: قیمت خودمان رقیب حساب نمی‌شود', function () {
+	stub_reset();
+	$s = sellers( [
+		[ 'shop_id' => 99, 'shop_name' => 'ما', 'price' => 900 ],
+		[ 'shop_id' => 5, 'shop_name' => 'رقیب', 'price' => 1000 ],
+	] );
+	$r = WAPM_Torob::cheapest_competitor( $s, 99 );
+	eq( 900.0, $r['ours'], 'قیمت ما' );
+	eq( 1000.0, $r['competitor'], 'ارزان‌ترین رقیب (نه خودمان)' );
+	eq( 1, $r['others'], 'یک رقیب' );
+	ok( $r['shop_known'], 'فروشگاه شناسایی شد' );
+} );
+
+test( 'ترب/cheapest: شناسایی با نام فروشگاه (fallback)', function () {
+	stub_reset();
+	$s = sellers( [
+		[ 'shop_id' => 0, 'shop_name' => 'فروشگاه من', 'price' => 700 ],
+		[ 'shop_id' => 5, 'shop_name' => 'رقیب', 'price' => 800 ],
+	] );
+	$r = WAPM_Torob::cheapest_competitor( $s, 0, WAPM_Torob::normalize( 'فروشگاه من' ) );
+	eq( 700.0, $r['ours'], 'تشخیص با نام' );
+	eq( 800.0, $r['competitor'], 'رقیب' );
+} );
+
+test( 'ترب/cheapest: بدون شناسه، competitor خالی می‌ماند (P1-1)', function () {
+	stub_reset();
+	$s = sellers( [
+		[ 'shop_id' => 1, 'shop_name' => 'الف', 'price' => 500 ],
+		[ 'shop_id' => 2, 'shop_name' => 'ب', 'price' => 600 ],
+	] );
+	$r = WAPM_Torob::cheapest_competitor( $s, 0 );
+	eq( null, $r['competitor'], 'رقیب محاسبه نمی‌شود' );
+	ok( ! $r['shop_known'], 'فروشگاه نامعلوم' );
+	eq( 2, $r['others'], 'ولی تعداد رقبا گزارش می‌شود' );
+} );
+
+test( 'ترب/cheapest: ما چند رکورد داریم → کمترین قیمت خودمان', function () {
+	stub_reset();
+	$s = sellers( [
+		[ 'shop_id' => 99, 'shop_name' => 'ما', 'price' => 900 ],
+		[ 'shop_id' => 99, 'shop_name' => 'ما', 'price' => 950 ],
+		[ 'shop_id' => 5, 'shop_name' => 'رقیب', 'price' => 2000 ],
+	] );
+	$r = WAPM_Torob::cheapest_competitor( $s, 99 );
+	eq( 900.0, $r['ours'], 'کمترین قیمت ما' );
+	eq( 2000.0, $r['competitor'], 'رقیب' );
+	eq( 1, $r['others'], 'دو رکورد ما رقیب شمرده نشد' );
+} );
+
+/* -------------------------------------------------------------------------
+ * ۱۱) ترب — قیمت هدف (هسته‌ی تصمیم، پرریسک‌ترین بخش)
+ * ---------------------------------------------------------------------- */
+
+test( 'ترب/هدف: زیربرش درصدی از ارزان‌ترین رقیب', function () {
+	stub_reset(); // تومان، ۰ اعشار
+	$s = settings( [ 'source' => 'torob', 'torob_undercut_mode' => 'percent', 'torob_undercut' => 1 ] );
+	eq( 990.0, WAPM_Price_Engine::torob_target_price( 1000.0, $s ), '۱۰۰۰ − ۱٪' );
+	eq( 950000.0, WAPM_Price_Engine::torob_target_price( 959596.0, $s ), 'زیربرش ۱٪ روی قیمت واقعی' );
+} );
+
+test( 'ترب/هدف: زیربرش مبلغ ثابت با تبدیل واحد', function () {
+	stub_reset( [ 'currency' => 'IRT' ] );
+	$s = settings( [ 'source' => 'torob', 'torob_undercut_mode' => 'fixed', 'torob_undercut' => 10000, 'torob_currency_unit' => 'toman' ] );
+	eq( 990000.0, WAPM_Price_Engine::torob_target_price( 1000000.0, $s ), '۱۰٬۰۰۰ تومان کمتر' );
+
+	// کاربر ریال وارد می‌کند ولی فروشگاه تومانی است → ۱۰٬۰۰۰ ریال = ۱٬۰۰۰ تومان.
+	$s = settings( [ 'source' => 'torob', 'torob_undercut_mode' => 'fixed', 'torob_undercut' => 10000, 'torob_currency_unit' => 'rial' ] );
+	eq( 999000.0, WAPM_Price_Engine::torob_target_price( 1000000.0, $s ), 'ورودی ریال در فروشگاه تومانی' );
+} );
+
+test( 'ترب/هدف: گرد کردن قبل از اعمال (به مضرب ۱۰۰۰)', function () {
+	stub_reset();
+	$s = settings( [ 'source' => 'torob', 'torob_undercut' => 1, 'round_mode' => 'nearest', 'round_base' => 1000 ] );
+	// ۹۹۰٬۵۰۰ × ۹۹٪ = ۹۸۰٬۵۹۵ → نزدیک‌ترین مضرب ۱۰۰۰ = ۹۸۱٬۰۰۰
+	eq( 981000.0, WAPM_Price_Engine::torob_target_price( 990500.0, $s ), 'گرد کردن روی قیمت هدف' );
+} );
+
+test( 'ترب/هدف: کف قیمت مانع صفرشدن می‌شود', function () {
+	stub_reset();
+	$s = settings( [ 'source' => 'torob', 'torob_undercut_mode' => 'percent', 'torob_undercut' => 100 ] );
+	eq( 1.0, WAPM_Price_Engine::torob_target_price( 1000.0, $s ), 'زیربرش ۱۰۰٪ → ۱ تومان' );
+} );
+
+test( 'ترب/هدف: حداقل قیمت تنظیم‌شده حاکم است', function () {
+	stub_reset();
+	$s = settings( [ 'source' => 'torob', 'torob_undercut' => 1, 'min_price' => 500000 ] );
+	eq( 500000.0, WAPM_Price_Engine::torob_target_price( 400000.0, $s ), 'قیمت هدف زیر کف → کف' );
+} );
+
+test( 'ترب/هدف: رقیب نامعلوم → null (نه قیمت صفر)', function () {
+	stub_reset();
+	$s = settings( [ 'source' => 'torob' ] );
+	eq( null, WAPM_Price_Engine::torob_target_price( 0.0, $s ), 'صفر' );
+	eq( null, WAPM_Price_Engine::torob_target_price( -5.0, $s ), 'منفی' );
+} );
+
+test( 'ترب/هدف: منبع پیش‌فرض manual است', function () {
+	stub_reset();
+	eq( 'manual', settings( [] )['source'], 'پیش‌فرض' );
+	eq( true, WAPM_Price_Engine::uses_torob( settings( [ 'source' => 'torob' ] ) ), 'torob' );
+	eq( false, WAPM_Price_Engine::uses_torob( settings( [] ) ), 'manual' );
+} );
+
+test( 'ترب/هدف: صفرِ عمدی کاربر برای زیربرش حفظ می‌شود', function () {
+	stub_reset();
+	// پیش‌فرض ۱٪ است، ولی «۰» یک انتخاب معتبر است (دقیقاً برابر رقیب).
+	$s = settings( [ 'source' => 'torob', 'torob_undercut' => 0 ] );
+	eq( 0.0, $s['torob_undercut'], '۰ حفظ شد' );
+	eq( 1000.0, WAPM_Price_Engine::torob_target_price( 1000.0, $s ), 'برابر رقیب' );
 } );
 
 /* -------------------------------------------------------------------------
