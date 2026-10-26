@@ -233,6 +233,48 @@ class WAPM_Product_Handler {
 	}
 
 	/**
+	 * والدهای محصولاتی که SKU یکی از واریشن‌هایشان با عبارت می‌خواند.
+	 *
+	 * چرا لازم است: wc_get_products( [ 'sku' => … ] ) فقط روی post_type=product
+	 * جستجو می‌کند و SKU واریشن‌ها (که روی product_variation است) را پیدا نمی‌کند؛
+	 * نتیجه این بود که جستجوی SKU سایز/رنگ در لیست و در انتخابگر محصول «چیزی پیدا
+	 * نشد» می‌داد. چون لیست و «محصولات انتخابی» بر پایه‌ی محصول والد کار می‌کنند،
+	 * واریشنِ منطبق به والدش نگاشت می‌شود.
+	 *
+	 * @return int[] شناسه‌ی والدها (یکتا)
+	 */
+	public static function parent_ids_by_variation_sku( string $term, int $limit = 200 ): array {
+		$term = trim( $term );
+		if ( '' === $term ) {
+			return [];
+		}
+
+		$variation_ids = get_posts( [
+			'post_type'        => 'product_variation',
+			'post_status'      => 'publish',
+			'posts_per_page'   => $limit,
+			'fields'           => 'ids',
+			'no_found_rows'    => true,
+			'suppress_filters' => true,
+			'meta_query'       => [ [
+				'key'     => '_sku',
+				'value'   => $term,
+				'compare' => 'LIKE',
+			] ],
+		] );
+
+		$parents = [];
+		foreach ( (array) $variation_ids as $vid ) {
+			$parent_id = (int) wp_get_post_parent_id( (int) $vid );
+			if ( $parent_id ) {
+				$parents[ $parent_id ] = $parent_id;
+			}
+		}
+
+		return array_values( $parents );
+	}
+
+	/**
 	 * جستجوی محصول بر اساس نام یا SKU (برای انتخاب دستی).
 	 */
 	public static function search_products( string $term, int $limit = 20 ): array {
@@ -256,7 +298,10 @@ class WAPM_Product_Handler {
 			'posts_per_page' => $limit,
 		] );
 
-		foreach ( array_merge( (array) $sku_ids, $name_query->posts ) as $id ) {
+		// SKU واریشن‌ها → والدشان (وگرنه جستجوی SKU سایز/رنگ چیزی پیدا نمی‌کرد).
+		$variation_parents = self::parent_ids_by_variation_sku( $term, $limit );
+
+		foreach ( array_merge( (array) $sku_ids, $variation_parents, $name_query->posts ) as $id ) {
 			$id = (int) $id;
 			if ( isset( $seen[ $id ] ) ) {
 				continue;

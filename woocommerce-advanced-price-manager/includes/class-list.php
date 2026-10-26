@@ -69,7 +69,15 @@ class WAPM_List {
 				'posts_per_page' => -1,
 			] );
 
-			$post_in = array_values( array_unique( array_map( 'intval', array_merge( (array) $sku_ids, $title_query->posts ) ) ) );
+			// SKU واریشن‌ها: به والدشان نگاشت می‌شود تا ردیف‌های همان واریشن در لیست
+			// نمایش داده شوند. (پیش‌تر جستجوی SKU سایز/رنگ هیچ نتیجه‌ای نداشت.)
+			$variation_parents = WAPM_Product_Handler::parent_ids_by_variation_sku( $f['search'] );
+
+			$post_in = array_values( array_unique( array_map( 'intval', array_merge(
+				(array) $sku_ids,
+				$variation_parents,
+				$title_query->posts
+			) ) ) );
 		}
 
 		if ( $f['on_sale'] ) {
