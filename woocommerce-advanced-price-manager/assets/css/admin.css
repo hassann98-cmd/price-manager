@@ -813,8 +813,18 @@
 	background: var(--wapm-danger-50);
 }
 
-/* نوار عملیات گروهی */
+/*
+ * نوار عملیات گروهی.
+ * نمایش/مخفی با کلاس انجام می‌شود، نه jQuery .toggle()؛ چون .toggle() روی
+ * یک flex، استایل inline «display:block» می‌گذاشت و چیدمان نوار می‌شکست.
+ */
 #wapm-list-bulk-bar.wapm-bulkbar {
+	display: none;
+}
+
+#wapm-list-bulk-bar.wapm-bulkbar.is-visible {
+	display: flex;
+
 	position: sticky;
 	top: 32px; /* زیر نوار مدیریت وردپرس */
 	z-index: 25;

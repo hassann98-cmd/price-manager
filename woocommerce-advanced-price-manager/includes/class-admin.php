@@ -345,7 +345,7 @@ class WAPM_Admin {
 					</div>
 
 					<!-- نوار عملیات گروهی -->
-					<div id="wapm-list-bulk-bar" class="wapm-bulkbar p-3 border-b border-slate-100 bg-primary-50 flex flex-wrap items-center gap-3" style="display:none">
+					<div id="wapm-list-bulk-bar" class="wapm-bulkbar p-3 border-b border-slate-100 bg-primary-50 flex flex-wrap items-center gap-3">
 						<span class="wapm-bulkbar__count">
 							<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
 							<b id="wapm-list-selected-count">0</b> <?php esc_html_e( 'مورد انتخاب شده', 'wapm' ); ?>

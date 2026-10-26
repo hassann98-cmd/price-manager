@@ -1499,7 +1499,7 @@
 	function updateBulkBar() {
 		var count = Object.keys(listState.selected).length;
 		$('#wapm-list-selected-count').text(count);
-		$('#wapm-list-bulk-bar').toggle(count > 0);
+		$('#wapm-list-bulk-bar').toggleClass('is-visible', count > 0);
 	}
 
 	/** ردیف‌های انتخاب‌شده را با نوار رنگی مشخص می‌کند (نه فقط چک‌باکس). */
