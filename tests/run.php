@@ -1291,6 +1291,77 @@ test( 'فیلتر/ذخیره: ورودی نامطمئن (رشته) کرش نمی
 } );
 
 /* -------------------------------------------------------------------------
+ * ۱۷) حذف افزونه — هیچ کلید داده‌ای جا نمی‌ماند
+ * ---------------------------------------------------------------------- */
+
+/**
+ * فهرست کلیدهای داده‌ای را از سورس استخراج می‌کند.
+ *
+ * چرا تست: `uninstall.php` نمی‌تواند از کلاس‌ها استفاده کند (وردپرس آن را قبل از
+ * بارگذاری افزونه اجرا می‌کند)، پس کلیدها آن‌جا رشته‌ی خام‌اند و با هر تغییر نام
+ * ثابت، بی‌صدا از پاک‌سازی عقب می‌مانند. این تست همان عقب‌ماندگی را می‌گیرد.
+ *
+ * @return array{options:string[],metas:string[]}
+ */
+function wapm_scan_data_keys(): array {
+	$root    = __DIR__ . '/../woocommerce-advanced-price-manager';
+	$files   = array_merge( glob( $root . '/includes/*.php' ) ?: [], [ $root . '/woocommerce-advanced-price-manager.php' ] );
+	$options = [];
+	$metas   = [];
+
+	foreach ( $files as $file ) {
+		$code = (string) file_get_contents( $file );
+
+		if ( preg_match_all( "/const (?:OPTION|OPT|USER_META)_[A-Z0-9_]*\s*=\s*'([^']+)'/", $code, $m ) ) {
+			$options = array_merge( $options, $m[1] );
+		}
+		if ( preg_match_all( "/const META_[A-Z0-9_]*\s*=\s*'([^']+)'/", $code, $m ) ) {
+			$metas = array_merge( $metas, $m[1] );
+		}
+		if ( preg_match_all( "/(?:get|update|delete)_option\(\s*'(wapm_[a-z0-9_]+)'/", $code, $m ) ) {
+			$options = array_merge( $options, $m[1] );
+		}
+	}
+
+	return [
+		'options' => array_values( array_unique( $options ) ),
+		'metas'   => array_values( array_unique( $metas ) ),
+	];
+}
+
+test( 'حذف افزونه: همه‌ی گزینه‌ها و متاهای شناخته‌شده پاک می‌شوند', function () {
+	$root = __DIR__ . '/../woocommerce-advanced-price-manager';
+	ok( file_exists( $root . '/uninstall.php' ), 'uninstall.php وجود دارد' );
+
+	$uninstall = (string) file_get_contents( $root . '/uninstall.php' );
+	$keys      = wapm_scan_data_keys();
+
+	ok( count( $keys['options'] ) > 8, 'فهرست گزینه‌ها پیدا شد' );
+	ok( count( $keys['metas'] ) > 10, 'فهرست متاها پیدا شد' );
+
+	$missing = [];
+	foreach ( array_merge( $keys['options'], $keys['metas'] ) as $key ) {
+		if ( false === strpos( $uninstall, "'" . $key . "'" ) ) {
+			$missing[] = $key;
+		}
+	}
+
+	eq( [], $missing, 'کلید جامانده در uninstall.php' );
+} );
+
+test( 'حذف افزونه: جدول‌ها، کرون و نگهبان WP_UNINSTALL_PLUGIN', function () {
+	$uninstall = (string) file_get_contents( __DIR__ . '/../woocommerce-advanced-price-manager/uninstall.php' );
+
+	ok( false !== strpos( $uninstall, "defined( 'WP_UNINSTALL_PLUGIN' )" ), 'گارد مستقیم‌اجرا' );
+	ok( false !== strpos( $uninstall, 'wapm_price_log' ), 'جدول تاریخچه‌ی قیمت' );
+	ok( false !== strpos( $uninstall, 'wapm_stock_log' ), 'جدول تاریخچه‌ی موجودی' );
+	ok( false !== strpos( $uninstall, "wp_clear_scheduled_hook( 'wapm_run_schedules' )" ), 'کرون' );
+	ok( false !== strpos( $uninstall, 'delete_metadata( \'user\', 0' ), 'متای کاربران (فیلترهای ذخیره‌شده)' );
+	ok( false !== strpos( $uninstall, 'wapm_keep_data_on_uninstall' ), 'راه حفظ داده' );
+	ok( false !== strpos( $uninstall, 'is_multisite()' ), 'مالتی‌سایت' );
+} );
+
+/* -------------------------------------------------------------------------
  * نتیجه
  * ---------------------------------------------------------------------- */
 
