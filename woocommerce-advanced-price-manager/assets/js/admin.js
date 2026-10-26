@@ -2627,6 +2627,7 @@
 		if (row.candidate) {
 			return 'مبهم — نام مشابه چند محصول' + (row.score ? ' (شباهت ' + Math.round(row.score * 100) + '٪)' : '');
 		}
+		if (row.how === 'occupied') { return 'همین عنوان در ووکامرس به محصول دیگری در ترب وصل است — دستی بررسی کنید'; }
 		if (row.how === 'no_match') { return 'هیچ محصول مشابهی پیدا نشد'; }
 		if (row.how === 'sku_mismatch') { return 'کد/SKU پیدا شد ولی نام نمی‌خواند'; }
 		return 'به‌طور خودکار تطبیق نخورد';

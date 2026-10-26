@@ -401,7 +401,13 @@ class WAPM_Torob {
 		if ( isset( $index[ $norm ] ) ) {
 			$ids = array_values( array_unique( $index[ $norm ] ) );
 			if ( 1 === count( $ids ) ) {
-				return [ 'id' => (int) $ids[0], 'how' => 'exact', 'score' => 1.0, 'ambiguous' => false, 'candidate' => 0 ];
+				// حتی با عنوان دقیقاً یکسان، اگر آن محصول به محصول دیگری در ترب
+				// وصل است، آن را نمی‌دزدیم؛ وگرنه همگام‌سازی بعدی، prk محصول قبلی
+				// را بازنویسی می‌کرد و داده‌ی دو محصول قاطی می‌شد.
+				if ( ! self::has_prk( (int) $ids[0] ) ) {
+					return [ 'id' => (int) $ids[0], 'how' => 'exact', 'score' => 1.0, 'ambiguous' => false, 'candidate' => 0 ];
+				}
+				return [ 'id' => 0, 'how' => 'occupied', 'score' => 1.0, 'ambiguous' => false, 'candidate' => (int) $ids[0] ];
 			}
 			// چند محصول با عنوان یکسان: هر کدام به prk دیگری وصل نباشند کاندیدند.
 			$free = array_values( array_filter( $ids, fn( $id ) => ! self::has_prk( (int) $id ) ) );
