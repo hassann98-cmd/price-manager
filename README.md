@@ -144,6 +144,7 @@ CI (`.github/workflows/ci.yml`) روی هر push و PR: لینت PHP روی ۸.�
 | [`docs/CODE-REVIEW-fa.md`](docs/CODE-REVIEW-fa.md) | بازبینی فنی، باگ‌های پیدا/رفع‌شده، تصمیم‌های معماری، نقشه راه |
 | [`docs/TESTING-fa.md`](docs/TESTING-fa.md) | آزمون‌های دستی هر قابلیت (چک‌لیست) |
 | [`docs/TOROB-API-fa.md`](docs/TOROB-API-fa.md) | قرارداد API ترب، محدودیت نرخ، چرا بوکمارکلت |
+| [`CHANGELOG.md`](CHANGELOG.md) | فهرست تغییرات نسخه‌ها |
 | [`docs/ui-preview.html`](docs/ui-preview.html) | پیش‌نمایش ظاهر بدون نصب وردپرس |
 
 ---
