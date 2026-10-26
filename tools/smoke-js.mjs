@@ -273,6 +273,11 @@ $.post = function (url, data) {
 	const action = String((data && data.action) || '').replace(/^wapm_/, '');
 	let payload = {};
 
+	// ثبت تماس‌ها: بعضی باگ‌ها «درخواست اضافی/با شناسه‌ی خالی» هستند و فقط با
+	// شمردن درخواست‌ها دیده می‌شوند (مثل پیام «محصول یافت نشد.» بعد از ذخیره‌ی موفق).
+	window.__wapmCalls = window.__wapmCalls || [];
+	window.__wapmCalls.push({ action: action, data: Object.assign({}, data || {}) });
+
 	if (action === 'list_products') {
 		payload = { rows: [row], pages: 1, total: 1, paged: 1 };
 	} else if (action === 'list_saved_filters') {
@@ -289,6 +294,12 @@ $.post = function (url, data) {
 				price_type: 'regular', old: 120000, new: 99000, diff: -21000, percent: -17.5, warn: false,
 			}], changed: 0, batch_id: '' }
 			: { dry_run: false, skipped: [], rows: [], changed: 1, batch_id: 'align_test' };
+	} else if (action === 'update_field') {
+		// ردیف تازه بعد از ذخیره (همان چیزی که سرور برمی‌گرداند).
+		payload = { row: Object.assign({}, row, {
+			regular_price: String((data && data.value) || ''),
+			regular_price_fmt: String((data && data.value) || ''),
+		}) };
 	} else if (action === 'get_terms') {
 		payload = [{ id: 1, text: 'برند الف' }, { id: 2, text: 'برند ب' }];
 	} else if (action === 'count_targets') {
@@ -384,6 +395,48 @@ try {
 }
 ok(String($('#wapm-list-selected-count').text()) === '1', 'شمارنده‌ی انتخاب به‌روز شد', $('#wapm-list-selected-count').text());
 ok($('#wapm-list-bulk-bar').hasClass('is-visible'), 'نوار عملیات گروهی نمایان شد');
+
+console.log('— ویرایش inline قیمت (حالت ساده)');
+try {
+	UI.loadProductList(1);
+	window.__wapmCalls.length = 0;
+
+	const $cell = $('#wapm-list-tbody .wapm-price-display').first();
+	ok($cell.length === 1, 'سلول قیمت پیدا شد');
+	$cell.trigger('click');
+
+	const $input = $('#wapm-list-tbody input.wapm-price-input');
+	ok($input.length === 1, 'سلول به ورودی تبدیل شد');
+	ok(String($input.attr('data-id')) === '101', 'ورودی شناسه‌ی محصول را دارد', String($input.attr('data-id')));
+	ok($input.hasClass('wapm-price-input--simple'), 'ورودی حالت ساده علامت خورده است');
+
+	$input.val('150000').trigger('change').trigger('blur');
+	const calls = window.__wapmCalls.filter((c) => c.action === 'update_field');
+	ok(calls.length === 1, 'دقیقاً یک درخواست ذخیره رفت', String(calls.length));
+	ok(calls.length === 1 && String(calls[0].data.product_id) === '101', 'شناسه‌ی درست در درخواست', calls.length ? String(calls[0].data.product_id) : '—');
+	ok(calls.length === 1 && String(calls[0].data.value) === '150000', 'مقدار تازه در درخواست');
+	ok($('#wapm-list-tbody tr[data-row-id="101"]').length === 1, 'ردیف بعد از ذخیره سر جایش است');
+
+	// مقدار بدون تغییر ⇒ هیچ درخواستی نباید برود.
+	window.__wapmCalls.length = 0;
+	$('#wapm-list-tbody .wapm-price-display').first().trigger('click');
+	$('#wapm-list-tbody input.wapm-price-input').trigger('blur');
+	ok(window.__wapmCalls.filter((c) => c.action === 'update_field').length === 0, 'بدون تغییر، درخواستی نمی‌رود', String(window.__wapmCalls.length));
+
+	// Escape ⇒ بازگشت بدون ذخیره.
+	window.__wapmCalls.length = 0;
+	$('#wapm-list-tbody .wapm-price-display').first().trigger('click');
+	const $esc = $('#wapm-list-tbody input.wapm-price-input');
+	$esc.val('999');
+	$esc.trigger($.Event('keydown', { key: 'Escape' }));
+	ok(window.__wapmCalls.filter((c) => c.action === 'update_field').length === 0, 'Escape ذخیره نمی‌کند');
+
+	// انتخاب قبلی برای بخش‌های بعدی (loadProductList انتخاب‌ها را پاک می‌کند).
+	$('#wapm-list-tbody .wapm-row-check').first().prop('checked', true).trigger('change');
+	window.__wapmCalls.length = 0;
+} catch (error) {
+	ok(false, 'ویرایش inline سالم کار کرد', error.message);
+}
 
 console.log('— کشوها');
 try {
