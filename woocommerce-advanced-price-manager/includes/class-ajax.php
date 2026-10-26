@@ -41,6 +41,8 @@ class WAPM_Ajax {
 			'stock_logs',
 			'stock_undo',
 			'stock_import',
+			'price_preview_ids',
+			'price_apply_ids',
 			'count_targets',
 			'preview',
 			'dry_run',
@@ -225,6 +227,133 @@ class WAPM_Ajax {
 		}
 
 		wp_send_json_error( [ 'message' => __( 'عملیات نامعتبر است.', 'wapm' ) ] );
+	}
+
+	/* ---------- تغییر قیمت انتخاب‌شده‌ها (از نوار bulk لیست) ---------- */
+
+	/**
+	 * شناسه‌های ارسالی از لیست، پاک‌شده و محدودشده.
+	 *
+	 * @return int[]
+	 */
+	private function posted_ids( int $limit = 200 ): array {
+		$raw = (array) ( $_POST['ids'] ?? [] );
+
+		return array_slice(
+			array_values( array_unique( array_filter( array_map( 'absint', $raw ) ) ) ),
+			0,
+			$limit
+		);
+	}
+
+	/**
+	 * پیش‌نمایش تغییر قیمت برای محصولات انتخاب‌شده — بدون هیچ نوشتنی.
+	 *
+	 * چرا جدا از `preview` (که فیلترمحور است): در لیست، کاربر دقیقاً همان ردیف‌هایی
+	 * را انتخاب کرده که می‌بیند؛ اگر بین پیش‌نمایش و اعمال، فیلتر یا صفحه عوض شود
+	 * نباید محصول دیگری تغییر کند.
+	 */
+	public function price_preview_ids(): void {
+		$this->guard();
+
+		$ids = $this->posted_ids();
+		if ( ! $ids ) {
+			wp_send_json_error( [ 'message' => __( 'هیچ محصولی انتخاب نشده است.', 'wapm' ) ] );
+		}
+
+		$settings = $this->get_settings();
+		$rows     = [];
+		$skipped  = 0;
+		$total    = 0;
+		$warn     = 0;
+
+		foreach ( $ids as $id ) {
+			$product = wc_get_product( $id );
+			if ( ! $product ) {
+				$skipped++;
+				continue;
+			}
+
+			$product_rows = WAPM_Price_Engine::preview_product( $id, $settings );
+
+			if ( empty( $product_rows ) ) {
+				$skipped++;
+				continue;
+			}
+
+			foreach ( $product_rows as $row ) {
+				$total++;
+				if ( ! empty( $row['warn'] ) ) {
+					$warn++;
+				}
+
+				// سقف پاسخ: محصول متغیر با ۵۰ واریشن می‌تواند پاسخ را چند صد کیلوبایت
+				// کند. شمارش کامل برمی‌گردد، فقط ردیف‌های نمایشی محدود می‌شوند.
+				if ( count( $rows ) < 300 ) {
+					$rows[] = $row;
+				}
+			}
+		}
+
+		wp_send_json_success( [
+			'rows'      => $rows,
+			'rows_total' => $total,
+			'products'  => count( $ids ),
+			'skipped'   => $skipped,
+			'warn'      => $warn,
+			'truncated' => $total > count( $rows ),
+			'settings'  => $settings,
+		] );
+	}
+
+	/**
+	 * اعمال تغییر قیمت روی محصولات انتخاب‌شده، صفحه‌به‌صفحه (۲۵ محصول در هر درخواست).
+	 *
+	 * batch_id از کلاینت می‌آید تا کل ویرایش (چند درخواست) یک Batch و یک Undo داشته باشد.
+	 */
+	public function price_apply_ids(): void {
+		$this->guard();
+
+		$ids = $this->posted_ids();
+		if ( ! $ids ) {
+			wp_send_json_error( [ 'message' => __( 'هیچ محصولی انتخاب نشده است.', 'wapm' ) ] );
+		}
+
+		if ( function_exists( 'wc_set_time_limit' ) ) {
+			wc_set_time_limit( 120 );
+		}
+
+		$settings = $this->get_settings();
+		$page     = max( 1, intval( $_POST['page'] ?? 1 ) );
+		$per      = 25;
+		$chunk    = array_slice( $ids, ( $page - 1 ) * $per, $per );
+
+		if ( ! $chunk ) {
+			wp_send_json_error( [ 'message' => __( 'صفحه‌ی نامعتبر.', 'wapm' ) ] );
+		}
+
+		$batch_id = sanitize_key( wp_unslash( $_POST['batch_id'] ?? '' ) );
+		$batch_id = $batch_id ? $batch_id : 'bulk_' . gmdate( 'Ymd_His' ) . '_' . wp_generate_password( 6, false );
+
+		$changed = 0;
+		foreach ( $chunk as $id ) {
+			$changed += WAPM_Price_Engine::apply_to_product( $id, $settings, $batch_id, 'bulk' );
+		}
+
+		$done = ( $page * $per ) >= count( $ids );
+
+		if ( $done && function_exists( 'wc_delete_product_transients' ) ) {
+			wc_delete_product_transients();
+		}
+
+		wp_send_json_success( [
+			'batch_id'  => $batch_id,
+			'page'      => $page,
+			'processed' => count( $chunk ),
+			'changed'   => $changed,
+			'total'     => count( $ids ),
+			'done'      => $done,
+		] );
 	}
 
 	/* ---------- موجودی ---------- */
