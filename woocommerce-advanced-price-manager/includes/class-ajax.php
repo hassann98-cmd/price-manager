@@ -647,7 +647,7 @@ class WAPM_Ajax {
 		}
 
 		if ( ! WAPM_Torob::link_product( $product_id, $prk, $name ) ) {
-			wp_send_json_error( [ 'message' => __( 'اتصال انجام نشد؛ محصول یا شناسه معتبر نیست.', 'wapm' ) ] );
+			wp_send_json_error( [ 'message' => __( 'اتصال انجام نشد؛ محصول یا شناسه معتبر نیست. واریشن‌ها را نمی‌شود مستقیم به ترب وصل کرد — والد را انتخاب کنید.', 'wapm' ) ] );
 		}
 
 		$product = wc_get_product( $product_id );

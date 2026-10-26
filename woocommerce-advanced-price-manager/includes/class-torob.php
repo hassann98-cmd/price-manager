@@ -561,6 +561,13 @@ class WAPM_Torob {
 			return false;
 		}
 
+		// ترب محصول را در سطح والد مقایسه می‌کند (کمینه‌ی قیمت واریشن‌ها). اتصال
+		// prk به یک واریشن، هم داده‌ی مقایسه را بی‌معنی می‌کند و هم باعث می‌شود
+		// همگام‌سازی بعدی همان ردیف را «وصل‌شده» ببیند و رد کند.
+		if ( $product->is_type( 'variation' ) ) {
+			return false;
+		}
+
 		// prk یکتا است: اگر محصول دیگری به همین prk وصل است، اول جدا شود.
 		$existing = self::find_product_by_prk( $prk );
 		if ( $existing && $existing !== $product_id ) {
@@ -934,8 +941,25 @@ class WAPM_Torob {
 			}
 
 			$product = wc_get_product( $product_id );
-			if ( ! $product || $product->is_type( 'variation' ) ) {
+			if ( ! $product ) {
 				$stats['skipped']++;
+				continue;
+			}
+
+			if ( $product->is_type( 'variation' ) ) {
+				// به‌جای ردِ بی‌صدا، کاربر باید بداند چرا وصل نمی‌شود و والد را
+				// انتخاب کند.
+				self::add_unmatched( [
+					'name'      => $name,
+					'prk'       => $prk,
+					'candidate' => (int) $product->get_parent_id(),
+					'score'     => 0.0,
+					'how'       => 'variation',
+					'sellers'   => 0,
+					'price'     => null,
+					'seen'      => $checked,
+				] );
+				$stats['unmatched']++;
 				continue;
 			}
 
