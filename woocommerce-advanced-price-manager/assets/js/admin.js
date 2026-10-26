@@ -45,6 +45,49 @@
 			.replace(/'/g, '&#39;');
 	}
 
+	/**
+	 * اعلان گوشه‌ی صفحه به‌جای window.alert.
+	 *
+	 * چرا: alert صفحه را قفل می‌کند، پیام قبلی را پاک می‌کند و در عملیات
+	 * مرحله‌ای (مثل تغییر گروهی) کاربر نمی‌تواند چیزی را ببیند. این اعلان
+	 * بسته می‌شود، دکمه‌ی اقدام دارد (مثل «بازگردانی») و پیام‌ها روی هم می‌مانند.
+	 *
+	 * @param {string} message
+	 * @param {string} type success|error|warning|info
+	 * @param {{actionLabel:string, action:Function, ttl:number}=} opts
+	 */
+	function wapmToast(message, type, opts) {
+		opts = opts || {};
+		var $box = $('#wapm-toasts');
+		if (!$box.length) { window.alert(message); return null; }
+
+		var icons = { success: '✓', error: '!', warning: '⚠', info: 'i' };
+		var $toast = $('<div class="wapm-toast wapm-toast--' + esc(type || 'info') + '">' +
+			'<span class="wapm-toast__icon">' + (icons[type] || icons.info) + '</span>' +
+			'<div class="wapm-toast__body"><div>' + esc(message) + '</div></div>' +
+			'</div>');
+
+		function close() {
+			$toast.addClass('is-hiding');
+			window.setTimeout(function () { $toast.remove(); }, 200);
+		}
+
+		if (opts.actionLabel && typeof opts.action === 'function') {
+			var $btn = $('<button type="button" class="wapm-toast__btn"></button>').text(opts.actionLabel);
+			$btn.on('click', function () { opts.action(); close(); });
+			$('<div class="wapm-toast__actions"></div>').append($btn).appendTo($toast.find('.wapm-toast__body'));
+		}
+
+		$toast.on('click', function (e) {
+			if (!$(e.target).is('button')) { close(); }
+		});
+
+		$box.append($toast);
+		window.setTimeout(close, opts.ttl || (type === 'error' ? 9000 : 6000));
+
+		return $toast;
+	}
+
 	/* ---------------- تب‌ها ---------------- */
 
 	$('.wapm-tabs .nav-tab').on('click', function (e) {
@@ -102,11 +145,18 @@
 
 		// نمایش/عدم نمایش واحد پول برای حالت مبلغ ثابت
 		var $settings = $box.closest('.wapm-tab-content').find('.wapm-settings-fields[data-prefix="' + $box.data('prefix') + '"]');
-		$settings.find('.wapm-mode').on('change', function () {
-			var fixed = $settings.find('.wapm-mode:checked').val() === 'fixed';
-			$settings.find('.wapm-currency-unit').toggle(fixed);
-			$settings.find('.wapm-amount-unit-percent').toggle(!fixed);
-		});
+		function syncModeUi() {
+			var mode = $settings.find('.wapm-mode:checked').val();
+			// «مبلغ ثابت» و «قیمت مطلق» هر دو عدد پول می‌گیرند؛ درصد نه.
+			var money = (mode === 'fixed' || mode === 'absolute');
+			$settings.find('.wapm-currency-unit').toggle(money);
+			$settings.find('.wapm-amount-unit-percent').toggle(!money);
+			// در قیمت مطلق، «جهت» بی‌معنی است (همه به همان عدد می‌رسند).
+			$settings.find('.wapm-direction-row').toggle(mode !== 'absolute');
+		}
+
+		$settings.find('.wapm-mode').on('change', syncModeUi);
+		syncModeUi();
 	}
 
 	/**
@@ -480,7 +530,7 @@
 
 		ajax('count_targets', { filters: JSON.stringify(filters) }).done(function (res) {
 			var count = res.success ? res.data.count : 0;
-				if (!count) { window.alert(WAPM.i18n.no_targets); return; }
+				if (!count) { wapmToast(WAPM.i18n.no_targets, 'warning'); return; }
 				if (!window.confirm(WAPM.i18n.confirm_apply.replace('%d', count))) { return; }
 				// اگر در پیش‌نمایش، قیمت‌های پرخطر (افت بیش از ۹۰٪) دیده شده، یک تایید
 				// صریح دیگر بگیر تا اعمال، ناخواسته نباشد.
@@ -510,10 +560,10 @@
 		return ajax('rollback', { batch_id: batchId, force: force ? 1 : 0 })
 			.done(function (res) {
 				if (!res.success) {
-					window.alert((res.data && res.data.message) || WAPM.i18n.error);
+					wapmToast((res.data && res.data.message) || WAPM.i18n.error, 'error');
 					return;
 				}
-				window.alert(res.data.message);
+				wapmToast(res.data.message, 'success');
 
 				var conflicts = res.data.conflicts || [];
 				if (conflicts.length && !force) {
@@ -525,7 +575,7 @@
 				}
 				if ($('#wapm-tab-history').is(':visible')) { loadHistory(1); }
 			})
-			.fail(function () { window.alert(WAPM.i18n.error); })
+			.fail(function () { wapmToast(WAPM.i18n.error, 'error'); })
 			.always(function () { if ($btn) { $btn.prop('disabled', false); } });
 	}
 
@@ -596,9 +646,9 @@
 				$('#wapm-rule-id').val('');
 				$('#wapm-rule-title').val('');
 				$('#wapm-rule-enabled').prop('checked', true);
-				window.alert(WAPM.i18n.done);
+				wapmToast(WAPM.i18n.done, 'success');
 			} else {
-				window.alert((res.data && res.data.message) || WAPM.i18n.error);
+				wapmToast((res.data && res.data.message) || WAPM.i18n.error, 'error');
 			}
 		});
 	});
@@ -676,16 +726,16 @@
 			filters: readFilters('schedule'),
 			settings: readSettings('schedule')
 		};
-		if (!schedule.start) { window.alert('تاریخ شروع الزامی است.'); return; }
+		if (!schedule.start) { wapmToast('تاریخ شروع الزامی است.', 'warning'); return; }
 		ajax('save_schedule', { schedule: JSON.stringify(schedule) }).done(function (res) {
 			if (res.success) {
 				state.schedules = res.data.schedules;
 				renderSchedules();
 				$('#wapm-schedule-id').val('');
 				$('#wapm-schedule-title').val('');
-				window.alert(WAPM.i18n.done);
+				wapmToast(WAPM.i18n.done, 'success');
 			} else {
-				window.alert((res.data && res.data.message) || WAPM.i18n.error);
+				wapmToast((res.data && res.data.message) || WAPM.i18n.error, 'error');
 			}
 		});
 	});
@@ -749,9 +799,9 @@
 		pending: {}
 	};
 	var listSearchTimer = null;
-	var LIST_COLS = 14;
+	var LIST_COLS = 15;
 	var COLUMN_STORAGE_KEY = 'wapm_list_visible_columns';
-	var ALL_COLUMNS = ['image', 'regular_price', 'sale_price', 'manage_stock', 'stock_qty', 'stock_status', 'categories', 'brand', 'torob', 'id', 'sku'];
+	var ALL_COLUMNS = ['image', 'regular_price', 'sale_price', 'manage_stock', 'stock_qty', 'stock_status', 'categories', 'brand', 'torob', 'id', 'sku', 'last_change'];
 
 	function loadColumnPrefs() {
 		try {
@@ -774,13 +824,8 @@
 	}
 
 	function stockBadge(status, label) {
-		var cls = {
-			instock: 'background:#ecfdf5;color:#059669;border-color:#a7f3d0',
-			outofstock: 'background:#fef2f2;color:#dc2626;border-color:#fecaca',
-			onbackorder: 'background:#fffbeb;color:#b45309;border-color:#fde68a'
-		};
-		return '<span style="' + (cls[status] || 'background:#f8fafc;color:#475569;border-color:#e2e8f0') +
-			'" class="px-3 py-1 rounded-full text-[10px] font-black border inline-block">' + esc(label) + '</span>';
+		var map = { instock: 'cheaper', outofstock: 'pricier', onbackorder: 'stale' };
+		return '<span class="wapm-pill wapm-pill--' + (map[status] || 'muted') + '">' + esc(label) + '</span>';
 	}
 
 	function priceCellHtml(r, field) {
@@ -791,19 +836,23 @@
 		// محصول متغیر: قیمت از واریشن‌ها می‌آید. ویرایش قیمت والد بی‌اثر است،
 		// پس فقط محدوده‌ی قیمت واریشن‌ها را نشان می‌دهیم (غیرقابل ویرایش).
 		if (r.is_variable) {
-			var hint = '<span style="font-size:9px;color:#94a3b8;display:block">محدوده‌ی واریشن‌ها</span>';
 			if (field === 'sale_price') {
 				return '<span class="text-slate-300 text-[11px]" title="قیمت ویژه‌ی هر واریشن را در ردیف همان واریشن ویرایش کنید">—</span>';
 			}
-			return '<div class="text-[11px] font-bold text-slate-500" style="line-height:1.6">' +
-				(r.price_range ? esc(r.price_range) : '—') + hint + '</div>';
+			return '<div class="wapm-price-muted">' + (r.price_range ? esc(r.price_range) : '—') +
+				'<span style="display:block">محدوده‌ی واریشن‌ها</span></div>';
 		}
 
 		if (listState.viewMode === 'excel') {
-			return '<input type="number" step="any" min="0" class="wapm-cell-input" style="width:100%;height:34px;padding:0 8px;border-radius:8px;border:1px solid #e2e8f0;font-size:12px;font-weight:700" ' +
+			return '<input type="number" step="any" min="0" class="wapm-price-input" ' +
 				'data-id="' + r.id + '" data-field="' + field + '" value="' + esc(val) + '">';
 		}
-		return '<div class="wapm-cell-display cursor-pointer px-2 py-1.5 rounded-lg hover:bg-slate-50 text-[12px] font-black text-primary-700" ' +
+
+		var cls = 'wapm-price-display';
+		if (field === 'sale_price') { cls += ' wapm-price-display--sale'; }
+		if (!fmtVal) { cls += ' wapm-price-display--empty'; }
+
+		return '<div class="' + cls + '" ' +
 			'data-id="' + r.id + '" data-field="' + field + '" data-value="' + esc(val) + '">' + (fmtVal || '—') + '</div>';
 	}
 
@@ -813,19 +862,22 @@
 			return '<span class="text-slate-300 text-[11px]">—</span>';
 		}
 		if (listState.viewMode === 'excel') {
-			return '<input type="number" step="1" min="0" class="wapm-cell-input" style="width:100%;height:34px;padding:0 8px;border-radius:8px;border:1px solid #e2e8f0;font-size:12px;font-weight:700" ' +
+			return '<input type="number" step="1" min="0" class="wapm-price-input" ' +
 				'data-id="' + r.id + '" data-field="stock_quantity" value="' + esc(val) + '">';
 		}
-		return '<div class="wapm-cell-display cursor-pointer px-2 py-1.5 rounded-lg hover:bg-slate-50 text-[12px] font-black text-slate-700" ' +
-			'data-id="' + r.id + '" data-field="stock_quantity" data-value="' + esc(val) + '">' + (val === '' ? '—' : fmt(val)) + '</div>';
+
+		var low = (val !== '' && Number(val) <= 5);
+		return '<div class="wapm-price-display' + (low ? ' wapm-price-display--low' : '') + '" ' +
+			'data-id="' + r.id + '" data-field="stock_quantity" data-value="' + esc(val) + '" ' +
+			(low ? 'title="موجودی کم"' : '') + '>' + (val === '' ? '—' : fmt(val)) + '</div>';
 	}
 
 	function manageStockToggleHtml(r) {
 		var on = !!r.manage_stock;
-		return '<button type="button" class="wapm-manage-stock-toggle" data-id="' + r.id + '" data-enabled="' + (on ? 1 : 0) + '" ' +
-			'style="width:40px;height:20px;border-radius:999px;position:relative;border:0;cursor:pointer;background:' + (on ? '#10b981' : '#cbd5e1') + '">' +
-			'<span style="position:absolute;top:2px;width:16px;height:16px;background:#fff;border-radius:999px;transition:right .15s;right:' + (on ? '2px' : '22px') + '"></span>' +
-			'</button>';
+		return '<button type="button" class="wapm-switch wapm-manage-stock-toggle' + (on ? ' is-on' : '') + '" ' +
+			'data-id="' + r.id + '" data-enabled="' + (on ? 1 : 0) + '" ' +
+			'role="switch" aria-checked="' + (on ? 'true' : 'false') + '" ' +
+			'aria-label="مدیریت انبار" title="' + (on ? 'مدیریت انبار روشن — برای خاموش‌کردن بزنید' : 'مدیریت انبار خاموش — برای روشن‌کردن بزنید') + '"></button>';
 	}
 
 	function termsCellHtml(r, taxonomy, names) {
@@ -865,18 +917,17 @@
 
 	function torobBadge(t) {
 		var map = {
-			pricier:       { bg: '#fef2f2', color: '#dc2626', border: '#fecaca', text: '🔴 ' + Math.abs(Number(t.diff_pct)).toFixed(1) + '٪ گران‌تر' },
-			cheaper:       { bg: '#ecfdf5', color: '#059669', border: '#a7f3d0', text: '🟢 ' + Math.abs(Number(t.diff_pct)).toFixed(1) + '٪ ارزان‌تر' },
-			equal:         { bg: '#f8fafc', color: '#475569', border: '#e2e8f0', text: 'برابر با رقیب' },
-			stale:         { bg: '#fffbeb', color: '#b45309', border: '#fde68a', text: '⚠ داده کهنه' },
-			no_competitor: { bg: '#eff6ff', color: '#1d4ed8', border: '#bfdbfe', text: 'فقط ما در ترب' },
-			needs_shop_id: { bg: '#fffbeb', color: '#b45309', border: '#fde68a', text: 'شناسه فروشگاه تنظیم نشده' },
-			no_price:      { bg: '#f8fafc', color: '#475569', border: '#e2e8f0', text: 'قیمت نامشخص' },
-			none:          { bg: '#f8fafc', color: '#475569', border: '#e2e8f0', text: 'بدون داده' }
+			pricier:       { cls: 'pricier', text: '🔴 ' + Math.abs(Number(t.diff_pct)).toFixed(1) + '٪ گران‌تر' },
+			cheaper:       { cls: 'cheaper', text: '🟢 ' + Math.abs(Number(t.diff_pct)).toFixed(1) + '٪ ارزان‌تر' },
+			equal:         { cls: 'equal', text: 'برابر با رقیب' },
+			stale:         { cls: 'stale', text: '⚠ داده کهنه' },
+			no_competitor: { cls: 'info', text: 'فقط ما در ترب' },
+			needs_shop_id: { cls: 'stale', text: 'شناسه فروشگاه تنظیم نشده' },
+			no_price:      { cls: 'muted', text: 'قیمت نامشخص' },
+			none:          { cls: 'muted', text: 'بدون داده' }
 		};
 		var b = map[t.status] || map.none;
-		return '<span style="background:' + b.bg + ';color:' + b.color + ';border:1px solid ' + b.border +
-			';padding:2px 8px;border-radius:999px;font-size:10px;font-weight:900;display:inline-block">' + esc(b.text) + '</span>';
+		return '<span class="wapm-pill wapm-pill--' + b.cls + '">' + esc(b.text) + '</span>';
 	}
 
 	function torobCellHtml(r) {
@@ -886,7 +937,7 @@
 
 		// بدون داده: راهنمای اقدام (شماره‌دار، مطابق تب ترب).
 		if (!r.torob) {
-			return '<a href="#" class="wapm-torob-go" style="font-size:10px;color:#7f54b3;font-weight:800;text-decoration:none" ' +
+			return '<a href="#" class="wapm-torob-go wapm-mini-link" ' +
 				'title="داده‌ای از ترب برای این محصول نداریم. از تب «ترب» همگام‌سازی کنید یا دستی وصل کنید.">همگام‌سازی نشده — راهنما</a>';
 		}
 
@@ -894,7 +945,7 @@
 		var html = '<div style="min-width:150px">';
 		html += '<div>' + torobBadge(t);
 		if (t.link === 'manual') {
-			html += ' <span style="font-size:9px;font-weight:800;color:#7f54b3;background:#f5f1fa;border:1px solid #e2d6ef;border-radius:999px;padding:1px 6px">دستی</span>';
+			html += ' <span class="wapm-pill wapm-pill--info" style="padding:1px 6px">دستی</span>';
 		}
 		html += '</div>';
 
@@ -936,12 +987,10 @@
 
 		var links = '';
 		if (t.url) {
-			links += '<a href="' + esc(t.url) + '" target="_blank" rel="noopener" style="font-size:9px;color:#2563eb;font-weight:800">ترب</a>';
+			links += '<a href="' + esc(t.url) + '" target="_blank" rel="noopener" class="wapm-mini-link">ترب</a>';
 		}
-		links += ' <button type="button" class="wapm-torob-check" data-id="' + r.id + '" title="همین حالا از ترب بخوان (۱ درخواست)"' +
-			' style="background:none;border:0;color:#7f54b3;font-size:9px;font-weight:800;cursor:pointer;padding:0">بررسی الان</button>';
-		links += ' <button type="button" class="wapm-torob-unlink" data-id="' + r.id + '" title="جداکردن از ترب"' +
-			' style="background:none;border:0;color:#dc2626;font-size:9px;font-weight:800;cursor:pointer;padding:0">جداکردن</button>';
+		links += ' <button type="button" class="wapm-torob-check wapm-mini-link" data-id="' + r.id + '" title="همین حالا از ترب بخوان (۱ درخواست)">بررسی الان</button>';
+		links += ' <button type="button" class="wapm-torob-unlink wapm-mini-link wapm-mini-link--danger" data-id="' + r.id + '" title="جداکردن از ترب">جداکردن</button>';
 
 		html += '<div style="margin-top:2px">' + links + '</div>';
 		html += '</div>';
@@ -949,17 +998,28 @@
 		return html;
 	}
 
+	/** «آخرین تغییر قیمت» — از متایی که خود لاگ روی محصول می‌گذارد. */
+	function lastChangeHtml(r) {
+		if (!r.last_change_label) {
+			return '<span class="wapm-price-muted">—</span>';
+		}
+		var days = Number(r.last_change_days);
+		var fresh = !isNaN(days) && days <= 7;
+		return '<span class="wapm-pill wapm-pill--' + (fresh ? 'info' : 'muted') + '" title="' + esc(r.last_change) + '">' +
+			esc(r.last_change_label) + '</span>';
+	}
+
 	function actionsCellHtml(r) {
 		var dupBtn = r.can_duplicate
-			? '<button type="button" class="wapm-action-duplicate" data-id="' + r.id + '" style="display:block;width:100%;text-align:right;padding:8px 12px;font-size:12px;font-weight:700;color:#475569;background:none;border:0;cursor:pointer">کپی</button>'
+			? '<button type="button" class="wapm-action-duplicate" data-id="' + r.id + '">کپی محصول</button>'
 			: '';
-		return '<div class="wapm-actions-wrap" style="position:relative">' +
-			'<button type="button" class="wapm-actions-toggle" data-id="' + r.id + '" style="padding:8px;border-radius:10px;color:#94a3b8;background:none;border:0;cursor:pointer">' +
+		return '<div class="wapm-actions-wrap">' +
+			'<button type="button" class="wapm-actions-toggle" data-id="' + r.id + '" aria-label="عملیات">' +
 			'<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>' +
 			'</button>' +
-			'<div class="wapm-actions-menu" style="display:none;position:absolute;left:0;top:100%;margin-top:4px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:30;min-width:110px">' +
+			'<div class="wapm-actions-menu" style="display:none">' +
 			dupBtn +
-			'<button type="button" class="wapm-action-delete" data-id="' + r.id + '" style="display:block;width:100%;text-align:right;padding:8px 12px;font-size:12px;font-weight:700;color:#dc2626;background:none;border:0;cursor:pointer">حذف</button>' +
+			'<button type="button" class="wapm-action-delete is-danger" data-id="' + r.id + '">حذف</button>' +
 			'</div></div>';
 	}
 
@@ -991,6 +1051,7 @@
 			'<td class="px-3 py-2" data-col="torob">' + torobCellHtml(r) + '</td>' +
 			'<td class="px-3 py-2 text-[11px] font-bold text-slate-600" data-col="id">' + esc(r.id) + '</td>' +
 			'<td class="px-3 py-2 text-[11px] font-bold text-slate-600" data-col="sku">' + esc(r.sku || '—') + '</td>' +
+			'<td class="px-3 py-2" data-col="last_change">' + lastChangeHtml(r) + '</td>' +
 			'<td class="px-3 py-2">' + actionsCellHtml(r) + '</td>' +
 			'</tr>';
 	}
@@ -1017,11 +1078,29 @@
 		renderProductList({ rows: listState.lastRows, pages: listState.pages, total: listState.total });
 	}
 
+	/**
+	 * اسکلت بارگذاری: کاربر ساختار جدول را می‌بیند و «پرش» صفحه کمتر حس می‌شود.
+	 */
+	function skeletonRowsHtml() {
+		var html = '';
+		for (var i = 0; i < 6; i++) {
+			html += '<tr><td colspan="' + LIST_COLS + '" style="padding:10px 12px">' +
+				'<div style="display:flex;align-items:center;gap:10px">' +
+					'<span class="wapm-skeleton" style="width:38px;height:38px;border-radius:10px"></span>' +
+					'<span style="flex:1"><span class="wapm-skeleton" style="width:' + (40 + (i % 3) * 12) + '%;margin-bottom:6px"></span>' +
+					'<span class="wapm-skeleton" style="width:22%;height:9px"></span></span>' +
+					'<span class="wapm-skeleton" style="width:70px"></span>' +
+					'<span class="wapm-skeleton" style="width:70px"></span>' +
+				'</div></td></tr>';
+		}
+		return html;
+	}
+
 	function loadProductList(paged) {
 		listState.paged = paged || 1;
 		listState.selected = {};
 		updateBulkBar();
-		$('#wapm-list-tbody').html('<tr><td colspan="' + LIST_COLS + '" class="text-center py-10 text-slate-400 text-sm">' + esc(WAPM.i18n.loading) + '</td></tr>');
+		$('#wapm-list-tbody').html(skeletonRowsHtml());
 		ajax('list_products', {
 			filters: JSON.stringify({
 				search: listState.search,
@@ -1132,7 +1211,7 @@
 		$('.wapm-save-mode-btn').removeClass('bg-white text-primary-600 shadow-md').addClass('text-slate-500');
 		$(this).addClass('bg-white text-primary-600 shadow-md').removeClass('text-slate-500');
 		if (listState.saveMode === 'auto' && Object.keys(listState.pending).length) {
-			window.alert('برخی تغییرات هنوز ذخیره نشده‌اند. ابتدا «ذخیره تغییرات» را بزنید.');
+			wapmToast('برخی تغییرات هنوز ذخیره نشده‌اند. ابتدا «ذخیره تغییرات» را بزنید.', 'warning');
 		}
 	});
 
@@ -1153,14 +1232,15 @@
 		$tds.eq(8).html(categoryCellHtml(row));
 		$tds.eq(9).html(brandCellHtml(row));
 		$tds.eq(10).html(torobCellHtml(row));
+		$tds.eq(13).html(lastChangeHtml(row));
 	}
 
 	function saveField(id, field, value) {
 		ajax('update_field', { product_id: id, field: field, value: value }).done(function (res) {
 			if (res.success) { updateRowInDom(res.data.row); }
-			else { window.alert((res.data && res.data.message) || WAPM.i18n.error); rerenderCurrent(); }
+			else { wapmToast((res.data && res.data.message) || WAPM.i18n.error, 'error'); rerenderCurrent(); }
 		}).fail(function () {
-			window.alert(WAPM.i18n.error);
+			wapmToast(WAPM.i18n.error, 'error');
 			rerenderCurrent();
 		});
 	}
@@ -1203,14 +1283,13 @@
 	}
 
 	// حالت «ساده»: کلیک روی سلول تبدیل به input می‌شود
-	$(document).on('click', '#wapm-list-tbody .wapm-cell-display', function () {
+	$(document).on('click', '#wapm-list-tbody .wapm-price-display', function () {
 		if (listState.viewMode !== 'simple') { return; }
 		var $cell = $(this);
 		var id = $cell.data('id');
 		var field = $cell.data('field');
 		var value = $cell.data('value');
-		var $input = $('<input type="number" step="any" min="0">').val(value)
-			.css({ width: '100%', height: '34px', padding: '0 8px', 'border-radius': '8px', border: '1px solid #7f54b3', 'font-size': '12px', 'font-weight': 700 });
+		var $input = $('<input type="number" step="any" min="0" class="wapm-price-input">').val(value);
 		$cell.replaceWith($input);
 		$input.trigger('focus');
 		$input[0].select();
@@ -1223,7 +1302,7 @@
 	});
 
 	// حالت «اکسل»: تغییر مستقیم input
-	$(document).on('change', '#wapm-list-tbody .wapm-cell-input', function () {
+	$(document).on('change', '#wapm-list-tbody .wapm-price-input', function () {
 		var $input = $(this);
 		applyEdit($input.data('id'), $input.data('field'), $input.val());
 	});
@@ -1261,13 +1340,13 @@
 			rerenderCurrent(); // ردیف‌های ذخیره‌نشده دوباره زرد می‌شوند
 
 			if (!failed.length) {
-				window.alert(WAPM.i18n.done);
+				wapmToast(WAPM.i18n.done, 'success');
 				return;
 			}
 
 			var lines = failed.slice(0, 8).map(function (f) { return '• ' + f.name + ' — ' + f.message; });
 			if (failed.length > 8) { lines.push('…'); }
-			window.alert(failed.length + ' مورد ذخیره نشد و در صف باقی ماند:\n' + lines.join('\n'));
+			wapmToast(failed.length + ' مورد ذخیره نشد و در صف ماند. جزئیات در کنسول مرورگر.', 'error', { ttl: 12000 }); console.warn(lines);
 		}
 
 		function next() {
@@ -1298,7 +1377,7 @@
 		var enabled = !$(this).data('enabled');
 		ajax('toggle_manage_stock', { product_id: id, enabled: enabled ? 1 : 0 }).done(function (res) {
 			if (res.success) { updateRowInDom(res.data.row); }
-			else { window.alert((res.data && res.data.message) || WAPM.i18n.error); }
+			else { wapmToast((res.data && res.data.message) || WAPM.i18n.error, 'error'); }
 		});
 	});
 
@@ -1391,7 +1470,7 @@
 	$(document).on('click', '.wapm-action-duplicate', function () {
 		ajax('duplicate_product', { product_id: $(this).data('id') }).done(function (res) {
 			if (res.success) { loadProductList(listState.paged); }
-			else { window.alert((res.data && res.data.message) || WAPM.i18n.error); }
+			else { wapmToast((res.data && res.data.message) || WAPM.i18n.error, 'error'); }
 		});
 	});
 
@@ -1404,7 +1483,7 @@
 				delete listState.selected[id];
 				updateBulkBar();
 			} else {
-				window.alert((res.data && res.data.message) || WAPM.i18n.error);
+				wapmToast((res.data && res.data.message) || WAPM.i18n.error, 'error');
 			}
 		});
 	});
@@ -1423,9 +1502,16 @@
 		$('#wapm-list-bulk-bar').toggle(count > 0);
 	}
 
+	/** ردیف‌های انتخاب‌شده را با نوار رنگی مشخص می‌کند (نه فقط چک‌باکس). */
+	function markRowSelected($tr, on) {
+		$tr.toggleClass('is-selected', !!on);
+	}
+
 	$(document).on('change', '.wapm-row-check', function () {
 		var id = $(this).data('id');
-		if ($(this).is(':checked')) { listState.selected[id] = true; } else { delete listState.selected[id]; }
+		var on = $(this).is(':checked');
+		if (on) { listState.selected[id] = true; } else { delete listState.selected[id]; }
+		markRowSelected($(this).closest('tr'), on);
 		updateBulkBar();
 		updateSelectAllCheckbox();
 	});
@@ -1435,6 +1521,7 @@
 		$('#wapm-list-tbody .wapm-row-check').prop('checked', checked).each(function () {
 			var id = $(this).data('id');
 			if (checked) { listState.selected[id] = true; } else { delete listState.selected[id]; }
+			markRowSelected($(this).closest('tr'), checked);
 		});
 		updateBulkBar();
 	});
@@ -1449,7 +1536,7 @@
 	$('#wapm-list-bulk-run').on('click', function () {
 		var action = $('#wapm-list-bulk-select').val();
 		var ids = Object.keys(listState.selected);
-		if (!action) { window.alert('یک عملیات انتخاب کنید.'); return; }
+		if (!action) { wapmToast('یک عملیات انتخاب کنید.', 'warning'); return; }
 		if (!ids.length) { return; }
 
 		var confirmMsg = (action === 'trash')
@@ -1467,15 +1554,297 @@
 
 		ajax('bulk_action', payload).done(function (res) {
 			if (res.success) {
-				window.alert(res.data.message);
+				wapmToast(res.data.message, 'success');
 				listState.selected = {};
 				updateBulkBar();
 				loadProductList(listState.paged);
 			} else {
-				window.alert((res.data && res.data.message) || WAPM.i18n.error);
+				wapmToast((res.data && res.data.message) || WAPM.i18n.error, 'error');
 			}
 		});
 	});
+
+	/* ---------------- تغییر قیمت انتخاب‌شده‌ها (کشو) ---------------- */
+
+	var bpState = { rows: [], total: 0, warn: 0, ids: [], batch: '' };
+
+	function bpSettings() {
+		return {
+			source: 'manual',
+			mode: $('#wapm-bp-mode').val(),
+			direction: $('#wapm-bp-direction').val(),
+			amount: $('#wapm-bp-amount').val(),
+			currency_unit: $('#wapm-bp-currency').val(),
+			price_target: $('#wapm-bp-target').val(),
+			sale_handling: $('#wapm-bp-sale').val(),
+			round_mode: $('#wapm-bp-round').val(),
+			round_base: $('#wapm-bp-round-base').val(),
+			min_price: $('#wapm-bp-min').val(),
+			max_price: $('#wapm-bp-max').val(),
+			variable_scope: 'variations'
+		};
+	}
+
+	function bpSyncUi() {
+		var mode = $('#wapm-bp-mode').val();
+		var absolute = mode === 'absolute';
+		var money = mode === 'fixed' || mode === 'absolute';
+
+		$('#wapm-bp-direction-wrap').toggle(!absolute);
+		$('#wapm-bp-currency-wrap').toggle(money);
+		$('#wapm-bp-amount-label').text(absolute ? 'قیمت هدف (همه)' : 'مقدار');
+
+		var hints = {
+			percent: 'درصد از قیمت فعلی هر محصول. مثال: ۱۰٪ کاهش روی ۱٬۰۰۰٬۰۰۰ می‌شود ۹۰۰٬۰۰۰.',
+			fixed: 'مبلغ ثابت (به واحد انتخاب‌شده) از قیمت فعلی کم یا به آن اضافه می‌شود.',
+			absolute: 'همه‌ی محصولات انتخاب‌شده دقیقاً این قیمت می‌شوند. «جهت» در این حالت معنی ندارد.'
+		};
+		$('#wapm-bp-mode-hint').text(hints[mode] || '');
+
+		// با تغییر تنظیمات، پیش‌نمایش قبلی دیگر معتبر نیست.
+		$('#wapm-bp-apply-btn').prop('disabled', true);
+	}
+
+	function bpOpen() {
+		var ids = Object.keys(listState.selected || {});
+		if (!ids.length) {
+			wapmToast('ابتدا در جدول، محصول‌ها را تیک بزنید.', 'warning');
+			return;
+		}
+
+		bpState.ids = ids;
+		bpState.rows = [];
+		bpState.total = 0;
+		$('#wapm-bp-result').empty();
+		$('#wapm-bp-summary').text('');
+		$('#wapm-bp-apply-btn').prop('disabled', true);
+		$('#wapm-bp-selected-note').text(fmt(ids.length) + ' محصول انتخاب شده');
+		$('#wapm-bp-progress').hide();
+
+		$('#wapm-price-drawer-overlay').addClass('is-open');
+		$('#wapm-price-drawer').addClass('is-open').attr('aria-hidden', 'false');
+		bpSyncUi();
+		window.setTimeout(function () { $('#wapm-bp-amount').trigger('focus').trigger('select'); }, 240);
+	}
+
+	function bpClose() {
+		$('#wapm-price-drawer-overlay').removeClass('is-open');
+		$('#wapm-price-drawer').removeClass('is-open').attr('aria-hidden', 'true');
+	}
+
+	$('#wapm-list-bulk-price').on('click', bpOpen);
+	$('#wapm-bp-close, #wapm-bp-cancel, #wapm-price-drawer-overlay').on('click', bpClose);
+	$(document).on('keydown', function (e) {
+		if (e.key === 'Escape' && $('#wapm-price-drawer').hasClass('is-open')) { bpClose(); }
+	});
+
+	$('#wapm-bp-mode').on('change', bpSyncUi);
+
+	$('.wapm-preset').on('click', function () {
+		var parts = String($(this).data('bp-preset')).split(':');
+		$('.wapm-preset').removeClass('is-active');
+		$(this).addClass('is-active');
+
+		$('#wapm-bp-mode').val(parts[0]);
+		if (parts[1]) { $('#wapm-bp-direction').val(parts[1]); }
+		if (parts[0] === 'absolute') {
+			$('#wapm-bp-amount').val('').trigger('focus');
+		} else {
+			$('#wapm-bp-amount').val(parts[2] || '10');
+		}
+		bpSyncUi();
+	});
+
+	$('#wapm-bp-amount, #wapm-bp-direction, #wapm-bp-target, #wapm-bp-sale, #wapm-bp-round, #wapm-bp-round-base, #wapm-bp-min, #wapm-bp-max, #wapm-bp-currency')
+		.on('change keyup', function () { $('#wapm-bp-apply-btn').prop('disabled', true); });
+
+	var PRICE_TYPE_LABELS = { regular: 'قیمت اصلی', sale: 'قیمت ویژه' };
+
+	function bpPreviewHtml(data) {
+		if (!data.rows.length) {
+			return '<div class="wapm-empty">هیچ قیمتی تغییر نمی‌کند. مقدار/حالت را عوض کنید یا محصولات دیگری انتخاب کنید.</div>';
+		}
+
+		var html = '<table class="wapm-preview-table"><thead><tr>' +
+			'<th style="text-align:right">محصول</th><th>نوع</th><th>فعلی</th><th>جدید</th><th>تغییر</th>' +
+			'</tr></thead><tbody>';
+
+		data.rows.forEach(function (r) {
+			var removed = (r.new === null || r.new === undefined);
+			var cls = removed ? '' : (Number(r.new) < Number(r.old) ? 'wapm-down' : 'wapm-up');
+			var label = PRICE_TYPE_LABELS[r.price_type] || r.price_type;
+			var delta = removed ? 'حذف' : (Number(r.percent) > 0 ? '+' : '') + Number(r.percent).toFixed(1) + '٪';
+
+			html += '<tr class="' + (r.warn ? 'wapm-warn' : '') + '">' +
+				'<td style="text-align:right"><div style="font-weight:800;color:#344054">' + esc(r.name) + '</div>' +
+					'<div style="font-size:10px;color:#98a2b3">' + esc(r.sku || '—') + (r.type ? ' · ' + esc(r.type) : '') +
+					(r.warn ? ' · <span style="color:#b42318;font-weight:900">افت شدید</span>' : '') + '</div></td>' +
+				'<td>' + esc(label) + '</td>' +
+				'<td>' + fmt(r.old) + '</td>' +
+				'<td>' + (removed ? '—' : fmt(r.new)) + '</td>' +
+				'<td class="' + cls + '">' + esc(delta) + '</td>' +
+				'</tr>';
+		});
+
+		html += '</tbody></table>';
+
+		if (data.truncated) {
+			html += '<p class="description" style="margin:8px 0 0">' + fmt(data.rows_total) +
+				' تغییر محاسبه شد؛ ۳۰۰ ردیف اول نمایش داده می‌شود (همه اعمال می‌شوند).</p>';
+		}
+
+		return html;
+	}
+
+	$('#wapm-bp-preview-btn').on('click', function () {
+		var settings = bpSettings();
+		if (settings.mode !== 'percent' && !(Number(settings.amount) > 0)) {
+			wapmToast('مقدار/قیمت هدف را وارد کنید.', 'warning');
+			return;
+		}
+
+		var $btn = $(this).prop('disabled', true);
+		$('#wapm-bp-result').html('<div class="wapm-skeleton" style="height:60px"></div>');
+		$('#wapm-bp-summary').text(WAPM.i18n.loading);
+		$('#wapm-bp-apply-btn').prop('disabled', true);
+
+		ajax('price_preview_ids', { ids: bpState.ids, settings: JSON.stringify(settings) })
+			.done(function (res) {
+				if (!res.success) {
+					$('#wapm-bp-result').empty();
+					$('#wapm-bp-summary').text('');
+					wapmToast((res.data && res.data.message) || WAPM.i18n.error, 'error');
+					return;
+				}
+
+				var d = res.data;
+				bpState.rows = d.rows || [];
+				bpState.total = Number(d.rows_total) || 0;
+				bpState.warn = Number(d.warn) || 0;
+
+				var summary = fmt(bpState.total) + ' تغییر قیمت روی ' + fmt(d.products) + ' محصول';
+				if (d.skipped) { summary += ' — ' + fmt(d.skipped) + ' محصول بدون تغییر'; }
+				if (bpState.warn) { summary += ' — ' + fmt(bpState.warn) + ' هشدار افت شدید'; }
+				$('#wapm-bp-summary').text(summary);
+
+				$('#wapm-bp-result').html(bpPreviewHtml(d));
+				$('#wapm-bp-apply-btn').prop('disabled', bpState.total === 0);
+
+				if (bpState.warn) {
+					wapmToast('در پیش‌نمایش ' + fmt(bpState.warn) + ' قیمت افت بیش از ۹۰٪ دارد. قبل از اعمال نگاه کنید.', 'warning');
+				}
+			})
+			.fail(function () {
+				$('#wapm-bp-result').empty();
+				$('#wapm-bp-summary').text('');
+				wapmToast(WAPM.i18n.error, 'error');
+			})
+			.always(function () { $btn.prop('disabled', false); });
+	});
+
+	$('#wapm-bp-apply-btn').on('click', function () {
+		if (!bpState.total) { return; }
+		if (bpState.warn && !window.confirm('در پیش‌نمایش ' + bpState.warn + ' قیمت افت شدید دارد. ادامه می‌دهید؟')) { return; }
+
+		var ids = bpState.ids.slice();
+		if (!ids.length) { return; }
+
+		var settings = JSON.stringify(bpSettings());
+		var batch = 'bulk_' + Date.now().toString(36);
+		var page = 1;
+		var processed = 0;
+		var changed = 0;
+
+		var $apply = $(this).prop('disabled', true);
+		var $other = $('#wapm-bp-preview-btn, #wapm-bp-cancel').prop('disabled', true);
+		$('#wapm-bp-progress').show();
+
+		function setProgress(percent, text) {
+			$('#wapm-bp-progress .wapm-progress-bar span').css('width', Math.min(100, percent) + '%');
+			$('#wapm-bp-progress .wapm-progress-text').text(text);
+		}
+
+		setProgress(0, 'شروع…');
+
+		function step() {
+			ajax('price_apply_ids', { ids: ids, settings: settings, page: page, batch_id: batch })
+				.done(function (res) {
+					if (!res.success) {
+						setProgress(0, '');
+						$('#wapm-bp-progress').hide();
+						$apply.prop('disabled', false);
+						$other.prop('disabled', false);
+						wapmToast((res.data && res.data.message) || WAPM.i18n.error, 'error');
+						return;
+					}
+
+					processed += Number(res.data.processed) || 0;
+					changed += Number(res.data.changed) || 0;
+
+					var percent = (processed / ids.length) * 100;
+					setProgress(percent, 'پردازش ' + fmt(processed) + ' از ' + fmt(ids.length) + ' محصول…');
+
+					if (!res.data.done) {
+						page++;
+						window.setTimeout(step, 250);
+						return;
+					}
+
+					setProgress(100, 'انجام شد');
+					$('#wapm-bp-progress').hide();
+					$apply.prop('disabled', false);
+					$other.prop('disabled', false);
+
+					bpState.batch = res.data.batch_id;
+
+					wapmToast(
+						fmt(changed) + ' قیمت تغییر کرد (Batch ' + res.data.batch_id + ').',
+						changed ? 'success' : 'info',
+						{
+							ttl: 12000,
+							actionLabel: 'بازگردانی این تغییر',
+							action: function () { bpUndo(res.data.batch_id); }
+						}
+					);
+
+					// کشو بسته می‌شود تا نتیجه در جدول دیده شود.
+					bpClose();
+					loadProductList(listState.paged);
+				})
+				.fail(function () {
+					$('#wapm-bp-progress').hide();
+					$apply.prop('disabled', false);
+					$other.prop('disabled', false);
+					wapmToast(WAPM.i18n.error, 'error');
+				});
+		}
+
+		step();
+	});
+
+	/** بازگردانی یک Batch قیمت (همان مسیر امن Rollback با تشخیص تداخل). */
+	function bpUndo(batch) {
+		ajax('rollback', { batch_id: batch }).done(function (res) {
+			var msg = res.success ? res.data.message : ((res.data && res.data.message) || WAPM.i18n.error);
+			wapmToast(msg, res.success ? 'success' : 'error', { ttl: 12000 });
+
+			if (res.success && res.data.conflicts && Object.keys(res.data.conflicts).length) {
+				var $t = wapmToast('برای بازگردانی اجباری (پاک‌کردن تغییرات بعدی) دوباره بزنید.', 'warning', { ttl: 15000 });
+				if ($t) {
+					$('<div class="wapm-toast__actions"></div>')
+						.append($('<button type="button" class="wapm-toast__btn">بازگردانی اجباری</button>').on('click', function () {
+							ajax('rollback', { batch_id: batch, force: 1 }).done(function (r2) {
+								wapmToast(r2.success ? r2.data.message : WAPM.i18n.error, r2.success ? 'success' : 'error');
+								loadProductList(listState.paged);
+							});
+						}))
+						.appendTo($t.find('.wapm-toast__body'));
+				}
+			}
+
+			loadProductList(listState.paged);
+		});
+	}
 
 	/* ---- نمایش/عدم‌نمایش ستون‌ها ---- */
 
@@ -1510,7 +1879,7 @@
 
 	$('#wapm-import-btn').on('click', function () {
 		var file = $('#wapm-import-file')[0].files[0];
-		if (!file) { window.alert('فایلی انتخاب نشده است.'); return; }
+		if (!file) { wapmToast('فایلی انتخاب نشده است.', 'warning'); return; }
 
 		var fd = new FormData();
 		fd.append('action', 'wapm_import_csv');
@@ -1662,7 +2031,7 @@
 		// در حالت فیلتر، پیش‌نمایش شناسه‌ها را برمی‌گرداند؛ همان‌ها را اعمال می‌کنیم
 		// تا بین پیش‌نمایش و اعمال، لیست عوض نشود.
 		if (!ids.length) {
-			window.alert('ابتدا پیش‌نمایش بگیرید.');
+			wapmToast('ابتدا پیش‌نمایش بگیرید.', 'warning');
 			return;
 		}
 
@@ -1810,7 +2179,7 @@
 	function stockImport(apply) {
 		var input = $('#wapm-stock-import-file')[0];
 		var file = input && input.files ? input.files[0] : null;
-		if (!file) { window.alert('فایلی انتخاب نشده است.'); return; }
+		if (!file) { wapmToast('فایلی انتخاب نشده است.', 'warning'); return; }
 
 		var fd = new FormData();
 		fd.append('action', 'wapm_stock_import');
@@ -1997,7 +2366,7 @@
 			tolerance_pct: $('#wapm-torob-tolerance').val()
 		}).done(function (res) {
 			if (!res.success) {
-				window.alert((res.data && res.data.message) || WAPM.i18n.error);
+				wapmToast((res.data && res.data.message) || WAPM.i18n.error, 'error');
 				return;
 			}
 			applyTorobStats(res.data);
@@ -2010,7 +2379,7 @@
 			// ستون ترب در جدول به شناسه‌ی جدید وابسته است.
 			refreshListIfLoaded();
 		}).fail(function () {
-			window.alert(WAPM.i18n.error);
+			wapmToast(WAPM.i18n.error, 'error');
 		}).always(function () {
 			$btn.prop('disabled', false);
 		});
@@ -2021,9 +2390,9 @@
 		var $btn = $(this).prop('disabled', true);
 		ajax('torob_regenerate_token', {}).done(function (res) {
 			if (res.success) {
-				window.alert('توکن جدید ساخته شد. صفحه را رفرش کنید تا لینک بوکمارکلت جدید را ببینید و دوباره به نوار بوکمارک بکشید.');
+				wapmToast('توکن جدید ساخته شد. صفحه را رفرش کنید تا لینک بوکمارکلت جدید را ببینید و دوباره به نوار بوکمارک بکشید.', 'info', { ttl: 12000 });
 			} else {
-				window.alert((res.data && res.data.message) || WAPM.i18n.error);
+				wapmToast((res.data && res.data.message) || WAPM.i18n.error, 'error');
 			}
 		}).always(function () { $btn.prop('disabled', false); });
 	});
@@ -2078,7 +2447,7 @@
 	$('#wapm-torob-verify').on('click', function () {
 		var shopId = parseInt($('#wapm-torob-shop-id').val(), 10) || 0;
 		if (!shopId) {
-			window.alert('اول شناسه‌ی فروشگاه را وارد کنید.');
+			wapmToast('اول شناسه‌ی فروشگاه را وارد کنید.', 'warning');
 			return;
 		}
 
@@ -2196,7 +2565,7 @@
 		ajax('torob_refresh_product', { product_id: id }).done(function (res) {
 			if (!res.success) {
 				renderApiState(res.data && res.data.state);
-				window.alert((res.data && res.data.message) || WAPM.i18n.error);
+				wapmToast((res.data && res.data.message) || WAPM.i18n.error, 'error');
 				return;
 			}
 
@@ -2204,7 +2573,7 @@
 			if (res.data.stats_payload) { applyTorobStats(res.data.stats_payload); }
 			if (res.data.row) { updateRowInDom(res.data.row); }
 		}).fail(function () {
-			window.alert(WAPM.i18n.error);
+			wapmToast(WAPM.i18n.error, 'error');
 		}).always(function () {
 			$btn.prop('disabled', false).text(original);
 		});
@@ -2371,7 +2740,7 @@
 		var productId = $sel.val();
 
 		if (!productId) {
-			window.alert('اول محصول ووکامرس را انتخاب کنید.');
+			wapmToast('اول محصول ووکامرس را انتخاب کنید.', 'warning');
 			$btn.prop('disabled', false);
 			return;
 		}
@@ -2382,14 +2751,14 @@
 			name: $sel.data('name')
 		}).done(function (res) {
 			if (!res.success) {
-				window.alert((res.data && res.data.message) || WAPM.i18n.error);
+				wapmToast((res.data && res.data.message) || WAPM.i18n.error, 'error');
 				return;
 			}
 			applyTorobStats(res.data.stats);
 			$tr.fadeOut(200, function () { $(this).remove(); });
 			if (res.data.row) { updateRowInDom(res.data.row); }
 		}).fail(function () {
-			window.alert(WAPM.i18n.error);
+			wapmToast(WAPM.i18n.error, 'error');
 		}).always(function () { $btn.prop('disabled', false); });
 	});
 
@@ -2414,13 +2783,13 @@
 
 		ajax('torob_unlink', { product_id: id }).done(function (res) {
 			if (!res.success) {
-				window.alert((res.data && res.data.message) || WAPM.i18n.error);
+				wapmToast((res.data && res.data.message) || WAPM.i18n.error, 'error');
 				return;
 			}
 			applyTorobStats(res.data.stats);
 			if (res.data.row) { updateRowInDom(res.data.row); }
 		}).fail(function () {
-			window.alert(WAPM.i18n.error);
+			wapmToast(WAPM.i18n.error, 'error');
 		}).always(function () { $btn.prop('disabled', false); });
 	});
 
