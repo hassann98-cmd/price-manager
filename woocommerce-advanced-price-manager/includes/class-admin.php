@@ -1577,21 +1577,18 @@ class WAPM_Admin {
 				}
 			}
 
+			if (state.stopped) {
+				// وسط صفحه متوقف شدیم: صفحه را جلو نمی‌بریم و دسته‌ی نیمه‌کاره را
+				// نمی‌فرستیم. دفعه‌ی بعد از همان محصول ادامه می‌دهد؛ قبلاً صفحه
+				// جلو می‌رفت و محصولات باقی‌مانده‌ی آن صفحه بی‌خبر جا می‌افتادند.
+				saveState();
+				finish('متوقف شد. دفعه‌ی بعد از همین‌جا ادامه می‌دهد.\nتا اینجا: ' + state.discovered + ' محصول بررسی شد.');
+				return;
+			}
+
 			state.page++;
 			state.inPage = 0;
 			saveState();
-
-			// بستن دسته‌ی باقی‌مانده‌ی صفحه (مثلاً وقتی «توقف» وسط صفحه زده شد).
-			if (batch.length) {
-				await sendBatch(batch, {
-					discovered: state.discovered,
-					pages: state.page,
-					version: VERSION,
-					mode: state.mode
-				});
-			}
-
-			if (state.stopped) { break; }
 
 			var done = Math.min(97, Math.round(((state.page * PAGE) / Math.max(Number(pageData.count) || state.discovered, 1)) * 100));
 			progress(done);
@@ -1599,10 +1596,6 @@ class WAPM_Admin {
 			await delay(jitter(1200));
 		}
 
-		if (state.stopped) {
-			saveState();
-			finish('متوقف شد. دفعه‌ی بعد از همین‌جا ادامه می‌دهد.\nتا اینجا: ' + state.discovered + ' محصول بررسی شد.');
-		}
 	}
 
 	/* ---------- شروع ---------- */
