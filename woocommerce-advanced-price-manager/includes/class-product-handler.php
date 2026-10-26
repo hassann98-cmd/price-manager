@@ -92,6 +92,15 @@ class WAPM_Product_Handler {
 			'no_found_rows'  => false,
 		];
 
+		// دامنه‌ی محدود بدون هیچ شناسه/تاکسونومی معتبر ⇒ «هیچ محصولی».
+		//
+		// چرا مهم است: `tax_query` با `terms => []` در وردپرس کنار گذاشته می‌شود
+		// (و در بعضی نسخه‌ها `0 = 1` می‌دهد)؛ حالت اول یعنی کاربر دامنه را روی
+		// «دسته» گذاشته، هنوز دسته‌ای انتخاب نکرده و با یک کلیک قیمت *کل* فروشگاه
+		// عوض می‌شد. همین اتفاق برای برند می‌افتاد وقتی نام taxonomy با
+		// `sanitize_key()` خراب می‌شد. حالا انتخاب ناقص = صفر محصول (بی‌خطر).
+		$empty_scope = false;
+
 		switch ( $f['scope'] ) {
 			case 'selected':
 				// توجه: «selected» از این مسیر کوئری نمی‌شود؛ در get_selected_page()
@@ -100,6 +109,10 @@ class WAPM_Product_Handler {
 				break;
 
 			case 'category':
+				if ( empty( $f['category_ids'] ) ) {
+					$empty_scope = true;
+					break;
+				}
 				$args['tax_query'] = [ [
 					'taxonomy'         => 'product_cat',
 					'field'            => 'term_id',
@@ -110,25 +123,34 @@ class WAPM_Product_Handler {
 
 			case 'brand':
 				$tax = $f['brand_tax'];
-				if ( $tax && taxonomy_exists( $tax ) ) {
-					$args['tax_query'] = [ [
-						'taxonomy' => $tax,
-						'field'    => 'term_id',
-						'terms'    => $f['brand_ids'],
-					] ];
+				if ( ! $tax || empty( $f['brand_ids'] ) || ! taxonomy_exists( $tax ) ) {
+					$empty_scope = true;
+					break;
 				}
+				$args['tax_query'] = [ [
+					'taxonomy' => $tax,
+					'field'    => 'term_id',
+					'terms'    => $f['brand_ids'],
+				] ];
 				break;
 
 			case 'attribute':
 				$tax = $f['attribute_tax'];
-				if ( $tax && taxonomy_exists( $tax ) ) {
-					$args['tax_query'] = [ [
-						'taxonomy' => $tax,
-						'field'    => 'term_id',
-						'terms'    => $f['attribute_ids'],
-					] ];
+				if ( ! $tax || empty( $f['attribute_ids'] ) || ! taxonomy_exists( $tax ) ) {
+					$empty_scope = true;
+					break;
 				}
+				$args['tax_query'] = [ [
+					'taxonomy' => $tax,
+					'field'    => 'term_id',
+					'terms'    => $f['attribute_ids'],
+				] ];
 				break;
+		}
+
+		if ( $empty_scope ) {
+			unset( $args['tax_query'] );
+			$args['post__in'] = [ 0 ];
 		}
 
 		if ( class_exists( 'WAPM_Torob' ) ) {

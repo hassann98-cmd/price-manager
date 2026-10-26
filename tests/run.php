@@ -1893,6 +1893,39 @@ test( 'اسکریپت‌های ادمین: نام فایل‌ها با فایل�
 	}
 } );
 
+test( 'محصولات هدف: انتخاب ناقص روی همه‌ی محصولات اعمال نمی‌شود', function () {
+	$args = function ( array $filters ) {
+		$method = new ReflectionMethod( 'WAPM_Product_Handler', 'build_query_args' );
+		$method->setAccessible( true );
+		return $method->invoke( null, $filters, 1, 25 );
+	};
+
+	// رگرسیون: «دسته» بدون انتخاب دسته ⇒ tax_query با terms خالی کنار گذاشته می‌شد
+	// و کوئری روی همه‌ی محصولات می‌افتاد.
+	$a = $args( WAPM_Product_Handler::sanitize_filters( [ 'scope' => 'category' ] ) );
+	eq( [ 0 ], $a['post__in'], 'دسته‌ی خالی = هیچ محصولی' );
+	ok( ! isset( $a['tax_query'] ), 'بدون tax_query خالی' );
+
+	$a = $args( WAPM_Product_Handler::sanitize_filters( [ 'scope' => 'brand', 'brand_tax' => 'pa_brand' ] ) );
+	eq( [ 0 ], $a['post__in'], 'برند بدون انتخاب = هیچ محصولی' );
+
+	$a = $args( WAPM_Product_Handler::sanitize_filters( [ 'scope' => 'attribute', 'attribute_tax' => 'pa_اندازه', 'attribute_ids' => [] ] ) );
+	eq( [ 0 ], $a['post__in'], 'ویژگی بدون انتخاب = هیچ محصولی' );
+
+	// انتخاب کامل باید tax_query بسازد، نه post__in صفر.
+	$a = $args( WAPM_Product_Handler::sanitize_filters( [ 'scope' => 'category', 'category_ids' => [ 12 ] ] ) );
+	ok( ! isset( $a['post__in'] ), 'دسته‌ی انتخاب‌شده post__in ندارد' );
+	eq( 'product_cat', $a['tax_query'][0]['taxonomy'], 'tax_query دسته ساخته شد' );
+	eq( [ 12 ], $a['tax_query'][0]['terms'], 'شناسه‌ی دسته در کوئری' );
+
+	$a = $args( WAPM_Product_Handler::sanitize_filters( [ 'scope' => 'brand', 'brand_tax' => 'pa_brand', 'brand_ids' => [ 7 ] ] ) );
+	eq( 'pa_brand', $a['tax_query'][0]['taxonomy'], 'tax_query برند ساخته شد' );
+
+	// دامنه‌ی «همه» دست‌نخورده می‌ماند.
+	$a = $args( WAPM_Product_Handler::sanitize_filters( [ 'scope' => 'all' ] ) );
+	ok( ! isset( $a['post__in'] ) && ! isset( $a['tax_query'] ), 'دامنه‌ی همه بدون محدودیت' );
+} );
+
 test( 'محصولات هدف: taxonomy فارسی (pa_برند) با sanitize_key پاک نمی‌شود', function () {
 	// رگرسیون: sanitize_key( 'pa_برند' ) === 'pa_' بود ⇒ taxonomy_exists منفی
 	// ⇒ فیلتر برند بی‌صدا حذف می‌شد و بازه روی همه‌ی محصولات باز می‌شد.
