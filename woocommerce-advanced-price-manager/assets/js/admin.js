@@ -495,8 +495,8 @@
 			$tbody.append('<tr><td colspan="5">—</td></tr>');
 			return;
 		}
-		var statusMap = { pending: WAPM.i18n.pending, applied: WAPM.i18n.applied, reverted: WAPM.i18n.reverted };
-		var badgeCls = { pending: 'wapm-badge-pending', applied: 'wapm-badge-on', reverted: 'wapm-badge-off' };
+		var statusMap = { pending: WAPM.i18n.pending, running: WAPM.i18n.running, applied: WAPM.i18n.applied, reverting: WAPM.i18n.reverting, reverted: WAPM.i18n.reverted };
+		var badgeCls = { pending: 'wapm-badge-pending', running: 'wapm-badge-pending', applied: 'wapm-badge-on', reverting: 'wapm-badge-pending', reverted: 'wapm-badge-off' };
 		state.schedules.forEach(function (s) {
 			$tbody.append('<tr data-id="' + esc(s.id) + '">' +
 				'<td>' + esc(s.title || s.id) + '</td>' +

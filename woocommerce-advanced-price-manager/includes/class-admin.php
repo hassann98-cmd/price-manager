@@ -101,7 +101,9 @@ class WAPM_Admin {
 				'delete'           => __( 'حذف', 'wapm' ),
 				'edit'             => __( 'ویرایش', 'wapm' ),
 				'pending'          => __( 'در انتظار', 'wapm' ),
+				'running'          => __( 'در حال اجرا', 'wapm' ),
 				'applied'          => __( 'اعمال‌شده', 'wapm' ),
+				'reverting'        => __( 'در حال بازگشت', 'wapm' ),
 				'reverted'         => __( 'بازگشته', 'wapm' ),
 			],
 		] );

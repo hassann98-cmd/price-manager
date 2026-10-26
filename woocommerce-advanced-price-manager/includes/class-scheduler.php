@@ -13,6 +13,11 @@ class WAPM_Scheduler {
 	const LOCK_OPTION = 'wapm_schedules_lock';
 	const LOCK_TTL    = 600; // ثانیه — قفل قدیمی (مثلاً بعد از کرش) بعد از این مدت آزاد می‌شود.
 
+	/**
+	 * مقدار قفلِ همین اجرا (timestamp|token) — برای heartbeat و آزادکردن امن.
+	 */
+	private static string $lock_value = '';
+
 	public function __construct() {
 		add_action( 'wapm_run_schedules', [ $this, 'run_due_schedules' ] );
 	}
@@ -32,7 +37,7 @@ class WAPM_Scheduler {
 			'end'       => sanitize_text_field( $raw['end'] ?? '' ),   // اختیاری — بازگشت خودکار
 			'filters'   => WAPM_Product_Handler::sanitize_filters( (array) ( $raw['filters'] ?? [] ) ),
 			'settings'  => WAPM_Price_Engine::sanitize_settings( (array) ( $raw['settings'] ?? [] ) ),
-			'status'    => 'pending', // pending | applied | reverted
+			'status'    => 'pending', // pending | running | applied | reverting | reverted
 			'batch_id'  => '',
 			'created'   => current_time( 'mysql' ),
 		];
@@ -88,18 +93,37 @@ class WAPM_Scheduler {
 				$start_ts = $schedule['start'] ? strtotime( $schedule['start'] ) : 0;
 				$end_ts   = $schedule['end'] ? strtotime( $schedule['end'] ) : 0;
 
-				// ۱) اعمال تغییر در تاریخ شروع
-				if ( 'pending' === $schedule['status'] && $start_ts && $now >= $start_ts ) {
-					$batch_id = 'sch_' . wp_generate_password( 12, false );
-					$this->run_full( $schedule['filters'], $schedule['settings'], $batch_id, 'schedule:' . $schedule['id'] );
-					$schedule['status']   = 'applied';
-					$schedule['batch_id'] = $batch_id;
+				// ۱) اعمال تغییر در تاریخ شروع.
+				//
+				// idempotency: batch_id *قبل از* اجرا ساخته و ذخیره می‌شود و وضعیت روی
+				// «running» می‌رود. اگر اجرا وسط کار قطع شود (timeout/OOM/ری‌استارت)،
+				// اجرای بعدی همین batch_id را ادامه می‌دهد؛ چون
+				// WAPM_Logger::product_done_in_batch() محصولات انجام‌شده را رد می‌کند،
+				// تغییر دوباره اعمال نمی‌شود. (قبلاً batch_id تازه ساخته می‌شد و کل
+				// تغییر — مثلاً +۱۰٪ — برای بار دوم اعمال می‌شد.)
+				if ( in_array( $schedule['status'], [ 'pending', 'running' ], true ) && $start_ts && $now >= $start_ts ) {
+					if ( empty( $schedule['batch_id'] ) ) {
+						$schedule['batch_id'] = 'sch_' . wp_generate_password( 12, false );
+					}
+					$schedule['status'] = 'running';
+					self::update_schedule( $schedule ); // ← قبل از اجرا، نه بعد از آن.
+
+					$this->run_full( $schedule['filters'], $schedule['settings'], $schedule['batch_id'], 'schedule:' . $schedule['id'] );
+
+					$schedule['status'] = 'applied';
 					self::update_schedule( $schedule );
 				}
 
-				// ۲) بازگشت خودکار در تاریخ پایان
-				if ( 'applied' === $schedule['status'] && $end_ts && $now >= $end_ts && $schedule['batch_id'] ) {
+				// ۲) بازگشت خودکار در تاریخ پایان.
+				// بازگردانی هم idempotent است: هر ردیف قیمت قبلی خودش را می‌نویسد.
+				if ( in_array( $schedule['status'], [ 'applied', 'reverting' ], true ) && $end_ts && $now >= $end_ts && $schedule['batch_id'] ) {
+					if ( 'applied' === $schedule['status'] ) {
+						$schedule['status'] = 'reverting';
+						self::update_schedule( $schedule );
+					}
+
 					WAPM_Logger::rollback_batch( $schedule['batch_id'] );
+
 					$schedule['status'] = 'reverted';
 					self::update_schedule( $schedule );
 				}
@@ -112,38 +136,68 @@ class WAPM_Scheduler {
 	/**
 	 * قفل ساده مبتنی بر wp_options. add_option() به دلیل ایندکس UNIQUE روی
 	 * option_name در سطح دیتابیس اتمیک است، پس برای جلوگیری از اجرای هم‌زمان کافی است.
+	 *
+	 * مقدار قفل «timestamp|token» است: توکن اجازه می‌دهد فقط صاحب قفل آن را آزاد کند
+	 * (اگر قفل کهنه توسط اجرای دیگری تصاحب شده باشد، اجرای اول قفل او را پاک نمی‌کند).
 	 */
 	private static function acquire_lock(): bool {
-		if ( add_option( self::LOCK_OPTION, time(), '', false ) ) {
+		self::$lock_value = time() . '|' . wp_generate_password( 12, false );
+
+		if ( add_option( self::LOCK_OPTION, self::$lock_value, '', false ) ) {
 			return true;
 		}
 
 		// قفل موجود است؛ اگر خیلی قدیمی است (مثلاً اجرای قبلی کرش کرده) آزادش کن.
-		$locked_at = (int) get_option( self::LOCK_OPTION, 0 );
+		$locked_at = (int) strtok( (string) get_option( self::LOCK_OPTION, '' ), '|' );
 		if ( $locked_at && ( time() - $locked_at ) > self::LOCK_TTL ) {
 			delete_option( self::LOCK_OPTION );
-			return add_option( self::LOCK_OPTION, time(), '', false );
+			if ( add_option( self::LOCK_OPTION, self::$lock_value, '', false ) ) {
+				return true;
+			}
 		}
 
 		return false;
 	}
 
+	/**
+	 * تمدید قفلِ در اختیار (heartbeat).
+	 * اجرای یک کاتالوگ بزرگ می‌تواند بیشتر از LOCK_TTL طول بکشد؛ بدون تمدید،
+	 * اجرای دوم قفل را «کهنه» می‌دید و هم‌زمان شروع می‌شد.
+	 */
+	public static function refresh_lock(): void {
+		if ( '' === self::$lock_value ) {
+			return;
+		}
+		if ( (string) get_option( self::LOCK_OPTION, '' ) === self::$lock_value ) {
+			update_option( self::LOCK_OPTION, self::$lock_value, false );
+		}
+	}
+
 	private static function release_lock(): void {
-		delete_option( self::LOCK_OPTION );
+		// فقط قفلی که خودمان گرفتیم را آزاد کن.
+		if ( '' !== self::$lock_value && (string) get_option( self::LOCK_OPTION, '' ) === self::$lock_value ) {
+			delete_option( self::LOCK_OPTION );
+		}
+		self::$lock_value = '';
 	}
 
 	/**
 	 * اجرای کامل روی همه محصولات هدف (در بستر Cron).
+	 * قابل ادامه‌دادن است: با همان batch_id، محصولات انجام‌شده دوباره اعمال نمی‌شوند.
 	 */
 	private function run_full( array $filters, array $settings, string $batch_id, string $operation ): void {
 		$paged    = 1;
 		$per_page = 50;
 
 		if ( function_exists( 'wc_set_time_limit' ) ) {
-			wc_set_time_limit( 0 ); // اجرای cron — بدون محدودیت زمانی.
+			// اجرای cron — افزایش محدودیت زمانی؛ ولی هاست می‌تواند همچنان قطع کند،
+			// به همین دلیل این متد باید قابل ادامه‌دادن باشد.
+			wc_set_time_limit( 300 );
 		}
 
 		do {
+			self::refresh_lock(); // heartbeat تا اجرای موازی شروع نشود.
+
 			$targets = WAPM_Product_Handler::get_target_ids( $filters, $paged, $per_page );
 			foreach ( $targets['ids'] as $pid ) {
 				WAPM_Price_Engine::apply_to_product( $pid, $settings, $batch_id, $operation );
