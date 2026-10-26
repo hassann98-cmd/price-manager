@@ -98,15 +98,69 @@ const row = {
 
 const html = `<!doctype html><html lang="fa" dir="rtl"><body>
 <div class="wapm-tabs">
-  <a class="nav-tab nav-tab-active" data-tab="price">قیمت</a>
-  <a class="nav-tab" data-tab="list">لیست</a>
+  <a class="nav-tab nav-tab-active" data-tab="change">تغییر قیمت</a>
+  <a class="nav-tab" data-tab="list">لیست محصولات</a>
   <a class="nav-tab" data-tab="stock">موجودی</a>
-  <a class="nav-tab" data-tab="torob">ترب</a>
-  <a class="nav-tab" data-tab="history">تاریخچه</a>
   <a class="nav-tab" data-tab="rules">قوانین</a>
   <a class="nav-tab" data-tab="schedule">زمان‌بندی</a>
+  <a class="nav-tab" data-tab="history">تاریخچه</a>
+  <a class="nav-tab" data-tab="csv">خروجی / ورودی CSV</a>
+  <a class="nav-tab" data-tab="torob">ترب</a>
 </div>
-<div class="wapm-tab-content" id="wapm-tab-price"></div>
+<div class="wapm-tab-content" id="wapm-tab-change">
+  <!-- همان ساختاری که render_target_fields() چاپ می‌کند -->
+  <table class="form-table wapm-target-fields" data-prefix="main">
+    <tr><th>دامنه اعمال</th><td>
+      <select class="wapm-scope">
+        <option value="all">همه محصولات</option>
+        <option value="selected">محصولات انتخابی</option>
+        <option value="category">دسته‌بندی خاص</option>
+        <option value="brand">برند خاص</option>
+        <option value="attribute">ویژگی خاص</option>
+      </select>
+    </td></tr>
+    <tr class="wapm-scope-row wapm-scope-selected" style="display:none"><th>انتخاب محصولات</th>
+      <td><select class="wapm-product-select" multiple style="width:100%"></select></td></tr>
+    <tr class="wapm-scope-row wapm-scope-category" style="display:none"><th>دسته‌بندی</th>
+      <td><select class="wapm-category-select" multiple style="width:100%">
+        <option value="916">لوازم آشپزخانه (4)</option>
+      </select></td></tr>
+    <tr class="wapm-scope-row wapm-scope-brand" style="display:none"><th>برند</th>
+      <td><select class="wapm-brand-tax"><option value="product_brand">برندها</option></select>
+      <select class="wapm-brand-select" multiple style="width:100%"></select></td></tr>
+    <tr class="wapm-scope-row wapm-scope-attribute" style="display:none"><th>ویژگی</th>
+      <td><select class="wapm-attribute-tax"><option value="">— انتخاب ویژگی —</option>
+        <option value="pa_color">رنگ</option></select>
+      <select class="wapm-attribute-select" multiple style="width:100%"></select></td></tr>
+    <tr><th>فیلتر موجودی (اختیاری)</th><td>
+      <select class="wapm-stock-filter"><option value="none">بدون فیلتر</option>
+        <option value="below">موجودی کمتر از</option><option value="above">موجودی بیشتر از</option></select>
+      <input type="number" class="wapm-stock-value small-text" min="0" value="0">
+    </td></tr>
+  </table>
+  <p><button type="button" class="button" id="wapm-count-btn">شمارش محصولات متاثر</button>
+    <span id="wapm-count-result" class="wapm-count"></span></p>
+
+  <table class="form-table wapm-settings-fields" data-prefix="main">
+    <tr><th>نوع تغییر</th><td>
+      <input type="radio" class="wapm-mode" name="wapm-mode-main" value="percent" checked>
+      <input type="radio" class="wapm-mode" name="wapm-mode-main" value="fixed">
+      <input type="radio" class="wapm-mode" name="wapm-mode-main" value="absolute">
+      <select class="wapm-direction"><option value="increase">افزایش</option><option value="decrease">کاهش</option></select>
+      <input type="number" class="wapm-amount" value="10">
+      <select class="wapm-currency-unit" style="display:none"><option value="toman">تومان</option></select>
+      <select class="wapm-price-target"><option value="regular">قیمت اصلی</option></select>
+      <select class="wapm-sale-handling"><option value="keep">نگه‌داشتن</option></select>
+      <select class="wapm-variable-scope"><option value="parent">والد</option></select>
+      <select class="wapm-round-mode"><option value="none">بدون گرد کردن</option></select>
+      <input type="number" class="wapm-round-base" value="1000">
+      <input type="number" class="wapm-min-price" value="0">
+      <input type="number" class="wapm-max-price" value="0">
+      <select class="wapm-source"><option value="manual">دستی</option><option value="torob">ترب</option></select>
+    </td></tr>
+  </table>
+</div>
+<div class="wapm-tab-content" id="wapm-tab-csv" style="display:none"></div>
 <div class="wapm-tab-content" id="wapm-tab-list" style="display:none">
   <input id="wapm-list-search" type="text">
   <select id="wapm-list-category"><option value="">همه</option></select>
@@ -235,6 +289,10 @@ $.post = function (url, data) {
 				price_type: 'regular', old: 120000, new: 99000, diff: -21000, percent: -17.5, warn: false,
 			}], changed: 0, batch_id: '' }
 			: { dry_run: false, skipped: [], rows: [], changed: 1, batch_id: 'align_test' };
+	} else if (action === 'get_terms') {
+		payload = [{ id: 1, text: 'برند الف' }, { id: 2, text: 'برند ب' }];
+	} else if (action === 'count_targets') {
+		payload = { count: 24 };
 	} else if (action === 'get_logs' || action === 'stock_logs') {
 		payload = { rows: [], total: 0, pages: 0, last_batch: '' };
 	}
@@ -262,6 +320,49 @@ const UI = window.WAPMUI || {};
 console.log('— صادرات مشترک');
 for (const key of ['ajax', 'esc', 'fmt', 'wapmToast', 'state', 'runBatchLoop', 'readFilters', 'readSettings', 'listState', 'loadProductList', 'updateRowInDom', 'renderRules', 'renderSchedules', 'loadHistory', 'loadStockLogs', 'loadTorobUnmatched', 'refreshListIfLoaded', 'bpOpen', 'sdOpen', 'alignOpen', 'alignClose']) {
 	ok(typeof UI[key] === 'function' || (key === 'state' || key === 'listState') ? key in UI : false, `WAPMUI.${key}`);
+}
+
+console.log('— تب‌ها: هر تب محتوای خودش را نشان می‌دهد');
+try {
+	// رگرسیون ۱.۱.۰: با ۴۰۴ شدن اسکریپت‌ها، کلیک روی تب هیچ کاری نمی‌کرد.
+	const ev = $.Event('click');
+	$('.wapm-tabs .nav-tab[data-tab="csv"]').trigger(ev);
+	ok(ev.isDefaultPrevented(), 'کلیک تب از پرش صفحه جلوگیری می‌کند');
+	ok($('#wapm-tab-csv').css('display') !== 'none', 'محتوای تب CSV نمایان شد');
+	ok($('#wapm-tab-change').css('display') === 'none', 'تب قبلی پنهان شد');
+	ok($('.wapm-tabs .nav-tab[data-tab="csv"]').hasClass('nav-tab-active'), 'تب فعال علامت خورد');
+
+	for (const tab of ['change', 'list', 'stock', 'rules', 'schedule', 'history', 'csv', 'torob']) {
+		$(`.wapm-tabs .nav-tab[data-tab="${tab}"]`).trigger('click');
+		ok($(`#wapm-tab-${tab}`).css('display') !== 'none', `تب «${tab}» باز شد`);
+	}
+} catch (error) {
+	ok(false, 'تب‌ها بدون خطا کار کردند', error.message);
+}
+
+console.log('— فیلدهای هدف (دامنه، برند، شمارش)');
+try {
+	const $scope = $('.wapm-target-fields[data-prefix="main"] .wapm-scope');
+	$scope.val('selected').trigger('change');
+	ok($('.wapm-target-fields .wapm-scope-selected').css('display') !== 'none', 'ردیف «محصولات انتخابی» باز شد');
+	ok($('.wapm-target-fields .wapm-scope-category').css('display') === 'none', 'ردیف دسته پنهان شد');
+
+	$scope.val('category').trigger('change');
+	ok($('.wapm-target-fields .wapm-scope-category').css('display') !== 'none', 'ردیف دسته باز شد');
+
+	// جعبه‌ی هدف بدون select2 هم باید کار کند (همان تله‌ای که کل صفحه را می‌کشت).
+	ok($('.wapm-target-fields').hasClass('wapm-no-select2'), 'بدون select2 هم فرم سالم است');
+} catch (error) {
+	ok(false, 'فیلدهای هدف بدون خطا کار کردند', error.message);
+}
+
+try {
+	const before = String($('#wapm-count-result').text());
+	$('#wapm-count-btn').trigger('click');
+	ok(before !== String($('#wapm-count-result').text()), 'دکمه‌ی شمارش پاسخ داد', $('#wapm-count-result').text());
+	ok(/[۲۴]۴|[24]4/.test(String($('#wapm-count-result').text())), 'عدد شمارش نمایش داده شد', $('#wapm-count-result').text());
+} catch (error) {
+	ok(false, 'دکمه‌ی شمارش بدون خطا کار کرد', error.message);
 }
 
 console.log('— رندر لیست محصولات');

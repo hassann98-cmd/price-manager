@@ -148,6 +148,13 @@ function sanitize_key( $key ) {
 	return preg_replace( '/[^a-z0-9_\-]/', '', strtolower( (string) $key ) );
 }
 
+/** دفتر taxonomy‌های موجود در تست (برای گاردهای انتخاب هدف). */
+$GLOBALS['wapm_taxonomies'] = [ 'product_cat', 'pa_brand', 'pa_برند', 'pa_اندازه' ];
+
+function taxonomy_exists( $taxonomy ) {
+	return in_array( (string) $taxonomy, $GLOBALS['wapm_taxonomies'], true );
+}
+
 function wp_generate_password( $length = 12, $special = true, $extra = false ) {
 	return substr( str_repeat( 'abc123xyz', 10 ), 0, max( 1, (int) $length ) );
 }
@@ -1850,6 +1857,89 @@ test( 'حذف افزونه: همه‌ی گزینه‌ها و متاهای شنا
 	}
 
 	eq( [], $missing, 'کلید جامانده در uninstall.php' );
+} );
+
+/* -------------------------------------------------------------------------
+ * ۱۷-۲) اسکریپت‌های ادمین — هر handle باید به فایل موجود اشاره کند
+ * ---------------------------------------------------------------------- */
+
+test( 'اسکریپت‌های ادمین: نام فایل‌ها با فایل‌های واقعی می‌خواند', function () {
+	$root = __DIR__ . '/../woocommerce-advanced-price-manager';
+	require_once $root . '/includes/class-admin.php';
+
+	$scripts = WAPM_Admin::scripts();
+
+	// ترتیب مهم است: core اول (WAPMUI را می‌سازد)، boot آخر.
+	eq( 'wapm-admin-core', array_key_first( $scripts ), 'اولین اسکریپت core است' );
+	eq( 'wapm-admin-boot', array_key_last( $scripts ), 'آخرین اسکریپت boot است' );
+
+	$missing = [];
+	foreach ( $scripts as $handle => $script ) {
+		// همان مسیری که enqueue() به wp_enqueue_script می‌دهد.
+		if ( ! file_exists( $root . '/assets/js/' . $script['file'] ) ) {
+			$missing[] = $handle . ' → assets/js/' . $script['file'];
+		}
+	}
+
+	// رگرسیون واقعی ۱.۱.۰: نام فایل از handle ساخته می‌شد (`core.js` به‌جای
+	// `admin-core.js`) و هر هفت اسکریپت ۴۰۴ می‌شد؛ نتیجه: صفحه‌ای بدون
+	// جاوااسکریپت و تب‌هایی که هیچ کاری نمی‌کردند.
+	eq( [], $missing, 'همه‌ی فایل‌های اسکریپت موجودند' );
+
+	foreach ( $scripts as $handle => $script ) {
+		foreach ( $script['deps'] as $dep ) {
+			ok( isset( $scripts[ $dep ] ), "وابستگی {$dep} برای {$handle} تعریف شده" );
+		}
+	}
+} );
+
+test( 'محصولات هدف: انتخاب ناقص روی همه‌ی محصولات اعمال نمی‌شود', function () {
+	$args = function ( array $filters ) {
+		$method = new ReflectionMethod( 'WAPM_Product_Handler', 'build_query_args' );
+		$method->setAccessible( true );
+		return $method->invoke( null, $filters, 1, 25 );
+	};
+
+	// رگرسیون: «دسته» بدون انتخاب دسته ⇒ tax_query با terms خالی کنار گذاشته می‌شد
+	// و کوئری روی همه‌ی محصولات می‌افتاد.
+	$a = $args( WAPM_Product_Handler::sanitize_filters( [ 'scope' => 'category' ] ) );
+	eq( [ 0 ], $a['post__in'], 'دسته‌ی خالی = هیچ محصولی' );
+	ok( ! isset( $a['tax_query'] ), 'بدون tax_query خالی' );
+
+	$a = $args( WAPM_Product_Handler::sanitize_filters( [ 'scope' => 'brand', 'brand_tax' => 'pa_brand' ] ) );
+	eq( [ 0 ], $a['post__in'], 'برند بدون انتخاب = هیچ محصولی' );
+
+	$a = $args( WAPM_Product_Handler::sanitize_filters( [ 'scope' => 'attribute', 'attribute_tax' => 'pa_اندازه', 'attribute_ids' => [] ] ) );
+	eq( [ 0 ], $a['post__in'], 'ویژگی بدون انتخاب = هیچ محصولی' );
+
+	// انتخاب کامل باید tax_query بسازد، نه post__in صفر.
+	$a = $args( WAPM_Product_Handler::sanitize_filters( [ 'scope' => 'category', 'category_ids' => [ 12 ] ] ) );
+	ok( ! isset( $a['post__in'] ), 'دسته‌ی انتخاب‌شده post__in ندارد' );
+	eq( 'product_cat', $a['tax_query'][0]['taxonomy'], 'tax_query دسته ساخته شد' );
+	eq( [ 12 ], $a['tax_query'][0]['terms'], 'شناسه‌ی دسته در کوئری' );
+
+	$a = $args( WAPM_Product_Handler::sanitize_filters( [ 'scope' => 'brand', 'brand_tax' => 'pa_brand', 'brand_ids' => [ 7 ] ] ) );
+	eq( 'pa_brand', $a['tax_query'][0]['taxonomy'], 'tax_query برند ساخته شد' );
+
+	// دامنه‌ی «همه» دست‌نخورده می‌ماند.
+	$a = $args( WAPM_Product_Handler::sanitize_filters( [ 'scope' => 'all' ] ) );
+	ok( ! isset( $a['post__in'] ) && ! isset( $a['tax_query'] ), 'دامنه‌ی همه بدون محدودیت' );
+} );
+
+test( 'محصولات هدف: taxonomy فارسی (pa_برند) با sanitize_key پاک نمی‌شود', function () {
+	// رگرسیون: sanitize_key( 'pa_برند' ) === 'pa_' بود ⇒ taxonomy_exists منفی
+	// ⇒ فیلتر برند بی‌صدا حذف می‌شد و بازه روی همه‌ی محصولات باز می‌شد.
+	eq( 'pa_', sanitize_key( 'pa_برند' ), 'پیش‌فرض: sanitize_key فارسی را می‌خورد' );
+	eq( 'pa_برند', WAPM_Product_Handler::sanitize_taxonomy( 'pa_برند' ), 'برند فارسی حفظ می‌شود' );
+	eq( 'pa_اندازه', WAPM_Product_Handler::sanitize_taxonomy( ' pa_اندازه ' ), 'ویژگی فارسی حفظ می‌شود' );
+	eq( 'pa_brand', WAPM_Product_Handler::sanitize_taxonomy( 'pa_brand' ), 'لاتین دست‌نخورده' );
+	eq( 'pa_برند', WAPM_Product_Handler::sanitize_taxonomy( 'pa_\"برند\'<>;' ), 'نویسه‌های خطرناک حذف می‌شوند' );
+	eq( 'script', WAPM_Product_Handler::sanitize_taxonomy( '"><script' ), 'فقط نویسه‌های مجاز می‌مانند' );
+	eq( '', WAPM_Product_Handler::sanitize_taxonomy( [ 'x' ] ), 'ورودی غیررشته‌ای' );
+
+	$f = WAPM_Product_Handler::sanitize_filters( [ 'scope' => 'brand', 'brand_tax' => 'pa_برند', 'brand_ids' => [ 5 ] ] );
+	eq( 'pa_برند', $f['brand_tax'], 'sanitize_filters تاکسونومی برند را حفظ می‌کند' );
+	eq( 'pa_اندازه', WAPM_Product_Handler::sanitize_filters( [ 'attribute_tax' => 'pa_اندازه' ] )['attribute_tax'], 'ویژگی هم' );
 } );
 
 test( 'حذف افزونه: جدول‌ها، کرون و نگهبان WP_UNINSTALL_PLUGIN', function () {

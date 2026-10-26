@@ -2,7 +2,7 @@
 # This file is distributed under the GPL-2.0-or-later license.
 msgid ""
 msgstr ""
-"Project-Id-Version: WooCommerce Advanced Price Manager 1.1.0\n"
+"Project-Id-Version: WooCommerce Advanced Price Manager 1.1.1\n"
 "Report-Msgid-Bugs-To: https://github.com/hassann98-cmd/price-manager/issues\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -113,11 +113,11 @@ msgstr ""
 msgid "آخرین تغییر"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:518
+#: woocommerce-advanced-price-manager/includes/class-admin.php:534
 msgid "آخرین همگام‌سازی"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:489
+#: woocommerce-advanced-price-manager/includes/class-admin.php:505
 msgid "آخرین همگام‌سازی هیچ محصولی پیدا نکرد. یعنی یا صفحه‌ی اشتباهی باز شده، یا ترب ساختار داده‌اش را عوض کرده و بوکمارکلت باید به‌روزرسانی شود."
 msgstr ""
 
@@ -125,7 +125,7 @@ msgstr ""
 msgid "آستانه «برابر»"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:134
+#: woocommerce-advanced-price-manager/includes/class-admin.php:150
 msgid "آیا از اعمال تغییرات مطمئن هستید؟ این عملیات روی %d محصول اجرا می‌شود."
 msgstr ""
 
@@ -150,11 +150,11 @@ msgstr ""
 msgid "اتصال این محصول به ترب حذف شود؟ (قیمت رقیب پاک می‌شود ولی قیمت خودتان تغییری نمی‌کند)"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:473
+#: woocommerce-advanced-price-manager/includes/class-admin.php:489
 msgid "اتصال دستی"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:141
+#: woocommerce-advanced-price-manager/includes/class-admin.php:157
 msgid "اتصال قطع شد — تلاش مجدد %1$d از ۳ (%2$d ثانیه دیگر)…"
 msgstr ""
 
@@ -163,7 +163,7 @@ msgid "اتصال محصول به ترب حذف شد."
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:198
-#: woocommerce-advanced-price-manager/includes/class-admin.php:151
+#: woocommerce-advanced-price-manager/includes/class-admin.php:167
 msgid "اجرا"
 msgstr ""
 
@@ -227,16 +227,16 @@ msgstr ""
 msgid "اعمال موجودی"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:156
+#: woocommerce-advanced-price-manager/includes/class-admin.php:172
 msgid "اعمال‌شده"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:145
+#: woocommerce-advanced-price-manager/includes/class-admin.php:161
 msgid "افزایش"
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:279
-#: woocommerce-advanced-price-manager/includes/class-admin.php:381
+#: woocommerce-advanced-price-manager/includes/class-admin.php:397
 msgid "افزایش (+)"
 msgstr ""
 
@@ -264,11 +264,11 @@ msgstr ""
 msgid "امکان کپی محصول در این نسخه ووکامرس فراهم نیست."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:261
+#: woocommerce-advanced-price-manager/includes/class-admin.php:277
 msgid "انتخاب محصولات"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:139
+#: woocommerce-advanced-price-manager/includes/class-admin.php:155
 msgid "انجام شد"
 msgstr ""
 
@@ -382,7 +382,7 @@ msgstr ""
 msgid "بازگردانی آخرین عملیات"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:158
+#: woocommerce-advanced-price-manager/includes/class-admin.php:174
 msgid "بازگشته"
 msgstr ""
 
@@ -390,16 +390,16 @@ msgstr ""
 msgid "بخشی از کار به اجرای بعدی موکول شد."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:524
+#: woocommerce-advanced-price-manager/includes/class-admin.php:540
 msgid "بدون داده‌ی فروشنده"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:305
+#: woocommerce-advanced-price-manager/includes/class-admin.php:321
 msgid "بدون فیلتر"
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:321
-#: woocommerce-advanced-price-manager/includes/class-admin.php:438
+#: woocommerce-advanced-price-manager/includes/class-admin.php:454
 msgid "بدون گرد کردن"
 msgstr ""
 
@@ -440,8 +440,8 @@ msgstr ""
 msgid "بررسی شد — %d فروشنده در ترب."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:171
-#: woocommerce-advanced-price-manager/includes/class-admin.php:277
+#: woocommerce-advanced-price-manager/includes/class-admin.php:187
+#: woocommerce-advanced-price-manager/includes/class-admin.php:293
 msgid "برند"
 msgstr ""
 
@@ -449,7 +449,7 @@ msgstr ""
 msgid "برند این محصول از مقایسه مستثنا شده است"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:254
+#: woocommerce-advanced-price-manager/includes/class-admin.php:270
 msgid "برند خاص"
 msgstr ""
 
@@ -487,7 +487,7 @@ msgstr ""
 msgid "به‌طور خودکار تطبیق نخورد"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:470
+#: woocommerce-advanced-price-manager/includes/class-admin.php:486
 msgid "بوکمارکلت"
 msgstr ""
 
@@ -507,7 +507,7 @@ msgstr ""
 msgid "تأیید شناسه با ترب"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:481
+#: woocommerce-advanced-price-manager/includes/class-admin.php:497
 msgid "تا وقتی مشخص نباشد کدام فروشنده خودتان هستید، «ارزان‌ترین رقیب» قابل محاسبه نیست و افزونه مقایسه را انجام نمی‌دهد."
 msgstr ""
 
@@ -524,7 +524,7 @@ msgstr ""
 msgid "تاریخ شروع الزامی است."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:209
+#: woocommerce-advanced-price-manager/includes/class-admin.php:225
 msgid "تاریخچه"
 msgstr ""
 
@@ -544,11 +544,11 @@ msgstr ""
 msgid "تخفیف‌دار"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:211
+#: woocommerce-advanced-price-manager/includes/class-admin.php:227
 msgid "ترب"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:327
+#: woocommerce-advanced-price-manager/includes/class-admin.php:343
 msgid "ترب (نسبت به ارزان‌ترین رقیب)"
 msgstr ""
 
@@ -568,7 +568,7 @@ msgstr ""
 msgid "ترب درخواست‌های این سرور را موقتاً محدود کرده است. حدود %d دقیقه دیگر تلاش کنید (تلاش زودتر، زمان بلاک را طولانی‌تر می‌کند)."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:192
+#: woocommerce-advanced-price-manager/includes/class-admin.php:208
 msgid "ترب متصل"
 msgstr ""
 
@@ -581,12 +581,12 @@ msgstr ""
 msgid "تصویر"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:522
+#: woocommerce-advanced-price-manager/includes/class-admin.php:538
 msgid "تطبیق‌خورده"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:502
-#: woocommerce-advanced-price-manager/includes/class-admin.php:525
+#: woocommerce-advanced-price-manager/includes/class-admin.php:518
+#: woocommerce-advanced-price-manager/includes/class-admin.php:541
 msgid "تطبیق‌نیافته"
 msgstr ""
 
@@ -606,7 +606,7 @@ msgstr ""
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:185
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-rules.php:54
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-schedule.php:52
-#: woocommerce-advanced-price-manager/includes/class-admin.php:204
+#: woocommerce-advanced-price-manager/includes/class-admin.php:220
 msgid "تغییر قیمت"
 msgstr ""
 
@@ -661,8 +661,8 @@ msgstr ""
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:291
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:393
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-torob.php:105
-#: woocommerce-advanced-price-manager/includes/class-admin.php:342
-#: woocommerce-advanced-price-manager/includes/class-admin.php:392
+#: woocommerce-advanced-price-manager/includes/class-admin.php:358
+#: woocommerce-advanced-price-manager/includes/class-admin.php:408
 msgid "تومان"
 msgstr ""
 
@@ -682,7 +682,7 @@ msgstr ""
 msgid "جستجو"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:263
+#: woocommerce-advanced-price-manager/includes/class-admin.php:279
 msgid "جستجو بر اساس نام محصول یا SKU"
 msgstr ""
 
@@ -690,7 +690,7 @@ msgstr ""
 msgid "جستجو: %s"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:144
+#: woocommerce-advanced-price-manager/includes/class-admin.php:160
 msgid "جستجوی نام محصول یا SKU…"
 msgstr ""
 
@@ -699,7 +699,7 @@ msgid "جستجوی نام یا SKU…"
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:276
-#: woocommerce-advanced-price-manager/includes/class-admin.php:378
+#: woocommerce-advanced-price-manager/includes/class-admin.php:394
 msgid "جهت"
 msgstr ""
 
@@ -719,7 +719,7 @@ msgstr ""
 msgid "حجم داده بیش از حد مجاز است."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:356
+#: woocommerce-advanced-price-manager/includes/class-admin.php:372
 msgid "حداقل اختلاف برای تغییر:"
 msgstr ""
 
@@ -731,7 +731,7 @@ msgstr ""
 msgid "حداقل قیمت"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:450
+#: woocommerce-advanced-price-manager/includes/class-admin.php:466
 msgid "حداقل:"
 msgstr ""
 
@@ -739,7 +739,7 @@ msgstr ""
 msgid "حداکثر عمر داده"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:361
+#: woocommerce-advanced-price-manager/includes/class-admin.php:377
 msgid "حداکثر عمر داده:"
 msgstr ""
 
@@ -747,11 +747,11 @@ msgstr ""
 msgid "حداکثر قیمت"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:452
+#: woocommerce-advanced-price-manager/includes/class-admin.php:468
 msgid "حداکثر:"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:152
+#: woocommerce-advanced-price-manager/includes/class-admin.php:168
 msgid "حذف"
 msgstr ""
 
@@ -763,7 +763,7 @@ msgstr ""
 msgid "حذف Sale"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:413
+#: woocommerce-advanced-price-manager/includes/class-admin.php:429
 msgid "حذف Sale Price + تغییر Regular"
 msgstr ""
 
@@ -772,7 +772,7 @@ msgstr ""
 msgid "حذف شد."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:137
+#: woocommerce-advanced-price-manager/includes/class-admin.php:153
 msgid "حذف شود؟"
 msgstr ""
 
@@ -788,7 +788,7 @@ msgstr ""
 msgid "حفظ درصد تخفیف"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:412
+#: woocommerce-advanced-price-manager/includes/class-admin.php:428
 msgid "حفظ درصد تخفیف (Regular تغییر، Sale متناسب)"
 msgstr ""
 
@@ -800,7 +800,7 @@ msgstr ""
 msgid "خالی بگذارید تا بازگشت خودکار انجام نشود. اجرا حداکثر یک ساعت بعد از زمان تعیین‌شده انجام می‌شود."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:210
+#: woocommerce-advanced-price-manager/includes/class-admin.php:226
 msgid "خروجی / ورودی CSV"
 msgstr ""
 
@@ -854,7 +854,7 @@ msgstr ""
 msgid "خطا در خواندن فایل."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:140
+#: woocommerce-advanced-price-manager/includes/class-admin.php:156
 msgid "خطایی رخ داد. دوباره تلاش کنید."
 msgstr ""
 
@@ -892,7 +892,7 @@ msgstr ""
 msgid "داده‌ی قدیمی‌تر از این، «کهنه» علامت می‌خورد و مبنای تغییر خودکار قیمت قرار نمی‌گیرد."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:247
+#: woocommerce-advanced-price-manager/includes/class-admin.php:263
 msgid "دامنه اعمال"
 msgstr ""
 
@@ -908,23 +908,23 @@ msgstr ""
 msgid "دانلود CSV موجودی"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:154
+#: woocommerce-advanced-price-manager/includes/class-admin.php:170
 msgid "در انتظار"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:155
+#: woocommerce-advanced-price-manager/includes/class-admin.php:171
 msgid "در حال اجرا"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:143
+#: woocommerce-advanced-price-manager/includes/class-admin.php:159
 msgid "در حال بارگذاری…"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:157
+#: woocommerce-advanced-price-manager/includes/class-admin.php:173
 msgid "در حال بازگشت"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:329
+#: woocommerce-advanced-price-manager/includes/class-admin.php:345
 msgid "در حالت «ترب»، قیمت مؤثر هر محصول برابر «قیمت هدف» می‌شود؛ «نوع تغییر»، «قیمت هدف» و «مدیریت Sale» نادیده گرفته می‌شوند و درصد تخفیف حفظ می‌شود."
 msgstr ""
 
@@ -932,7 +932,7 @@ msgstr ""
 msgid "در پایان، در ستون «قیمت ترب» تب «لیست محصولات» می‌بینید کدام محصول از رقیب گران‌تر یا ارزان‌تر است."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:135
+#: woocommerce-advanced-price-manager/includes/class-admin.php:151
 msgid "در پیش‌نمایش %d قیمت پرخطر (افت بیش از ۹۰٪) دیده شد. با آگاهی از این مورد اعمال شود؟"
 msgstr ""
 
@@ -948,11 +948,11 @@ msgstr ""
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:445
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-torob.php:104
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-torob.php:48
-#: woocommerce-advanced-price-manager/includes/class-admin.php:338
+#: woocommerce-advanced-price-manager/includes/class-admin.php:354
 msgid "درصد"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:358
+#: woocommerce-advanced-price-manager/includes/class-admin.php:374
 msgid "درصد (کمتر از این، تغییر نمی‌کند)"
 msgstr ""
 
@@ -965,7 +965,7 @@ msgid "درصد باید بین ۱ تا ۱۰۰ باشد."
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:269
-#: woocommerce-advanced-price-manager/includes/class-admin.php:370
+#: woocommerce-advanced-price-manager/includes/class-admin.php:386
 msgid "درصدی"
 msgstr ""
 
@@ -979,11 +979,11 @@ msgstr ""
 msgid "دسته: %s"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:266
+#: woocommerce-advanced-price-manager/includes/class-admin.php:282
 msgid "دسته‌بندی"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:252
+#: woocommerce-advanced-price-manager/includes/class-admin.php:268
 msgid "دسته‌بندی خاص"
 msgstr ""
 
@@ -1004,7 +1004,7 @@ msgstr ""
 msgid "دستی"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:326
+#: woocommerce-advanced-price-manager/includes/class-admin.php:342
 msgid "دستی (درصد یا مبلغ)"
 msgstr ""
 
@@ -1065,12 +1065,12 @@ msgid "رو به اتمام"
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:323
-#: woocommerce-advanced-price-manager/includes/class-admin.php:440
+#: woocommerce-advanced-price-manager/includes/class-admin.php:456
 msgid "رو به بالا"
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:324
-#: woocommerce-advanced-price-manager/includes/class-admin.php:441
+#: woocommerce-advanced-price-manager/includes/class-admin.php:457
 msgid "رو به پایین"
 msgstr ""
 
@@ -1078,11 +1078,11 @@ msgstr ""
 msgid "روز"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:507
+#: woocommerce-advanced-price-manager/includes/class-admin.php:523
 msgid "روز تا کهنه‌شدن داده"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:363
+#: woocommerce-advanced-price-manager/includes/class-admin.php:379
 msgid "روز — صفر یعنی از تنظیمات تب ترب استفاده شود. داده‌ی کهنه مبنای تغییر قیمت نمی‌شود."
 msgstr ""
 
@@ -1095,12 +1095,12 @@ msgid "روی محصولاتی اعمال می‌شود که در تب «لیس�
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:292
-#: woocommerce-advanced-price-manager/includes/class-admin.php:343
-#: woocommerce-advanced-price-manager/includes/class-admin.php:393
+#: woocommerce-advanced-price-manager/includes/class-admin.php:359
+#: woocommerce-advanced-price-manager/includes/class-admin.php:409
 msgid "ریال"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:208
+#: woocommerce-advanced-price-manager/includes/class-admin.php:224
 msgid "زمان‌بندی"
 msgstr ""
 
@@ -1124,7 +1124,7 @@ msgstr ""
 msgid "ساختار ترب سالم است (%d محصول خوانده شد)."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:487
+#: woocommerce-advanced-price-manager/includes/class-admin.php:503
 msgid "ساختار صفحه‌ی ترب تغییر کرده است؟"
 msgstr ""
 
@@ -1166,7 +1166,7 @@ msgstr ""
 msgid "سقف درخواست‌های روزانه‌ی ترب (%d) پر شده است. برای مقایسه‌ی انبوه از بوکمارکلت استفاده کنید؛ آن از مرورگر خودتان کار می‌کند."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:349
+#: woocommerce-advanced-price-manager/includes/class-admin.php:365
 msgid "شرایط اعمال"
 msgstr ""
 
@@ -1206,11 +1206,11 @@ msgstr ""
 msgid "شناسه فروشگاه برای این است که قیمت خودتان از «ارزان‌ترین رقیب» جدا شود. اگر تنظیم نشود، افزونه عمداً مقایسه را انجام نمی‌دهد (چون با قیمت خودتان مقایسه می‌شد و نتیجه گمراه‌کننده بود)."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:196
+#: woocommerce-advanced-price-manager/includes/class-admin.php:212
 msgid "شناسه فروشگاه ترب تنظیم نشده"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:191
+#: woocommerce-advanced-price-manager/includes/class-admin.php:207
 msgid "شناسه فروشگاه ترب: %s"
 msgstr ""
 
@@ -1223,7 +1223,7 @@ msgstr ""
 msgid "شناسه فروشگاه در ترب (Shop ID)"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:479
+#: woocommerce-advanced-price-manager/includes/class-admin.php:495
 msgid "شناسه یا نام فروشگاه تنظیم نشده است."
 msgstr ""
 
@@ -1240,7 +1240,7 @@ msgstr ""
 msgid "شناسه‌ی محصول ترب معتبر نیست."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:521
+#: woocommerce-advanced-price-manager/includes/class-admin.php:537
 msgid "صفحات خوانده‌شده"
 msgstr ""
 
@@ -1248,7 +1248,7 @@ msgstr ""
 msgid "صفحه‌ی نامعتبر."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:453
+#: woocommerce-advanced-price-manager/includes/class-admin.php:469
 msgid "صفر = بدون محدودیت. مثال: هیچ محصولی کمتر از ۵۰۰۰۰ نشود."
 msgstr ""
 
@@ -1294,7 +1294,7 @@ msgstr ""
 msgid "عنوان قانون"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:150
+#: woocommerce-advanced-price-manager/includes/class-admin.php:166
 msgid "غیرفعال"
 msgstr ""
 
@@ -1332,7 +1332,7 @@ msgstr ""
 msgid "فروشگاهی پیدا نشد."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:149
+#: woocommerce-advanced-price-manager/includes/class-admin.php:165
 msgid "فعال"
 msgstr ""
 
@@ -1355,11 +1355,11 @@ msgstr ""
 msgid "فقط متصل‌شده به ترب"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:353
+#: woocommerce-advanced-price-manager/includes/class-admin.php:369
 msgid "فقط وقتی از رقیب گران‌تریم (قیمت را بالا نبر)"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:471
+#: woocommerce-advanced-price-manager/includes/class-admin.php:487
 msgid "فید CSV"
 msgstr ""
 
@@ -1375,7 +1375,7 @@ msgstr ""
 msgid "فیلتر ذخیره شد."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:302
+#: woocommerce-advanced-price-manager/includes/class-admin.php:318
 msgid "فیلتر موجودی (اختیاری)"
 msgstr ""
 
@@ -1423,7 +1423,7 @@ msgstr ""
 msgid "قفل قیمت (WAPM)"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:207
+#: woocommerce-advanced-price-manager/includes/class-admin.php:223
 msgid "قوانین"
 msgstr ""
 
@@ -1442,11 +1442,11 @@ msgstr ""
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:209
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:305
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:94
-#: woocommerce-advanced-price-manager/includes/class-admin.php:147
+#: woocommerce-advanced-price-manager/includes/class-admin.php:163
 msgid "قیمت اصلی"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:401
+#: woocommerce-advanced-price-manager/includes/class-admin.php:417
 msgid "قیمت اصلی (Regular)"
 msgstr ""
 
@@ -1454,7 +1454,7 @@ msgstr ""
 msgid "قیمت اصلی باید از قیمت ویژه بیشتر باشد."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:523
+#: woocommerce-advanced-price-manager/includes/class-admin.php:539
 msgid "قیمت بررسی‌شده"
 msgstr ""
 
@@ -1476,11 +1476,11 @@ msgid "قیمت روی «ارزان‌ترین رقیب منهای مقدار ز
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:306
-#: woocommerce-advanced-price-manager/includes/class-admin.php:148
+#: woocommerce-advanced-price-manager/includes/class-admin.php:164
 msgid "قیمت فروش"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:402
+#: woocommerce-advanced-price-manager/includes/class-admin.php:418
 msgid "قیمت فروش (Sale)"
 msgstr ""
 
@@ -1492,13 +1492,13 @@ msgstr ""
 msgid "قیمت محصول متغیر باید روی واریشن‌ها تغییر کند، نه روی والد."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:431
+#: woocommerce-advanced-price-manager/includes/class-admin.php:447
 msgid "قیمت محصولات متغیر روی واریشن‌ها اعمال می‌شود. (قیمت والد در ووکامرس قیمت فروش را تعیین نمی‌کند.)"
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:258
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:271
-#: woocommerce-advanced-price-manager/includes/class-admin.php:374
+#: woocommerce-advanced-price-manager/includes/class-admin.php:390
 msgid "قیمت مطلق"
 msgstr ""
 
@@ -1507,12 +1507,12 @@ msgid "قیمت نامشخص"
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:303
-#: woocommerce-advanced-price-manager/includes/class-admin.php:333
-#: woocommerce-advanced-price-manager/includes/class-admin.php:398
+#: woocommerce-advanced-price-manager/includes/class-admin.php:349
+#: woocommerce-advanced-price-manager/includes/class-admin.php:414
 msgid "قیمت هدف"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:178
+#: woocommerce-advanced-price-manager/includes/class-admin.php:194
 msgid "قیمت و موجودی را از یک‌جا مدیریت کنید."
 msgstr ""
 
@@ -1525,7 +1525,7 @@ msgstr ""
 msgid "قیمت ویژه باید از قیمت اصلی کمتر باشد."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:136
+#: woocommerce-advanced-price-manager/includes/class-admin.php:152
 msgid "قیمت‌ها به مقدار قبل بازگردانده می‌شوند. ادامه می‌دهید؟"
 msgstr ""
 
@@ -1541,17 +1541,17 @@ msgstr ""
 msgid "لغو انتخاب"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:205
+#: woocommerce-advanced-price-manager/includes/class-admin.php:221
 msgid "لیست محصولات"
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:270
-#: woocommerce-advanced-price-manager/includes/class-admin.php:339
-#: woocommerce-advanced-price-manager/includes/class-admin.php:372
+#: woocommerce-advanced-price-manager/includes/class-admin.php:355
+#: woocommerce-advanced-price-manager/includes/class-admin.php:388
 msgid "مبلغ ثابت"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:526
+#: woocommerce-advanced-price-manager/includes/class-admin.php:542
 msgid "مبهم (نیاز به بررسی)"
 msgstr ""
 
@@ -1567,7 +1567,7 @@ msgstr ""
 msgid "متغیر (والد)"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:415
+#: woocommerce-advanced-price-manager/includes/class-admin.php:431
 msgid "مثال حفظ تخفیف: Regular از ۱٬۰۰۰٬۰۰۰ به ۱٬۲۰۰٬۰۰۰ → Sale از ۸۰۰٬۰۰۰ به ۹۶۰٬۰۰۰ (تخفیف ۲۰٪ حفظ می‌شود)."
 msgstr ""
 
@@ -1575,7 +1575,7 @@ msgstr ""
 msgid "مثال: «۱ درصد» یعنی یک درصد ارزان‌تر از ارزان‌ترین فروشنده‌ی رقیب. قیمت نهایی رو به پایین روی مضرب ۱٬۰۰۰ رند می‌شود و هرگز از رقیب گران‌تر نمی‌شود."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:345
+#: woocommerce-advanced-price-manager/includes/class-admin.php:361
 msgid "مثال: ۱٪ یعنی همیشه یک درصد زیر ارزان‌ترین رقیب. حداقل/حداکثر قیمت و گرد کردنِ پایین هم روی این قیمت اعمال می‌شوند."
 msgstr ""
 
@@ -1583,7 +1583,7 @@ msgstr ""
 msgid "مثلاً ای ام موبایل"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:444
+#: woocommerce-advanced-price-manager/includes/class-admin.php:460
 msgid "مثلاً مضرب ۱۰۰۰: قیمت ۲۳۵۴۳۰ می‌شود ۲۳۵۰۰۰"
 msgstr ""
 
@@ -1603,7 +1603,7 @@ msgstr ""
 msgid "محاسبه پیش‌نمایش"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:448
+#: woocommerce-advanced-price-manager/includes/class-admin.php:464
 msgid "محدودیت قیمت"
 msgstr ""
 
@@ -1625,7 +1625,7 @@ msgstr ""
 msgid "محصول ساده"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:497
+#: woocommerce-advanced-price-manager/includes/class-admin.php:513
 msgid "محصول متصل به ترب"
 msgstr ""
 
@@ -1649,7 +1649,7 @@ msgstr ""
 msgid "محصول متغیر — موجودی روی واریشن‌هاست"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:188
+#: woocommerce-advanced-price-manager/includes/class-admin.php:204
 msgid "محصول منتشرشده"
 msgstr ""
 
@@ -1667,7 +1667,7 @@ msgstr ""
 msgid "محصول یافت نشد."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:251
+#: woocommerce-advanced-price-manager/includes/class-admin.php:267
 msgid "محصولات انتخابی"
 msgstr ""
 
@@ -1679,7 +1679,7 @@ msgstr ""
 msgid "محصولات فروشگاه شما را از ترب می‌خواند و «قیمتی که ترب از شما نشان می‌دهد» را ذخیره می‌کند. با این کار ناسازگاری فید (ترب قیمت قدیمی نشان می‌دهد) برای همه‌ی محصولات مشخص می‌شود. هر کلیک صفحه‌به‌صفحه پیش می‌رود و هر صفحه یک درخواست به ترب می‌فرستد (هر درخواست تا ۲۴ محصول)."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:419
+#: woocommerce-advanced-price-manager/includes/class-admin.php:435
 msgid "محصولات متغیر"
 msgstr ""
 
@@ -1687,7 +1687,7 @@ msgstr ""
 msgid "محصولات هدف"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:520
+#: woocommerce-advanced-price-manager/includes/class-admin.php:536
 msgid "محصولات یافت‌شده"
 msgstr ""
 
@@ -1699,7 +1699,7 @@ msgstr ""
 msgid "مدیریت Sale"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:408
+#: woocommerce-advanced-price-manager/includes/class-admin.php:424
 msgid "مدیریت Sale Price"
 msgstr ""
 
@@ -1716,7 +1716,7 @@ msgstr ""
 msgid "مدیریت پیشرفته قیمت"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:174
+#: woocommerce-advanced-price-manager/includes/class-admin.php:190
 msgid "مدیریت پیشرفته قیمت ووکامرس"
 msgstr ""
 
@@ -1724,14 +1724,14 @@ msgstr ""
 msgid "مستقل"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:411
+#: woocommerce-advanced-price-manager/includes/class-admin.php:427
 msgid "مستقل (طبق «قیمت هدف»)"
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:284
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:386
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:449
-#: woocommerce-advanced-price-manager/includes/class-admin.php:387
+#: woocommerce-advanced-price-manager/includes/class-admin.php:403
 msgid "مقدار"
 msgstr ""
 
@@ -1751,11 +1751,11 @@ msgstr ""
 msgid "مقدار/قیمت هدف را وارد کنید."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:519
+#: woocommerce-advanced-price-manager/includes/class-admin.php:535
 msgid "منبع"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:323
+#: woocommerce-advanced-price-manager/includes/class-admin.php:339
 msgid "منبع تعیین قیمت"
 msgstr ""
 
@@ -1772,7 +1772,7 @@ msgstr ""
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:189
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:212
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:97
-#: woocommerce-advanced-price-manager/includes/class-admin.php:206
+#: woocommerce-advanced-price-manager/includes/class-admin.php:222
 msgid "موجودی"
 msgstr ""
 
@@ -1796,7 +1796,7 @@ msgstr ""
 msgid "موجودی باید عدد باشد."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:307
+#: woocommerce-advanced-price-manager/includes/class-admin.php:323
 msgid "موجودی بیشتر از"
 msgstr ""
 
@@ -1812,7 +1812,7 @@ msgstr ""
 msgid "موجودی محصول متغیر باید روی واریشن‌ها تغییر کند، نه روی والد."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:306
+#: woocommerce-advanced-price-manager/includes/class-admin.php:322
 msgid "موجودی کمتر از"
 msgstr ""
 
@@ -1863,11 +1863,11 @@ msgid "نحوه ذخیره‌سازی"
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:322
-#: woocommerce-advanced-price-manager/includes/class-admin.php:439
+#: woocommerce-advanced-price-manager/includes/class-admin.php:455
 msgid "نزدیک‌ترین مضرب"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:187
+#: woocommerce-advanced-price-manager/includes/class-admin.php:203
 msgid "نسخه"
 msgstr ""
 
@@ -1881,7 +1881,7 @@ msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:264
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:431
-#: woocommerce-advanced-price-manager/includes/class-admin.php:368
+#: woocommerce-advanced-price-manager/includes/class-admin.php:384
 msgid "نوع تغییر"
 msgstr ""
 
@@ -1902,7 +1902,7 @@ msgid "هر اسکریپتی می‌تواند با همین توکن، داده
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:307
-#: woocommerce-advanced-price-manager/includes/class-admin.php:403
+#: woocommerce-advanced-price-manager/includes/class-admin.php:419
 msgid "هر دو"
 msgstr ""
 
@@ -1910,7 +1910,7 @@ msgstr ""
 msgid "هشدار: فایل ستون shop_id/shop_name نداشت؛ هر ردیف یک قیمتِ بی‌نام است. اگر این فایل قیمت خودتان است، به‌جای ستون price از ستون our_price استفاده کنید تا قیمت خودتان «رقیب» حساب نشود."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:142
+#: woocommerce-advanced-price-manager/includes/class-admin.php:158
 msgid "همان تنظیمات را دوباره اعمال کنید؛ محصولات انجام‌شده دوباره تغییر نمی‌کنند و می‌توانید از تب تاریخچه Batch را Rollback کنید."
 msgstr ""
 
@@ -1934,11 +1934,11 @@ msgstr ""
 msgid "همه دسته‌بندی‌ها"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:250
+#: woocommerce-advanced-price-manager/includes/class-admin.php:266
 msgid "همه محصولات"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:179
+#: woocommerce-advanced-price-manager/includes/class-admin.php:195
 msgid "همه‌ی تغییرها با پیش‌نمایش و Batch ذخیره می‌شوند و هر عملیات یک «بازگردانی» دارد."
 msgstr ""
 
@@ -1946,7 +1946,7 @@ msgstr ""
 msgid "همه‌ی محصولات"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:374
+#: woocommerce-advanced-price-manager/includes/class-admin.php:390
 msgid "همه‌ی محصولات هدف دقیقاً این قیمت می‌شوند"
 msgstr ""
 
@@ -1970,7 +1970,7 @@ msgstr ""
 msgid "هم‌تراز با ترب"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:512
+#: woocommerce-advanced-price-manager/includes/class-admin.php:528
 msgid "هنوز هیچ داده‌ای از ترب دریافت نشده است."
 msgstr ""
 
@@ -2001,7 +2001,7 @@ msgstr ""
 msgid "هیچ محصولی انتخاب نشده."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:138
+#: woocommerce-advanced-price-manager/includes/class-admin.php:154
 msgid "هیچ محصولی با این شرایط پیدا نشد."
 msgstr ""
 
@@ -2044,7 +2044,7 @@ msgstr ""
 msgid "ورود از CSV"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:472
+#: woocommerce-advanced-price-manager/includes/class-admin.php:488
 msgid "ورود برنامه‌نویسی"
 msgstr ""
 
@@ -2084,15 +2084,15 @@ msgstr ""
 msgid "وضعیت نسبت به ترب"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:153
+#: woocommerce-advanced-price-manager/includes/class-admin.php:169
 msgid "ویرایش"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:290
+#: woocommerce-advanced-price-manager/includes/class-admin.php:306
 msgid "ویژگی"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:256
+#: woocommerce-advanced-price-manager/includes/class-admin.php:272
 msgid "ویژگی خاص"
 msgstr ""
 
@@ -2161,13 +2161,13 @@ msgid "کاربر"
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-stock.php:27
-#: woocommerce-advanced-price-manager/includes/class-admin.php:146
+#: woocommerce-advanced-price-manager/includes/class-admin.php:162
 msgid "کاهش"
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:278
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:437
-#: woocommerce-advanced-price-manager/includes/class-admin.php:382
+#: woocommerce-advanced-price-manager/includes/class-admin.php:398
 msgid "کاهش (−)"
 msgstr ""
 
@@ -2185,7 +2185,7 @@ msgstr ""
 msgid "کلاینت API ترب بارگذاری نشده است."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:335
+#: woocommerce-advanced-price-manager/includes/class-admin.php:351
 msgid "کمتر از ارزان‌ترین رقیب:"
 msgstr ""
 
@@ -2217,7 +2217,7 @@ msgstr ""
 msgid "گرد کردن"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:435
+#: woocommerce-advanced-price-manager/includes/class-admin.php:451
 msgid "گرد کردن قیمت"
 msgstr ""
 
@@ -2261,7 +2261,7 @@ msgstr ""
 msgid "۵) صف تأیید تطبیق — محصولات ترب که خودکار وصل نشدند"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:474
+#: woocommerce-advanced-price-manager/includes/class-admin.php:490
 msgid "—"
 msgstr ""
 
@@ -2269,7 +2269,7 @@ msgstr ""
 msgid "— انتخاب عملیات —"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-admin.php:293
+#: woocommerce-advanced-price-manager/includes/class-admin.php:309
 msgid "— انتخاب ویژگی —"
 msgstr ""
 

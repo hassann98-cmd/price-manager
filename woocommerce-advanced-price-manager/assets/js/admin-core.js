@@ -173,41 +173,34 @@ window.WAPMUI = window.WAPMUI || {};
 
 	/* ---------------- فیلدهای هدف (مشترک بین تب‌ها) ---------------- */
 
+	/**
+	 * آیا select2/selectWoo در دسترس است؟
+	 *
+	 * چرا مهم است: این کتابخانه از ووکامرس می‌آید و همیشه نیست (افزونه‌ی
+	 * بهینه‌ساز JS را ادغام/تعویق می‌کند، نسخه‌ای از ووکامرس آن را ندارد، یا
+	 * اسکریپت دیگری زودتر خطا داده). نسخه‌ی قبلی بدون گارد `selectWoo()` را صدا
+	 * می‌زد؛ اگر نبود، کل `admin-core.js` با TypeError می‌مرد، `window.WAPMUI`
+	 * هیچ‌وقت ساخته نمی‌شد و **همه‌ی** تب‌ها، دکمه‌ها و کشوها از کار می‌افتادند.
+	 */
+	function hasSelectWoo() {
+		return !!(window.jQuery && $.fn && typeof $.fn.selectWoo === 'function');
+	}
+
 	function initTargetFields($box) {
-		// selectWoo برای جستجوی محصول
-		$box.find('.wapm-product-select').selectWoo({
-			dir: 'rtl',
-			placeholder: WAPM.i18n.select_products,
-			minimumInputLength: 2,
-			ajax: {
-				url: WAPM.ajax_url,
-				method: 'POST',
-				dataType: 'json',
-				delay: 350,
-				data: function (params) {
-					return { action: 'wapm_search_products', nonce: WAPM.nonce, term: params.term };
-				},
-				processResults: function (res) {
-					return { results: (res && res.success) ? res.data : [] };
-				}
-			}
-		});
+		var i18n = (window.WAPM && window.WAPM.i18n) || {};
 
-		$box.find('.wapm-category-select, .wapm-brand-select, .wapm-attribute-select').selectWoo({ dir: 'rtl', width: '100%' });
-
-		// نمایش ردیف مربوط به هر دامنه
+		// ۱) هندلرها *قبل* از زیباسازی bind می‌شوند؛ پس اگر select2 نبود یا موقع
+		//    ساخت ویجت خطا داد، تغییر دامنه و بارگذاری برند/ویژگی کار می‌کند.
 		$box.find('.wapm-scope').on('change', function () {
 			var scope = $(this).val();
 			$box.find('.wapm-scope-row').hide();
 			$box.find('.wapm-scope-' + scope).show();
 		});
 
-		// بارگذاری term های برند
 		$box.find('.wapm-brand-tax').on('change', function () {
 			loadTerms($(this).val(), $box.find('.wapm-brand-select'));
 		}).trigger('change');
 
-		// بارگذاری term های ویژگی
 		$box.find('.wapm-attribute-tax').on('change', function () {
 			var tax = $(this).val();
 			if (tax) { loadTerms(tax, $box.find('.wapm-attribute-select')); }
@@ -227,6 +220,42 @@ window.WAPMUI = window.WAPMUI || {};
 
 		$settings.find('.wapm-mode').on('change', syncModeUi);
 		syncModeUi();
+
+		// ۲) زیباسازی — اختیاری و بی‌خطر برای بقیه‌ی صفحه.
+		if (!hasSelectWoo()) {
+			$box.addClass('wapm-no-select2');
+			return;
+		}
+
+		try {
+			$box.find('.wapm-product-select').selectWoo({
+				dir: 'rtl',
+				placeholder: i18n.select_products || '',
+				minimumInputLength: 2,
+				ajax: {
+					url: (window.WAPM && window.WAPM.ajax_url) || '',
+					method: 'POST',
+					dataType: 'json',
+					delay: 350,
+					data: function (params) {
+						return {
+							action: 'wapm_search_products',
+							nonce: (window.WAPM && window.WAPM.nonce) || '',
+							term: params.term
+						};
+					},
+					processResults: function (res) {
+						return { results: (res && res.success) ? res.data : [] };
+					}
+				}
+			});
+
+			$box.find('.wapm-category-select, .wapm-brand-select, .wapm-attribute-select').selectWoo({ dir: 'rtl', width: '100%' });
+		} catch (e) {
+			// زیباسازی شکست، ولی فرم با سلکت‌های بومی سالم است.
+			$box.addClass('wapm-no-select2');
+			if (window.console && console.warn) { console.warn('WAPM: selectWoo init failed', e); }
+		}
 	}
 
 	/**
@@ -250,8 +279,15 @@ window.WAPMUI = window.WAPMUI || {};
 		});
 	}
 
+	// هر جعبه جدا محافظت می‌شود: خطای یک فرم نباید بقیه‌ی صفحه (تب‌ها، لیست،
+	// ترب) را از کار بیندازد. قبلاً یک TypeError این‌جا کل ماژول را می‌کشت.
 	$('.wapm-target-fields').each(function () {
-		initTargetFields($(this));
+		try {
+			initTargetFields($(this));
+		} catch (e) {
+			$(this).addClass('wapm-no-select2');
+			if (window.console && console.error) { console.error('WAPM: target fields init failed', e); }
+		}
 	});
 
 	// منبع قیمت (دستی/ترب) — برای هر سه فرم (تغییر قیمت، قانون، زمان‌بندی).
