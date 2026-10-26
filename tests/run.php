@@ -115,6 +115,31 @@ function date_i18n( $format, $timestamp = null ) {
 	return gmdate( $format, (int) $timestamp + (int) round( $offset * 3600 ) );
 }
 
+/** انبار ساده‌ی متای محصول برای تست‌های تاریخچه‌ی ترب. */
+$GLOBALS['wapm_meta'] = [];
+
+function get_post_meta( $post_id, $key = '', $single = false ) {
+	$id = (int) $post_id;
+
+	if ( '' === $key ) {
+		return $GLOBALS['wapm_meta'][ $id ] ?? [];
+	}
+
+	$value = $GLOBALS['wapm_meta'][ $id ][ $key ] ?? '';
+
+	return $single ? $value : ( '' === $value ? [] : [ $value ] );
+}
+
+function update_post_meta( $post_id, $key, $value ) {
+	$GLOBALS['wapm_meta'][ (int) $post_id ][ $key ] = $value;
+	return true;
+}
+
+function delete_post_meta( $post_id, $key ) {
+	unset( $GLOBALS['wapm_meta'][ (int) $post_id ][ $key ] );
+	return true;
+}
+
 function esc_js( $text ) {
 	return addcslashes( (string) $text, "\\'\"\r\n</" );
 }
@@ -1764,6 +1789,93 @@ test( 'رشته: هیچ فایل افزونه‌ای مستقیم mb_* صدا ن
 /* -------------------------------------------------------------------------
  * ۱۹) «هم‌تراز با ترب» — تنظیمات، برچسب دلیل و ثبت اکشن
  * ---------------------------------------------------------------------- */
+
+test( 'تاریخچه‌ی قیمت رقیب: فقط تغییرها ثبت می‌شوند (بدون تکرار)', function () {
+	$GLOBALS['wapm_meta'] = [];
+	$id = 501;
+
+	WAPM_Torob::push_price_point( $id, 100000, '2024-05-01 10:00:00' );
+	WAPM_Torob::push_price_point( $id, 100000, '2024-05-01 11:00:00' ); // همان قیمت
+	eq( 1, count( WAPM_Torob::get_price_history( $id ) ), 'بررسی تکراری نقطه نمی‌سازد' );
+
+	WAPM_Torob::push_price_point( $id, 95000, '2024-05-02 10:00:00' );
+	$history = WAPM_Torob::get_price_history( $id );
+
+	eq( 2, count( $history ), 'تغییر قیمت ثبت شد' );
+	eq( 95000.0, $history[1]['p'], 'قیمت جدید' );
+	eq( '2024-05-02 10:00:00', $history[1]['t'], 'زمان محلی همان‌طور که هست' );
+} );
+
+test( 'تاریخچه‌ی قیمت رقیب: بدون قیمت چیزی ثبت نمی‌شود', function () {
+	$GLOBALS['wapm_meta'] = [];
+
+	WAPM_Torob::push_price_point( 502, null, '2024-05-01 10:00:00' );
+	WAPM_Torob::push_price_point( 502, 0.0, '2024-05-01 10:00:00' );
+	WAPM_Torob::push_price_point( 502, 5000, '' );
+
+	eq( [], WAPM_Torob::get_price_history( 502 ), 'هیچ نقطه‌ای ساخته نشد' );
+} );
+
+test( 'تاریخچه‌ی قیمت رقیب: سقف ۳۰ نقطه، قدیمی‌ها حذف می‌شوند', function () {
+	$GLOBALS['wapm_meta'] = [];
+	$id = 503;
+
+	// ۳۵ تغییر قیمت (هر ساعت ۱۰۰۰ تومان ارزان‌تر).
+	for ( $i = 0; $i < 35; $i++ ) {
+		WAPM_Torob::push_price_point( $id, 100000 - ( $i * 1000 ), sprintf( '2024-05-01 %02d:00:00', $i % 24 ) );
+	}
+
+	$history = WAPM_Torob::get_price_history( $id );
+
+	eq( WAPM_Torob::HISTORY_POINTS, count( $history ), 'فقط ۳۰ نقطه نگه داشته شد' );
+	eq( 66000.0, $history[ count( $history ) - 1 ]['p'], 'آخرین قیمت درست است' );
+} );
+
+test( 'تاریخچه‌ی قیمت رقیب: نقطه‌های خراب نادیده گرفته می‌شوند', function () {
+	$GLOBALS['wapm_meta'] = [];
+	$id = 504;
+	update_post_meta( $id, WAPM_Torob::META_PRICE_HISTORY, '{"نه":"آرایه"}' );
+	eq( [], WAPM_Torob::get_price_history( $id ), 'JSON غیرآرایه' );
+
+	update_post_meta( $id, WAPM_Torob::META_PRICE_HISTORY, '[{"t":"2024-05-01 10:00:00","p":1000},{"t":"2024-05-02 10:00:00"},{"bad":1},{"t":"2024-05-03 10:00:00","p":"2000"}]' );
+	$history = WAPM_Torob::get_price_history( $id );
+
+	eq( 2, count( $history ), 'فقط نقطه‌های سالم' );
+	eq( 2000.0, $history[1]['p'], 'قیمت رشته‌ای به عدد تبدیل شد' );
+} );
+
+test( 'تاریخچه‌ی قیمت رقیب: خلاصه‌ی تغییر ۷ روزه', function () {
+	// دو نقطه در بازه: مبنای مقدار اولیه.
+	$now = '2024-05-10 10:00:00';
+	$h   = [
+		[ 't' => '2024-05-01 10:00:00', 'p' => 200000 ],
+		[ 't' => '2024-05-06 10:00:00', 'p' => 100000 ],
+		[ 't' => $now, 'p' => 90000 ],
+	];
+
+	// بازه‌ی ۳ روزه: مبنا = آخرین قیمتِ معلوم در شروع بازه (۶ مه، ۱۰۰٬۰۰۰)
+	// → ۹۰٬۰۰۰ = −۱۰٪. (نقطه‌ی ۱ مه بیرون از بازه است.)
+	$change = WAPM_Torob::history_change( $h, 3 );
+
+	eq( -10.0, $change['pct'], 'درصد تغییر نسبت به مبنای بازه' );
+	eq( 100000.0, $change['from'], 'قیمت مبنا' );
+	eq( 4, $change['days'], 'فاصله‌ی روزها' );
+
+	// بازه‌ی ۷ روزه: هیچ نقطه‌ای داخل بازه نیست، پس مبنا اولین نقطه‌ی معلوم است.
+	$wide = WAPM_Torob::history_change( $h );
+	eq( 200000.0, $wide['from'], 'مبنای بازه‌ی بلندتر = اولین نقطه' );
+	eq( -55.0, $wide['pct'], '‒۵۵٪ از ۲۰۰٬۰۰۰ به ۹۰٬۰۰۰' );
+
+	eq( null, WAPM_Torob::history_change( [ $h[0] ] ), 'یک نقطه = بدون خلاصه' );
+	eq( null, WAPM_Torob::history_change( [ [ 't' => '2024-05-01 10:00:00', 'p' => 5000 ], [ 't' => '2024-05-09 10:00:00', 'p' => 5000 ] ] ), 'بدون تغییر = null' );
+
+	// تاریخچه‌ی کوتاه‌تر از بازه: مبنا اولین نقطه است.
+	$short = [
+		[ 't' => '2024-05-09 10:00:00', 'p' => 100000 ],
+		[ 't' => '2024-05-10 10:00:00', 'p' => 95000 ],
+	];
+	eq( -5.0, WAPM_Torob::history_change( $short )['pct'], 'مبنای اولین نقطه' );
+} );
 
 test( 'هم‌تراز: تنظیمات امن و پیش‌فرض‌های محافظه‌کارانه', function () {
 	$s = WAPM_Price_Engine::torob_align_settings( 2.5, 'percent' );

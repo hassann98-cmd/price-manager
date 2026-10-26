@@ -86,6 +86,11 @@ const row = {
 		our_price_wc: 120000,
 		fresh_days: 3,
 		link: 'manual',
+		history: [
+			{ t: '2026-10-18 10:00:00', p: 120000 },
+			{ t: '2026-10-22 10:00:00', p: 100000 },
+		],
+		history_change: { from: 120000, to: 100000, pct: -16.7, days: 4 },
 	},
 };
 
@@ -299,6 +304,8 @@ try {
 	$('#wapm-list-tbody .wapm-torob-align').first().trigger('click');
 	ok($('#wapm-align-drawer').hasClass('is-open'), 'کشوی هم‌تراز باز شد');
 	ok(String($('#wapm-ad-facts').text()).indexOf('ارزان‌ترین رقیب') !== -1, 'وضعیت فعلی در کشو نشان داده شد');
+	ok($('#wapm-ad-facts svg path').length === 1, 'نمودار روند رقیب رسم شد');
+	ok(String($('#wapm-list-tbody .wapm-torob-align').closest('td').text()).indexOf('ارزان‌تر') !== -1, 'روند در ستون ترب هم دیده می‌شود');
 
 	// پیش‌نمایش: تا وقتی محاسبه نشده، «اعمال» باید خاموش بماند.
 	ok($('#wapm-ad-apply').prop('disabled') === true, 'اعمال قبل از پیش‌نمایش خاموش است');

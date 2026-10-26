@@ -62,6 +62,8 @@ class WAPM_Torob {
 	const META_LINK         = '_wapm_torob_link';          // auto | manual
 	const META_STATUS       = '_wapm_torob_status';        // برای فیلتر/مرتب‌سازی SQL
 	const META_DIFF_PCT     = '_wapm_torob_diff_pct';      // درصد اختلاف قیمت ما با ارزان‌ترین رقیب
+	const META_PRICE_HISTORY = '_wapm_torob_price_history'; // JSON: ۳۰ نقطه‌ی آخر قیمت رقیب
+	const HISTORY_POINTS    = 30;                            // سقف نقطه‌های نگهداری‌شده
 
 	const MAX_SELLERS_STORED = 12;   // فقط ارزان‌ترین‌ها ذخیره می‌شوند (حجم متا)
 	const MAX_UNMATCHED      = 500;  // سقف لیست تطبیق‌نیافته
@@ -642,6 +644,7 @@ class WAPM_Torob {
 			self::META_LINK,
 			self::META_STATUS,
 			self::META_DIFF_PCT,
+			self::META_PRICE_HISTORY,
 		] as $key ) {
 			delete_post_meta( $product_id, $key );
 		}
@@ -1085,6 +1088,7 @@ class WAPM_Torob {
 			// خودمان باشیم → ذخیره نمی‌کنیم و وضعیت needs_shop_id می‌شود.
 			if ( $prices['shop_known'] ) {
 				update_post_meta( $product_id, self::META_PRICE, null === $prices['competitor'] ? '' : (string) $prices['competitor'] );
+				self::push_price_point( $product_id, $prices['competitor'], $checked );
 			} else {
 				update_post_meta( $product_id, self::META_PRICE, '' );
 			}
@@ -1497,6 +1501,99 @@ class WAPM_Torob {
 	 *
 	 * @param float|null $our_price قیمت مؤثر فعلی فروشگاه (برای محاسبه‌ی اختلاف)
 	 */
+	/**
+	 * ثبت یک نقطه‌ی قیمت رقیب در تاریخچه‌ی محصول.
+	 *
+	 * چرا فقط «تغییر»ها: هر همگام‌سازی می‌تواند هر ساعت اجرا شود؛ اگر هر بررسی
+	 * یک نقطه بنویسد، ۳۰ نقطه یعنی ۳۰ ساعت و روند واقعی دیده نمی‌شود. با ثبت
+	 * فقط تغییرها، تاریخچه یعنی «تاریخ تغییر قیمت رقیب».
+	 *
+	 * @param string $at زمان محلی سایت (همان قالب META_CHECKED)
+	 */
+	public static function push_price_point( int $product_id, ?float $competitor, string $at ): void {
+		if ( null === $competitor || $competitor <= 0 || '' === $at ) {
+			return;
+		}
+
+		$history = self::get_price_history( $product_id );
+		$last    = $history ? $history[ count( $history ) - 1 ] : null;
+
+		if ( null !== $last && abs( (float) $last['p'] - $competitor ) < 0.01 ) {
+			return;
+		}
+
+		$history[] = [ 't' => $at, 'p' => (float) $competitor ];
+
+		if ( count( $history ) > self::HISTORY_POINTS ) {
+			$history = array_slice( $history, -self::HISTORY_POINTS );
+		}
+
+		update_post_meta( $product_id, self::META_PRICE_HISTORY, wp_json_encode( $history, JSON_UNESCAPED_UNICODE ) );
+	}
+
+	/**
+	 * تاریخچه‌ی قیمت رقیب (قدیمی → جدید).
+	 *
+	 * @return array<int, array{t:string,p:float}>
+	 */
+	public static function get_price_history( int $product_id ): array {
+		$raw = json_decode( (string) get_post_meta( $product_id, self::META_PRICE_HISTORY, true ), true );
+
+		if ( ! is_array( $raw ) ) {
+			return [];
+		}
+
+		$out = [];
+		foreach ( $raw as $point ) {
+			if ( ! is_array( $point ) || ! isset( $point['t'], $point['p'] ) ) {
+				continue;
+			}
+			$out[] = [ 't' => (string) $point['t'], 'p' => (float) $point['p'] ];
+		}
+
+		return $out;
+	}
+
+	/**
+	 * خلاصه‌ی حرکت قیمت رقیب در یک بازه (پیش‌فرض ۷ روز).
+	 *
+	 * مبنای مقایسه، نقطه‌ای است که در ابتدای بازه «آخرین قیمت معلوم» بوده؛ اگر
+	 * تاریخچه از بازه کوتاه‌تر باشد، اولین نقطه‌ی موجود. اختلاف دو زمان محلی با
+	 * strtotime گرفته می‌شود؛ چون هر دو یک مبنای زمانی دارند، تفاضل درست است.
+	 *
+	 * @param array<int, array{t:string,p:float}> $history
+	 * @return array{from:float,to:float,pct:float,days:int}|null
+	 */
+	public static function history_change( array $history, int $window_days = 7 ): ?array {
+		if ( count( $history ) < 2 ) {
+			return null;
+		}
+
+		$to     = $history[ count( $history ) - 1 ];
+		$to_ts  = (int) strtotime( $to['t'] );
+		$cutoff = $to_ts - ( max( 1, $window_days ) * DAY_IN_SECONDS );
+
+		$base = $history[0];
+		foreach ( $history as $point ) {
+			if ( (int) strtotime( $point['t'] ) <= $cutoff ) {
+				$base = $point;
+			} else {
+				break;
+			}
+		}
+
+		if ( $base['p'] <= 0 || $base['p'] === $to['p'] ) {
+			return null;
+		}
+
+		return [
+			'from' => (float) $base['p'],
+			'to'   => (float) $to['p'],
+			'pct'  => round( ( ( $to['p'] - $base['p'] ) / $base['p'] ) * 100, 1 ),
+			'days' => max( 0, (int) floor( ( $to_ts - (int) strtotime( $base['t'] ) ) / DAY_IN_SECONDS ) ),
+		];
+	}
+
 	public static function get_row_data( int $product_id, ?float $our_price = null ): ?array {
 		$prk = (string) get_post_meta( $product_id, self::META_PRK, true );
 		if ( '' === $prk ) {
@@ -1560,6 +1657,9 @@ class WAPM_Torob {
 		// دارد یا داده اشتباه است. فقط هشدار نمایشی — هیچ تغییر خودکاری نمی‌شود.
 		$unit_suspect = null !== $our_torob ? self::unit_suspect( $our_price, (float) $our_torob ) : false;
 
+		// تاریخچه‌ی قیمت رقیب — فقط ۳۰ نقطه‌ی آخر، برای نمایش روند در لیست/کشو.
+		$history = self::get_price_history( $product_id );
+
 		return [
 			'prk'            => $prk,
 			'url'            => (string) get_post_meta( $product_id, self::META_URL, true ),
@@ -1584,6 +1684,8 @@ class WAPM_Torob {
 			'tolerance_pct'  => (float) $settings['tolerance_pct'],
 			'source'         => (string) get_post_meta( $product_id, self::META_SOURCE, true ),
 			'link'           => (string) get_post_meta( $product_id, self::META_LINK, true ),
+			'history'        => $history,
+			'history_change' => self::history_change( $history ),
 		];
 	}
 

@@ -409,6 +409,36 @@
 		return null;
 	}
 
+	/**
+	 * نمودار کوچک روند قیمت رقیب (SVG درون‌خطی، بدون کتابخانه).
+	 *
+	 * محور زمان راست→چپ است (سایت RTL) تا «گذشته» سمت راست و «امروز» سمت چپ
+	 * دیده شود؛ همین کار با scaleX(-1) انجام می‌شود.
+	 */
+	function sparkline(points) {
+		if (!points || points.length < 2) { return ''; }
+
+		var w = 260, h = 34, pad = 3;
+		var prices = points.map(function (p) { return Number(p.p); });
+		var min = Math.min.apply(null, prices);
+		var max = Math.max.apply(null, prices);
+		var span = (max - min) || 1;
+		var step = (w - pad * 2) / (points.length - 1);
+
+		var d = points.map(function (p, i) {
+			var x = pad + i * step;
+			var y = pad + (h - pad * 2) * (1 - (Number(p.p) - min) / span);
+			return (i ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1);
+		}).join(' ');
+
+		var falling = prices[prices.length - 1] < prices[0];
+		var color = falling ? '#067647' : '#b42318';
+
+		return '<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" style="width:100%;height:34px;display:block;transform:scaleX(-1)" aria-hidden="true">' +
+			'<path d="' + d + '" fill="none" stroke="' + color + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"></path>' +
+			'</svg>';
+	}
+
 	/** نمایش وضعیت فعلی محصول در کشو (قیمت ما، رقیب، اختلاف، تازگی). */
 	function alignFactsHtml(row) {
 		var t = (row && row.torob) || {};
@@ -429,9 +459,26 @@
 		}
 		facts.push(['تازگی داده‌ی ترب', call('torobAgeLabel', t.age_days)]);
 
-		return facts.map(function (f) {
+		if (t.history_change) {
+			var hc = t.history_change;
+			var down = Number(hc.pct) < 0;
+			var color2 = down ? '#067647' : '#b42318';
+			facts.push(['تغییر رقیب (۷ روز)', '<span style="color:' + color2 + '">' + (down ? '▼' : '▲') + ' ' +
+				Math.abs(Number(hc.pct)).toFixed(1) + '٪</span>']);
+		}
+
+		var html = facts.map(function (f) {
 			return '<div class="wapm-align-fact"><span>' + esc(f[0]) + '</span><b>' + f[1] + '</b></div>';
 		}).join('');
+
+		// نمودار روند (اگر حداقل دو نقطه‌ی تاریخی داریم).
+		if (t.history && t.history.length > 1) {
+			html += '<div class="wapm-align-fact"><span>روند قیمت رقیب</span><b style="font-weight:700;color:#667085">' +
+				fmt(t.history[0].p) + ' → ' + fmt(t.history[t.history.length - 1].p) + '</b></div>';
+			html += '<div style="grid-column:1 / -1;margin-top:2px">' + sparkline(t.history) + '</div>';
+		}
+
+		return html;
 	}
 
 	function alignOpen(id) {

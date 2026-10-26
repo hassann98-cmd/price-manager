@@ -215,6 +215,15 @@
 
 		// محافظ واحد: نسبت ~۱۰ بین قیمت ترب و ووکامرس یعنی تومان/ریال قاطی شده
 		// (یا داده‌ی اشتباه). فقط هشدار است؛ هیچ قیمتی خودکار عوض نمی‌شود.
+		// روند قیمت رقیب (از تاریخچه‌ی ۳۰ نقطه‌ای): «رقیب ارزان شد» قبل از اینکه
+		// ما واکنش نشان دهیم دیده می‌شود. تغییرهای زیر ۱٪ نویز هستند.
+		if (t.history_change && Math.abs(Number(t.history_change.pct)) >= 1) {
+			var hc = t.history_change;
+			var down = Number(hc.pct) < 0;
+			html += '<div style="font-size:9px;font-weight:800;color:' + (down ? '#067647' : '#b42318') + '" title="از ' + fmt(hc.from) + ' به ' + fmt(hc.to) + ' در ' + fmt(hc.days) + ' روز">' +
+				(down ? '▼' : '▲') + ' رقیب ' + Math.abs(Number(hc.pct)).toFixed(1) + '٪ ' + (down ? 'ارزان‌تر' : 'گران‌تر') + ' شد</div>';
+		}
+
 		if (t.unit_suspect) {
 			html += '<div style="font-size:9px;color:#b91c1c;font-weight:800" title="قیمت ترب و ووکامرس حدود ۱۰ برابر فاصله دارند — واحد (تومان/ریال) یا داده را بررسی کنید">⚠ واحد قیمت مشکوک</div>';
 		}
