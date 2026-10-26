@@ -61,33 +61,40 @@ class WAPM_List {
 		$parts = [];
 
 		if ( '' !== (string) ( $f['search'] ?? '' ) ) {
-			$parts[] = 'جستجو: ' . $f['search'];
+			$parts[] = sprintf( __( 'جستجو: %s', 'wapm' ), $f['search'] );
 		}
 		if ( ! empty( $f['category_id'] ) ) {
 			$term = function_exists( 'get_term' ) ? get_term( (int) $f['category_id'], 'product_cat' ) : null;
-			$parts[] = 'دسته: ' . ( $term && ! is_wp_error( $term ) ? $term->name : '#' . (int) $f['category_id'] );
+			$parts[] = sprintf(
+				__( 'دسته: %s', 'wapm' ),
+				$term && ! is_wp_error( $term ) ? $term->name : '#' . (int) $f['category_id']
+			);
 		}
 		if ( '' !== (string) ( $f['stock_status'] ?? '' ) ) {
-			$labels = [ 'instock' => 'موجود', 'outofstock' => 'ناموجود', 'onbackorder' => 'پیش‌خرید' ];
+			$labels = [
+				'instock'     => __( 'موجود', 'wapm' ),
+				'outofstock'  => __( 'ناموجود', 'wapm' ),
+				'onbackorder' => __( 'پیش‌خرید', 'wapm' ),
+			];
 			$parts[] = $labels[ $f['stock_status'] ] ?? (string) $f['stock_status'];
 		}
 		if ( '' !== (string) ( $f['torob_status'] ?? '' ) ) {
 			$parts[] = WAPM_Torob::status_label( (string) $f['torob_status'] );
 		}
 		if ( null !== ( $f['price_min'] ?? null ) || null !== ( $f['price_max'] ?? null ) ) {
-			$parts[] = 'قیمت ' . ( $f['price_min'] ?? '۰' ) . ' تا ' . ( $f['price_max'] ?? '∞' );
+			$parts[] = sprintf( __( 'قیمت %s تا %s', 'wapm' ), $f['price_min'] ?? '۰', $f['price_max'] ?? '∞' );
 		}
 		if ( null !== ( $f['stock_min'] ?? null ) || null !== ( $f['stock_max'] ?? null ) ) {
-			$parts[] = 'موجودی ' . ( $f['stock_min'] ?? '۰' ) . ' تا ' . ( $f['stock_max'] ?? '∞' );
+			$parts[] = sprintf( __( 'موجودی %s تا %s', 'wapm' ), $f['stock_min'] ?? '۰', $f['stock_max'] ?? '∞' );
 		}
 		if ( '' !== (string) ( $f['product_type'] ?? '' ) ) {
-			$parts[] = 'variable' === $f['product_type'] ? 'محصول متغیر' : 'محصول ساده';
+			$parts[] = 'variable' === $f['product_type'] ? __( 'محصول متغیر', 'wapm' ) : __( 'محصول ساده', 'wapm' );
 		}
 		if ( ! empty( $f['on_sale'] ) ) {
-			$parts[] = 'تخفیف‌دار';
+			$parts[] = __( 'تخفیف‌دار', 'wapm' );
 		}
 
-		return $parts ? implode(' · ', $parts) : 'همه‌ی محصولات';
+		return $parts ? implode( ' · ', $parts ) : __( 'همه‌ی محصولات', 'wapm' );
 	}
 
 	/**

@@ -1331,7 +1331,7 @@ class WAPM_Ajax {
 		$saved_token = WAPM_Torob::get_bookmarklet_token();
 
 		if ( '' === $token || ! $saved_token || ! hash_equals( $saved_token, $token ) ) {
-			wp_send_json_error( [ 'message' => 'توکن نامعتبر است.' ], 403 );
+			wp_send_json_error( [ 'message' => __( 'توکن نامعتبر است.', 'wapm' ) ], 403 );
 		}
 
 		// محدودیت نرخ: نشت توکن نباید به یک حمله‌ی نوشتن بی‌پایان تبدیل شود.
@@ -1341,18 +1341,18 @@ class WAPM_Ajax {
 		$rate_key = 'wapm_torob_rl_' . substr( hash( 'sha256', $token ), 0, 12 );
 		$hits     = (int) get_transient( $rate_key );
 		if ( $hits >= 180 ) {
-			wp_send_json_error( [ 'message' => 'تعداد درخواست‌ها بیش از حد مجاز است؛ یک دقیقه بعد تلاش کنید.' ], 429 );
+			wp_send_json_error( [ 'message' => __( 'تعداد درخواست‌ها بیش از حد مجاز است؛ یک دقیقه بعد تلاش کنید.', 'wapm' ) ], 429 );
 		}
 		set_transient( $rate_key, $hits + 1, MINUTE_IN_SECONDS );
 
 		$raw_items = wp_unslash( $_POST['items'] ?? '[]' );
 		if ( strlen( (string) $raw_items ) > 3 * MB_IN_BYTES ) {
-			wp_send_json_error( [ 'message' => 'حجم داده بیش از حد مجاز است.' ], 413 );
+			wp_send_json_error( [ 'message' => __( 'حجم داده بیش از حد مجاز است.', 'wapm' ) ], 413 );
 		}
 
 		$items = json_decode( (string) $raw_items, true );
 		if ( ! is_array( $items ) ) {
-			wp_send_json_error( [ 'message' => 'داده نامعتبر است.' ] );
+			wp_send_json_error( [ 'message' => __( 'داده نامعتبر است.', 'wapm' ) ] );
 		}
 
 		$source = sanitize_key( wp_unslash( $_POST['source'] ?? 'bookmarklet' ) );

@@ -126,7 +126,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 							<?php esc_html_e( 'نام فروشگاه را همان‌طور که در ترب می‌بینید بنویسید. جستجو با دامنه کار نمی‌کند (محدودیت خود ترب) — فقط نام.', 'wapm' ); ?>
 						</p>
 						<p>
-							<input type="text" id="wapm-torob-shop-query" class="regular-text" placeholder="مثلاً ای ام موبایل">
+							<input type="text" id="wapm-torob-shop-query" class="regular-text" placeholder="<?php esc_attr_e( 'مثلاً ای ام موبایل', 'wapm' ); ?>">
 							<button type="button" class="button" id="wapm-torob-shop-search"><?php esc_html_e( 'جستجو', 'wapm' ); ?></button>
 						</p>
 						<div id="wapm-torob-shop-results"></div>
