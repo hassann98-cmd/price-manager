@@ -1,0 +1,196 @@
+/* WooCommerce Advanced Price Manager — Admin (RTL) */
+
+.wapm-wrap {
+	direction: rtl;
+	text-align: right;
+}
+
+.wapm-wrap h1 .dashicons {
+	font-size: 28px;
+	width: 28px;
+	height: 28px;
+	vertical-align: text-bottom;
+	color: #7f54b3;
+}
+
+.wapm-tabs {
+	margin-bottom: 16px;
+}
+
+.wapm-columns {
+	display: flex;
+	gap: 16px;
+	flex-wrap: wrap;
+	align-items: flex-start;
+}
+
+.wapm-columns .wapm-card {
+	flex: 1 1 420px;
+}
+
+.wapm-card {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 6px;
+	padding: 16px 20px;
+	margin-bottom: 16px;
+	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+.wapm-card h2 {
+	margin-top: 0;
+	padding-bottom: 8px;
+	border-bottom: 1px solid #f0f0f1;
+	font-size: 15px;
+}
+
+.wapm-card h3 {
+	font-size: 13px;
+	margin: 18px 0 4px;
+	color: #50575e;
+}
+
+.wapm-count {
+	display: inline-block;
+	margin-inline-start: 10px;
+	padding: 4px 12px;
+	background: #f0f6fc;
+	border: 1px solid #c5d9ed;
+	border-radius: 4px;
+	font-weight: 600;
+	color: #0a4b78;
+}
+
+.wapm-count:empty {
+	display: none;
+}
+
+.wapm-danger {
+	color: #b32d2e !important;
+	border-color: #b32d2e !important;
+}
+
+.wapm-danger:hover {
+	background: #fcf0f1 !important;
+}
+
+/* نوار پیشرفت */
+.wapm-progress {
+	margin: 14px 0;
+}
+
+.wapm-progress-bar {
+	height: 22px;
+	background: #f0f0f1;
+	border-radius: 11px;
+	overflow: hidden;
+	border: 1px solid #dcdcde;
+}
+
+.wapm-progress-bar span {
+	display: block;
+	height: 100%;
+	background: linear-gradient(90deg, #7f54b3, #9b6dd6);
+	transition: width 0.3s ease;
+}
+
+.wapm-progress-text {
+	margin: 6px 0 0;
+	font-size: 12px;
+	color: #50575e;
+}
+
+/* جدول پیش‌نمایش */
+.wapm-preview-table img {
+	width: 40px;
+	height: 40px;
+	object-fit: cover;
+	border-radius: 4px;
+	border: 1px solid #eee;
+	vertical-align: middle;
+}
+
+.wapm-preview-table .wapm-up {
+	color: #00722e;
+	font-weight: 600;
+}
+
+.wapm-preview-table .wapm-down {
+	color: #b32d2e;
+	font-weight: 600;
+}
+
+.wapm-preview-table td,
+.wapm-preview-table th {
+	vertical-align: middle;
+}
+
+.wapm-pagination .button {
+	margin-inline-end: 4px;
+}
+
+/* آمار Dry Run */
+.wapm-stats {
+	display: flex;
+	gap: 12px;
+	flex-wrap: wrap;
+	margin: 12px 0;
+}
+
+.wapm-stat {
+	flex: 1 1 150px;
+	background: #f6f7f7;
+	border: 1px solid #dcdcde;
+	border-radius: 6px;
+	padding: 12px;
+	text-align: center;
+}
+
+.wapm-stat b {
+	display: block;
+	font-size: 20px;
+	margin-bottom: 4px;
+	color: #1d2327;
+}
+
+.wapm-stat small {
+	color: #50575e;
+}
+
+/* badge وضعیت */
+.wapm-badge {
+	display: inline-block;
+	padding: 2px 10px;
+	border-radius: 10px;
+	font-size: 11px;
+	font-weight: 600;
+}
+
+.wapm-badge-on {
+	background: #edfaef;
+	color: #00722e;
+	border: 1px solid #b8e6bf;
+}
+
+.wapm-badge-off {
+	background: #f6f7f7;
+	color: #646970;
+	border: 1px solid #dcdcde;
+}
+
+.wapm-badge-pending {
+	background: #fcf9e8;
+	color: #996800;
+	border: 1px solid #f5e6ab;
+}
+
+/* select2 در حالت RTL */
+.wapm-wrap .select2-container {
+	min-width: 240px;
+}
+
+@media (max-width: 782px) {
+	.wapm-columns {
+		flex-direction: column;
+	}
+}
