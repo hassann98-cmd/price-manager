@@ -215,7 +215,18 @@
 		$box.find('.wapm-currency-unit').val(s.currency_unit || 'toman');
 		$box.find('.wapm-price-target').val(s.price_target || 'regular');
 		$box.find('.wapm-sale-handling').val(s.sale_handling || 'independent');
-		$box.find('.wapm-variable-scope').val(s.variable_scope || 'variations');
+		// «فقط قیمت والد» دیگر در فرم نیست. اگر مورد ذخیره‌شده با آن ساخته شده،
+		// به کاربر هشدار می‌دهیم و مقدار را روی variations می‌گذاریم تا ذخیره‌ی
+		// دوباره، آن را اصلاح کند (بدون اینکه بی‌صدا تغییر کند).
+		var $scopeInput = $box.find('.wapm-variable-scope');
+		$box.find('.wapm-scope-legacy-note').remove();
+		$scopeInput.val('variations');
+		if (s.variable_scope === 'parent') {
+			$scopeInput.after('<p class="description wapm-scope-legacy-note" style="color:#996800;font-weight:600">' +
+				'⚠ این مورد قبلاً با گزینه‌ی «فقط قیمت والد» ذخیره شده بود که روی قیمت فروش اثری نداشت. ' +
+				'با ذخیره‌ی دوباره، تغییر روی واریشن‌ها اعمال می‌شود.</p>');
+		}
+
 		$box.find('.wapm-round-mode').val(s.round_mode || 'none');
 		$box.find('.wapm-round-base').val(s.round_base || 1000);
 		$box.find('.wapm-min-price').val(s.min_price || 0);
