@@ -1210,6 +1210,10 @@ msgstr ""
 msgid "شناسه فروشگاه ترب تنظیم نشده"
 msgstr ""
 
+#: woocommerce-advanced-price-manager/includes/class-admin.php:191
+msgid "شناسه فروشگاه ترب: %s"
+msgstr ""
+
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:50
 #: woocommerce-advanced-price-manager/includes/class-torob.php:1016
 msgid "شناسه فروشگاه تنظیم نشده"

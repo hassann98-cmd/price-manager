@@ -46,6 +46,21 @@ class WAPM_Admin {
 		);
 	}
 
+	/**
+	 * نسخه‌ی فایل استاتیک برای شکستن کش مرورگر.
+	 *
+	 * چرا mtime در کنار شماره‌ی نسخه: اگر بیلد تازه با همان `WAPM_VERSION` روی
+	 * نصب قبلی برود (نصب دستی zip در مرحله‌ی آزمایش، یا آپدیت بدون تغییر شماره)،
+	 * مرورگر همان `admin.js`/`admin.css` قدیمی را از کش می‌آورد و کاربر فکر
+	 * می‌کند تغییرات اعمال نشده است. زمان تغییر فایل، این حالت را می‌بندد.
+	 */
+	private function asset_ver( string $relative ): string {
+		$path = WAPM_PATH . $relative;
+		$time = file_exists( $path ) ? (int) filemtime( $path ) : 0;
+
+		return $time > 0 ? WAPM_VERSION . '.' . $time : WAPM_VERSION;
+	}
+
 	public function enqueue( string $hook ): void {
 		if ( false === strpos( $hook, self::SLUG ) ) {
 			return;
@@ -55,8 +70,8 @@ class WAPM_Admin {
 		// ~۹ کیلوبایت فشرده در برابر ~۴۰۰ کیلوبایت جاوااسکریپت CDN، بدون کامپایل
 		// در مرورگر (بدون FOUC)، بدون وابستگی به دامنه‌ی ثالث و سازگار با CSP.
 		// ساخت مجدد: npm run build:css  (CI تازه بودنش را بررسی می‌کند).
-		wp_enqueue_style( 'wapm-tailwind', WAPM_URL . 'assets/css/tailwind.css', [], WAPM_VERSION );
-		wp_enqueue_style( 'wapm-admin', WAPM_URL . 'assets/css/admin.css', [ 'wapm-tailwind' ], WAPM_VERSION );
+		wp_enqueue_style( 'wapm-tailwind', WAPM_URL . 'assets/css/tailwind.css', [], $this->asset_ver( 'assets/css/tailwind.css' ) );
+		wp_enqueue_style( 'wapm-admin', WAPM_URL . 'assets/css/admin.css', [ 'wapm-tailwind' ], $this->asset_ver( 'assets/css/admin.css' ) );
 		wp_enqueue_style( 'woocommerce_admin_styles' );
 		wp_enqueue_style( 'select2' );
 
@@ -76,12 +91,13 @@ class WAPM_Admin {
 
 		$deps = [ 'jquery', 'selectWoo', 'wp-i18n' ];
 		foreach ( $scripts as $handle => $extra ) {
-			$deps = array_merge( $deps, $extra );
+			$deps      = array_merge( $deps, $extra );
+			$file_name = substr( $handle, strlen( 'wapm-admin-' ) ) . '.js';
 			wp_enqueue_script(
 				$handle,
-				WAPM_URL . 'assets/js/' . substr( $handle, strlen( 'wapm-admin-' ) ) . '.js',
+				WAPM_URL . 'assets/js/' . $file_name,
 				array_values( array_unique( $deps ) ),
-				WAPM_VERSION,
+				$this->asset_ver( 'assets/js/' . $file_name ),
 				true
 			);
 
@@ -172,7 +188,7 @@ class WAPM_Admin {
 					<span class="wapm-chip"><?php esc_html_e( 'محصول منتشرشده', 'wapm' ); ?> <b><?php echo esc_html( number_format_i18n( $wapm_product_count ) ); ?></b></span>
 					<span class="wapm-chip"><?php echo esc_html( get_woocommerce_currency() ); ?></span>
 					<?php if ( $wapm_shop_id ) : ?>
-						<span class="wapm-chip wapm-chip--ok" title="<?php echo esc_attr( 'شناسه فروشگاه ترب: ' . $wapm_shop_id ); ?>">
+						<span class="wapm-chip wapm-chip--ok" title="<?php echo esc_attr( sprintf( __( 'شناسه فروشگاه ترب: %s', 'wapm' ), $wapm_shop_id ) ); ?>">
 							<?php esc_html_e( 'ترب متصل', 'wapm' ); ?>
 							<b><?php echo esc_html( $wapm_shop_name ? $wapm_shop_name : '#' . $wapm_shop_id ); ?></b>
 						</span>
