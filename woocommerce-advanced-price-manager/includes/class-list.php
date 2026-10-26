@@ -224,7 +224,7 @@ class WAPM_List {
 	/**
 	 * تبدیل یک محصول (یا واریشن) به ردیف نمایشی.
 	 */
-	private static function build_row( WC_Product $product, ?WC_Product $parent = null ): array {
+	public static function build_row( WC_Product $product, ?WC_Product $parent = null ): array {
 		$is_variation = $product->is_type( 'variation' );
 
 		$image_id = $product->get_image_id();
@@ -455,12 +455,42 @@ class WAPM_List {
 				break;
 
 			case 'stock_quantity':
+				// والد متغیر موجودی عددی ندارد؛ موجودی روی واریشن‌هاست. قبلاً
+				// مقدار روی والد نوشته می‌شد و هیچ‌جا اثر نداشت.
+				if ( $product->is_type( 'variable' ) ) {
+					return [ 'success' => false, 'message' => __( 'موجودی محصول متغیر باید روی واریشن‌ها تغییر کند، نه روی والد.', 'wapm' ) ];
+				}
 				if ( ! $product->managing_stock() ) {
 					return [ 'success' => false, 'message' => __( 'ابتدا مدیریت انبار را برای این محصول فعال کنید.', 'wapm' ) ];
 				}
-				$old = $product->get_stock_quantity();
-				$product->set_stock_quantity( is_numeric( $value ) ? wc_stock_amount( $value ) : 0 );
-				break;
+				if ( ! is_numeric( $value ) ) {
+					return [ 'success' => false, 'message' => __( 'موجودی باید عدد باشد.', 'wapm' ) ];
+				}
+
+				// مسیر رسمی ووکامرس: وضعیت موجودی و قلاب‌ها را هم به‌روز می‌کند.
+				// تغییر با تاریخچه ثبت می‌شود تا اشتباه قابل بازگردانی باشد.
+				$stock = WAPM_Stock::set_quantity( $product->get_id(), (float) wc_stock_amount( $value ), 'inline_edit' );
+
+				if ( empty( $stock['ok'] ) ) {
+					// ذخیره‌ی همان مقدار قبلی «خطا» نیست؛ فقط ردیف تازه برمی‌گردانیم
+					// تا سلول به حالت قبل برگردد و پیام قرمزی به کاربر نشان ندهیم.
+					if ( 'no_change' === ( $stock['reason'] ?? '' ) ) {
+						return [
+							'success' => true,
+							'row'     => self::build_row(
+								$product,
+								$product->is_type( 'variation' ) ? wc_get_product( $product->get_parent_id() ) : null
+							),
+						];
+					}
+
+					return [
+						'success' => false,
+						'message' => WAPM_Stock::reason_label( (string) ( $stock['reason'] ?? '' ) ),
+					];
+				}
+
+				return [ 'success' => true, 'row' => $stock['row'] ];
 
 			default:
 				return [ 'success' => false, 'message' => __( 'فیلد نامعتبر است.', 'wapm' ) ];
@@ -500,6 +530,16 @@ class WAPM_List {
 		$product = wc_get_product( $product_id );
 		if ( ! $product ) {
 			return [ 'success' => false, 'message' => __( 'محصول یافت نشد.', 'wapm' ) ];
+		}
+
+		// در ووکامرس موجودی محصول متغیر با واریشن‌ها مدیریت می‌شود و
+		// manage_stock والد هیچ اثری ندارد؛ قبلاً کلید روشن می‌شد و «فعال»
+		// نمایش داده می‌شد بدون اینکه کاری بکند (P1-10).
+		if ( $product->is_type( 'variable' ) ) {
+			return [
+				'success' => false,
+				'message' => __( 'محصول متغیر موجودی خودش را ندارد؛ مدیریت انبار را روی واریشن‌ها تنظیم کنید.', 'wapm' ),
+			];
 		}
 
 		$product->set_manage_stock( $enabled );
@@ -563,30 +603,44 @@ class WAPM_List {
 	/**
 	 * تغییر وضعیت موجودی برای چند محصول/واریشن به‌صورت گروهی.
 	 */
-	public static function bulk_set_stock_status( array $ids, string $status ): int {
+	/**
+	 * تغییر گروهی وضعیت موجودی.
+	 *
+	 * محصولی که «مدیریت انبار» دارد، وضعیتش از تعداد می‌آید؛ ست کردن دستی وضعیت
+	 * برایش بی‌اثر است (با اولین تغییر موجودی بازنویسی می‌شود). قبلاً همان وضعیت
+	 * روی همه نوشته می‌شد و کاربر فکر می‌کرد همه ناموجود شده‌اند.
+	 *
+	 * @return array{count:int,skipped:int,reasons:array<string,int>,rows:array}
+	 */
+	public static function bulk_set_stock_status( array $ids, string $status ): array {
+		$out = [ 'count' => 0, 'skipped' => 0, 'reasons' => [], 'rows' => [] ];
+
 		if ( ! in_array( $status, [ 'instock', 'outofstock', 'onbackorder' ], true ) ) {
-			return 0;
+			return $out;
 		}
-		$count = 0;
-		foreach ( $ids as $id ) {
-			$product = wc_get_product( absint( $id ) );
-			if ( ! $product ) {
-				continue;
+
+		$batch = 'status_' . gmdate( 'Ymd_His' ) . '_' . wp_generate_password( 6, false );
+
+		foreach ( array_slice( array_values( array_unique( array_map( 'absint', $ids ) ) ), 0, WAPM_Stock::CHUNK ) as $id ) {
+			$result = WAPM_Stock::set_status( $id, $status, 'status', $batch );
+
+			if ( ! empty( $result['ok'] ) ) {
+				$out['count']++;
+				$out['rows'][] = $result['row'];
+			} else {
+				$out['skipped']++;
+				$reason = 'managed_status' === ( $result['reason'] ?? '' ) ? 'not_managed' : (string) ( $result['reason'] ?? '' );
+				$out['reasons'][ $reason ] = ( $out['reasons'][ $reason ] ?? 0 ) + 1;
 			}
-			$product->set_stock_status( $status );
-			$product->save();
-			$parent_id = 0;
-			if ( $product->is_type( 'variation' ) ) {
-				$parent_id = $product->get_parent_id();
-				WC_Product_Variable::sync( $parent_id );
-			}
-			self::purge_caches( $product->get_id(), $parent_id );
-			$count++;
 		}
+
+		$out['batch_id'] = $batch;
+
 		if ( function_exists( 'wc_delete_product_transients' ) ) {
 			wc_delete_product_transients();
 		}
-		return $count;
+
+		return $out;
 	}
 
 	/**
@@ -627,7 +681,7 @@ class WAPM_List {
 	 * از تغییر مطلع نمی‌کند و ممکن است نسخه قدیمی صفحه در کش باقی بماند.
 	 * هر فراخوانی در صورت نبود افزونه مربوطه کاملاً بی‌اثر و بی‌خطر است.
 	 */
-	private static function purge_caches( int $product_id, int $parent_id = 0 ): void {
+	public static function purge_caches( int $product_id, int $parent_id = 0 ): void {
 		$ids = $parent_id ? [ $product_id, $parent_id ] : [ $product_id ];
 
 		foreach ( $ids as $id ) {
