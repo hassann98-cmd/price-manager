@@ -39,6 +39,13 @@ CALLS = [
     (re.compile(r"\b_nx\s*\(\s*(?:" + STR + r")\s*,\s*(?:" + STR + r")\s*,\s*[^,]+,\s*'((?:[^'\\]|\\.)*)'\s*,\s*'" + DOMAIN + r"'\s*\)", re.S), True, True),
 ]
 
+# فراخوانی‌های جاوااسکریپت: `__('…')` یا `__('…', 'wapm')`. تابع `__` در
+# assets/js/admin-core.js روی wp.i18n سوار می‌شود و اگر نبود متن اصلی را
+# برمی‌گرداند، پس بدون wp-i18n هم چیزی نمی‌شکند.
+JS_CALLS = [
+    (re.compile(r"\b__\s*\(\s*(?:" + STR + r")\s*(?:,\s*'" + DOMAIN + r"'\s*)?\)", re.S), False, False),
+]
+
 
 def php_unescape(value: str) -> str:
     """تبدیل escapeهای PHP به متن واقعی."""
@@ -72,14 +79,18 @@ def collect() -> dict:
     for root, dirs, files in os.walk(PLUGIN_DIR):
         dirs[:] = [d for d in dirs if d not in {"node_modules", "vendor", "languages", ".git"}]
         for name in sorted(files):
-            if not name.endswith(".php"):
+            if name.endswith(".php"):
+                regexes = CALLS
+            elif name.endswith(".js"):
+                regexes = JS_CALLS
+            else:
                 continue
 
             path = os.path.join(root, name)
             rel = os.path.relpath(path, os.path.dirname(PLUGIN_DIR))
             text = open(path, encoding="utf-8").read()
 
-            for regex, has_context, has_plural in CALLS:
+            for regex, has_context, has_plural in regexes:
                 for match in regex.finditer(text):
                     groups = [g for g in match.groups() if g is not None]
                     # گروه‌ها به ترتیب: (تک‌کوتیشنی|جفت‌کوتیشنی) ... [context] [plural]
