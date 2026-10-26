@@ -196,6 +196,32 @@ class WAPM_Admin {
 							</select>
 						</div>
 
+						<div class="min-w-[190px]">
+							<select id="wapm-list-torob" class="w-full h-11 rounded-xl border border-slate-200 text-sm px-3">
+								<option value=""><?php esc_html_e( 'وضعیت نسبت به ترب', 'wapm' ); ?></option>
+								<option value="pricier"><?php esc_html_e( '🔴 گران‌تر از رقیب', 'wapm' ); ?></option>
+								<option value="cheaper"><?php esc_html_e( '🟢 ارزان‌تر از رقیب', 'wapm' ); ?></option>
+								<option value="equal"><?php esc_html_e( 'برابر با رقیب', 'wapm' ); ?></option>
+								<option value="stale"><?php esc_html_e( 'داده کهنه', 'wapm' ); ?></option>
+								<option value="fresh"><?php esc_html_e( 'داده تازه', 'wapm' ); ?></option>
+								<option value="no_competitor"><?php esc_html_e( 'فقط ما در ترب', 'wapm' ); ?></option>
+								<option value="needs_shop_id"><?php esc_html_e( 'شناسه فروشگاه تنظیم نشده', 'wapm' ); ?></option>
+								<option value="any"><?php esc_html_e( 'فقط متصل‌شده به ترب', 'wapm' ); ?></option>
+								<option value="none"><?php esc_html_e( 'متصل‌نشده به ترب', 'wapm' ); ?></option>
+							</select>
+						</div>
+
+						<div class="min-w-[170px]">
+							<select id="wapm-list-orderby" class="w-full h-11 rounded-xl border border-slate-200 text-sm px-3">
+								<option value="id_desc"><?php esc_html_e( 'جدیدترین', 'wapm' ); ?></option>
+								<option value="torob_diff_desc"><?php esc_html_e( 'بیشترین گرانی نسبت به ترب', 'wapm' ); ?></option>
+								<option value="torob_diff_asc"><?php esc_html_e( 'بیشترین ارزانی نسبت به ترب', 'wapm' ); ?></option>
+								<option value="price_asc"><?php esc_html_e( 'ارزان‌ترین محصول', 'wapm' ); ?></option>
+								<option value="price_desc"><?php esc_html_e( 'گران‌ترین محصول', 'wapm' ); ?></option>
+								<option value="name_asc"><?php esc_html_e( 'نام (الفبا)', 'wapm' ); ?></option>
+							</select>
+						</div>
+
 						<button type="button" id="wapm-list-smart-toggle" class="h-11 px-5 bg-white border border-slate-200 rounded-xl flex items-center gap-2 text-sm font-bold text-slate-600">
 							<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
 							<?php esc_html_e( 'فیلتر هوشمند', 'wapm' ); ?>
@@ -477,27 +503,58 @@ class WAPM_Admin {
 
 			<!-- ============ تب ترب ============ -->
 			<div class="wapm-tab-content" id="wapm-tab-torob" style="display:none">
+
 				<div class="wapm-card">
-					<h2><?php esc_html_e( 'مقایسه‌ی قیمت با ترب', 'wapm' ); ?></h2>
+					<h2><?php esc_html_e( '۱) تنظیمات مقایسه', 'wapm' ); ?></h2>
 					<p class="description">
-						<?php esc_html_e( 'این قابلیت فقط از صفحات عمومی ترب (صفحه‌ی فروشگاه شما و صفحه‌ی عمومی هر محصول) استفاده می‌کند — بدون نیاز به لاگین. چون این روش رسمی/مستند ترب نیست، ممکن است در آینده با تغییر ساختار سایت ترب نیاز به تعمیر داشته باشد.', 'wapm' ); ?>
+						<?php esc_html_e( 'شناسه فروشگاه برای این است که قیمت خودتان از «ارزان‌ترین رقیب» جدا شود. اگر تنظیم نشود، افزونه عمداً مقایسه را انجام نمی‌دهد (چون با قیمت خودتان مقایسه می‌شد و نتیجه گمراه‌کننده بود).', 'wapm' ); ?>
 					</p>
 					<table class="form-table">
 						<tr>
 							<th><?php esc_html_e( 'شناسه فروشگاه در ترب (Shop ID)', 'wapm' ); ?></th>
 							<td>
-								<input type="text" id="wapm-torob-shop-id" class="regular-text" value="<?php echo esc_attr( WAPM_Torob::get_shop_id() ); ?>" placeholder="مثلاً 118417">
-								<button type="button" class="button" id="wapm-torob-save-shop"><?php esc_html_e( 'ذخیره', 'wapm' ); ?></button>
+								<input type="text" id="wapm-torob-shop-id" class="regular-text" value="<?php echo esc_attr( WAPM_Torob::get_shop_id() ); ?>" placeholder="مثلاً 118417" inputmode="numeric">
 								<p class="description"><?php esc_html_e( 'همان عددی است که در آدرس torob.com/shop/عدد/... می‌بینید.', 'wapm' ); ?></p>
 							</td>
 						</tr>
+						<tr>
+							<th><?php esc_html_e( 'نام فروشگاه در ترب (پشتیبان)', 'wapm' ); ?></th>
+							<td>
+								<input type="text" id="wapm-torob-shop-name" class="regular-text" value="<?php echo esc_attr( WAPM_Torob::get_shop_name() ); ?>" placeholder="مثلاً فروشگاه من">
+								<p class="description"><?php esc_html_e( 'اگر داده‌ی فروشنده فقط نام داشته باشد (بدون شناسه)، با همین نام قیمت خودتان شناسایی می‌شود.', 'wapm' ); ?></p>
+							</td>
+						</tr>
+						<tr>
+							<th><?php esc_html_e( 'حداکثر عمر داده', 'wapm' ); ?></th>
+							<td>
+								<input type="number" id="wapm-torob-fresh-days" class="small-text" min="1" max="120" value="<?php echo esc_attr( (string) WAPM_Torob::settings()['fresh_days'] ); ?>">
+								<?php esc_html_e( 'روز', 'wapm' ); ?>
+								<p class="description"><?php esc_html_e( 'داده‌ی قدیمی‌تر از این، «کهنه» علامت می‌خورد و مبنای تغییر خودکار قیمت قرار نمی‌گیرد.', 'wapm' ); ?></p>
+							</td>
+						</tr>
+						<tr>
+							<th><?php esc_html_e( 'آستانه «برابر»', 'wapm' ); ?></th>
+							<td>
+								<input type="number" id="wapm-torob-tolerance" class="small-text" min="0" max="100" step="any" value="<?php echo esc_attr( (string) WAPM_Torob::settings()['tolerance_pct'] ); ?>">
+								<?php esc_html_e( 'درصد', 'wapm' ); ?>
+								<p class="description"><?php esc_html_e( 'اختلاف کمتر از این مقدار، «برابر با رقیب» حساب می‌شود.', 'wapm' ); ?></p>
+							</td>
+						</tr>
 					</table>
+					<p><button type="button" class="button button-primary" id="wapm-torob-save-settings"><?php esc_html_e( 'ذخیره تنظیمات', 'wapm' ); ?></button></p>
+				</div>
+
+				<div class="wapm-card" id="wapm-torob-status-card">
+					<h2><?php esc_html_e( '۲) وضعیت همگام‌سازی', 'wapm' ); ?></h2>
+					<div id="wapm-torob-status-body">
+						<?php $this->render_torob_status(); ?>
+					</div>
 				</div>
 
 				<div class="wapm-card">
-					<h2><?php esc_html_e( 'همگام‌سازی با Bookmarklet', 'wapm' ); ?></h2>
+					<h2><?php esc_html_e( '۳) همگام‌سازی با Bookmarklet', 'wapm' ); ?></h2>
 					<p class="description">
-						<?php esc_html_e( 'خواندن مستقیم صفحات ترب از سمت سرور سایت با سیستم ضد-ربات ترب بلاک می‌شود. راه‌حل: این دکمه را به نوار بوکمارک مرورگرتان بکشید، بعد وارد صفحه‌ی محصولات فروشگاهتان در ترب شوید و رویش کلیک کنید — چون از مرورگر خودتان اجرا می‌شود، مثل یک بازدید واقعی دیده می‌شود.', 'wapm' ); ?>
+						<?php esc_html_e( 'خواندن مستقیم صفحات ترب از سمت سرور سایت با سیستم ضد-ربات ترب بلاک می‌شود (پاسخ ۴۹۰). راه‌حل: این دکمه را به نوار بوکمارک مرورگرتان بکشید، بعد وارد صفحه‌ی محصولات فروشگاهتان در ترب شوید و رویش کلیک کنید — چون از مرورگر خودتان اجرا می‌شود، مثل یک بازدید واقعی دیده می‌شود.', 'wapm' ); ?>
 					</p>
 
 					<ol style="margin-inline-start:20px">
@@ -511,8 +568,9 @@ class WAPM_Admin {
 							);
 							?>
 						</li>
-						<li><?php esc_html_e( 'روی بوکمارکی که ساختید کلیک کنید و صبر کنید (بسته به تعداد محصولات، چند دقیقه طول می‌کشد — تب را باز نگه دارید).', 'wapm' ); ?></li>
-						<li><?php esc_html_e( 'در پایان، نتیجه در ستون «قیمت ترب» تب «لیست محصولات» نمایش داده می‌شود.', 'wapm' ); ?></li>
+						<li><?php esc_html_e( 'روی بوکمارکی که ساختید کلیک کنید و صبر کنید. پیشرفت در گوشه‌ی صفحه نشان داده می‌شود و با دکمه‌ی «توقف» می‌توانید هر وقت خواستید متوقف کنید.', 'wapm' ); ?></li>
+						<li><?php esc_html_e( 'اگر وسط کار قطع شد، دوباره روی همان بوکمارک کلیک کنید؛ از همان صفحه ادامه می‌دهد.', 'wapm' ); ?></li>
+						<li><?php esc_html_e( 'در پایان، در ستون «قیمت ترب» تب «لیست محصولات» می‌بینید کدام محصول از رقیب گران‌تر یا ارزان‌تر است.', 'wapm' ); ?></li>
 					</ol>
 
 					<p style="margin:20px 0">
@@ -524,14 +582,43 @@ class WAPM_Admin {
 					</p>
 					<p class="description"><?php esc_html_e( 'onclick این دکمه عمداً غیرفعال شده تا با کلیک ساده اجرا نشود — فقط باید کشیده (drag) و به نوار بوکمارک رها شود.', 'wapm' ); ?></p>
 
-					<p>
-						<span class="wapm-count"><?php echo esc_html( sprintf( __( '%d محصول match‌شده', 'wapm' ), WAPM_Torob::count_matched() ) ); ?></span>
-						<?php if ( WAPM_Torob::get_last_sync_time() ) : ?>
-							<span class="wapm-count"><?php echo esc_html( sprintf( __( 'آخرین همگام‌سازی: %s', 'wapm' ), WAPM_Torob::get_last_sync_time() ) ); ?></span>
-						<?php endif; ?>
-					</p>
+					<p><button type="button" class="button wapm-danger" id="wapm-torob-regen-token"><?php esc_html_e( 'تولید دوباره‌ی توکن (بوکمارکلت/فید قبلی از کار می‌افتد)', 'wapm' ); ?></button></p>
+				</div>
 
-					<p><button type="button" class="button wapm-danger" id="wapm-torob-regen-token"><?php esc_html_e( 'تولید دوباره‌ی توکن (بوکمارکلت قبلی از کار می‌افتد)', 'wapm' ); ?></button></p>
+				<div class="wapm-card">
+					<h2><?php esc_html_e( '۴) ورود داده از فید CSV', 'wapm' ); ?></h2>
+					<p class="description">
+						<?php esc_html_e( 'اگر از پنل فروشندگان ترب خروجی/فید می‌گیرید، همین فایل را اینجا وارد کنید. ستون‌های شناسایی‌شده:', 'wapm' ); ?>
+						<code>prk</code>, <code>name</code>, <code>price</code>, <code>shop_id</code>, <code>shop_name</code>, <code>our_price</code>
+						<?php esc_html_e( '(فقط prk الزامی است) — نام ستون‌ها به بزرگی/کوچکی حروف حساس نیست و ستون‌های ناشناس نادیده گرفته می‌شوند.', 'wapm' ); ?>
+					</p>
+					<p><input type="file" id="wapm-torob-feed-file" accept=".csv"></p>
+					<p><button type="button" class="button button-primary" id="wapm-torob-feed-import"><?php esc_html_e( 'وارد کردن فید', 'wapm' ); ?></button></p>
+					<div id="wapm-torob-feed-result"></div>
+
+					<details style="margin-top:14px">
+						<summary style="cursor:pointer;font-weight:700"><?php esc_html_e( 'ورود برنامه‌نویسی (برای اتصال فید رسمی/سرور خودتان)', 'wapm' ); ?></summary>
+						<p class="description" style="margin-top:8px">
+							<?php esc_html_e( 'هر اسکریپتی می‌تواند با همین توکن، داده را به این آدرس POST کند. بدنه: فرم-داده با کلیدهای token، items (JSON) و اختیاری source و meta.', 'wapm' ); ?>
+						</p>
+						<p><code><?php echo esc_html( admin_url( 'admin-ajax.php' ) . '?action=wapm_torob_ingest' ); ?></code></p>
+						<p class="description"><?php esc_html_e( 'ساختار هر آیتم: {prk, name, sellers:[{shop_id, price, shop_name}]}. حداکثر ۵۰۰ آیتم در هر درخواست و ۶۰ درخواست در دقیقه.', 'wapm' ); ?></p>
+					</details>
+				</div>
+
+				<div class="wapm-card">
+					<h2>
+						<?php esc_html_e( '۵) محصولات ترب که به محصول ووکامرس وصل نشدند', 'wapm' ); ?>
+						<span class="wapm-count" id="wapm-torob-unmatched-count"><?php echo esc_html( (string) count( WAPM_Torob::unmatched() ) ); ?></span>
+					</h2>
+					<p class="description">
+						<?php esc_html_e( 'این‌ها با اعتماد کافی تطبیق داده نشدند (نام مشابه ولی مبهم، یا پیدا نشد). اگر خودکار وصل می‌شدند، ممکن بود قیمت رقیب اشتباهی به محصول شما نسبت داده شود. اینجا می‌توانید دستی وصل کنید — اتصال دستی با همگام‌سازی‌های بعدی بازنویسی نمی‌شود.', 'wapm' ); ?>
+					</p>
+					<p>
+						<button type="button" class="button" id="wapm-torob-unmatched-refresh"><?php esc_html_e( 'بازخوانی لیست', 'wapm' ); ?></button>
+						<button type="button" class="button wapm-danger" id="wapm-torob-unmatched-clear"><?php esc_html_e( 'پاک کردن کل لیست', 'wapm' ); ?></button>
+					</p>
+					<div id="wapm-torob-unmatched-area"></div>
 				</div>
 			</div>
 
@@ -628,6 +715,51 @@ class WAPM_Admin {
 		?>
 		<table class="form-table wapm-settings-fields" data-prefix="<?php echo esc_attr( $prefix ); ?>">
 			<tr>
+				<th><?php esc_html_e( 'منبع تعیین قیمت', 'wapm' ); ?></th>
+				<td>
+					<select class="wapm-source">
+						<option value="manual"><?php esc_html_e( 'دستی (درصد یا مبلغ)', 'wapm' ); ?></option>
+						<option value="torob"><?php esc_html_e( 'ترب (نسبت به ارزان‌ترین رقیب)', 'wapm' ); ?></option>
+					</select>
+					<p class="description"><?php esc_html_e( 'در حالت «ترب»، قیمت مؤثر هر محصول برابر «قیمت هدف» می‌شود؛ «نوع تغییر»، «قیمت هدف» و «مدیریت Sale» نادیده گرفته می‌شوند و درصد تخفیف حفظ می‌شود.', 'wapm' ); ?></p>
+				</td>
+			</tr>
+			<tr class="wapm-torob-only" style="display:none">
+				<th><?php esc_html_e( 'قیمت هدف', 'wapm' ); ?></th>
+				<td>
+					<span><?php esc_html_e( 'کمتر از ارزان‌ترین رقیب:', 'wapm' ); ?></span>
+					<input type="number" class="wapm-torob-undercut" min="0" step="any" value="1" style="width:90px">
+					<select class="wapm-torob-undercut-mode">
+						<option value="percent"><?php esc_html_e( 'درصد', 'wapm' ); ?></option>
+						<option value="fixed"><?php esc_html_e( 'مبلغ ثابت', 'wapm' ); ?></option>
+					</select>
+					<select class="wapm-torob-currency-unit" style="display:none">
+						<option value="toman"><?php esc_html_e( 'تومان', 'wapm' ); ?></option>
+						<option value="rial"><?php esc_html_e( 'ریال', 'wapm' ); ?></option>
+					</select>
+					<p class="description"><?php esc_html_e( 'مثال: ۱٪ یعنی همیشه یک درصد زیر ارزان‌ترین رقیب. حداقل/حداکثر قیمت و گرد کردنِ پایین هم روی این قیمت اعمال می‌شوند.', 'wapm' ); ?></p>
+				</td>
+			</tr>
+			<tr class="wapm-torob-only" style="display:none">
+				<th><?php esc_html_e( 'شرایط اعمال', 'wapm' ); ?></th>
+				<td>
+					<label style="display:block;margin-bottom:6px">
+						<input type="checkbox" class="wapm-torob-only-if-pricier" checked>
+						<?php esc_html_e( 'فقط وقتی از رقیب گران‌تریم (قیمت را بالا نبر)', 'wapm' ); ?>
+					</label>
+					<label>
+						<?php esc_html_e( 'حداقل اختلاف برای تغییر:', 'wapm' ); ?>
+						<input type="number" class="wapm-torob-min-gap" min="0" step="any" value="1" style="width:70px">
+						<?php esc_html_e( 'درصد (کمتر از این، تغییر نمی‌کند)', 'wapm' ); ?>
+					</label>
+					<p class="description">
+						<?php esc_html_e( 'حداکثر عمر داده:', 'wapm' ); ?>
+						<input type="number" class="wapm-torob-max-age" min="0" step="1" value="0" style="width:60px">
+						<?php esc_html_e( 'روز — صفر یعنی از تنظیمات تب ترب استفاده شود. داده‌ی کهنه مبنای تغییر قیمت نمی‌شود.', 'wapm' ); ?>
+					</p>
+				</td>
+			</tr>
+			<tr class="wapm-manual-only">
 				<th><?php esc_html_e( 'نوع تغییر', 'wapm' ); ?></th>
 				<td>
 					<label><input type="radio" name="wapm-mode-<?php echo esc_attr( $prefix ); ?>" class="wapm-mode" value="percent" checked> <?php esc_html_e( 'درصدی', 'wapm' ); ?></label>
@@ -635,7 +767,7 @@ class WAPM_Admin {
 					<label><input type="radio" name="wapm-mode-<?php echo esc_attr( $prefix ); ?>" class="wapm-mode" value="fixed"> <?php esc_html_e( 'مبلغ ثابت', 'wapm' ); ?></label>
 				</td>
 			</tr>
-			<tr>
+			<tr class="wapm-manual-only">
 				<th><?php esc_html_e( 'جهت', 'wapm' ); ?></th>
 				<td>
 					<select class="wapm-direction">
@@ -644,7 +776,7 @@ class WAPM_Admin {
 					</select>
 				</td>
 			</tr>
-			<tr>
+			<tr class="wapm-manual-only">
 				<th><?php esc_html_e( 'مقدار', 'wapm' ); ?></th>
 				<td>
 					<input type="number" class="wapm-amount" min="0" step="any" value="10">
@@ -655,7 +787,7 @@ class WAPM_Admin {
 					</select>
 				</td>
 			</tr>
-			<tr>
+			<tr class="wapm-manual-only">
 				<th><?php esc_html_e( 'قیمت هدف', 'wapm' ); ?></th>
 				<td>
 					<select class="wapm-price-target">
@@ -665,7 +797,7 @@ class WAPM_Admin {
 					</select>
 				</td>
 			</tr>
-			<tr>
+			<tr class="wapm-manual-only">
 				<th><?php esc_html_e( 'مدیریت Sale Price', 'wapm' ); ?></th>
 				<td>
 					<select class="wapm-sale-handling">
@@ -719,6 +851,79 @@ class WAPM_Admin {
 	}
 
 	/**
+	 * کارت وضعیت همگام‌سازی ترب (سرور-رندر؛ بعد از هر همگام‌سازی با Ajax به‌روز می‌شود).
+	 */
+	private function render_torob_status(): void {
+		$last       = WAPM_Torob::get_last_sync();
+		$matched    = WAPM_Torob::count_matched();
+		$unmatched  = count( WAPM_Torob::unmatched() );
+		$identify   = WAPM_Torob::can_identify_shop();
+		$settings   = WAPM_Torob::settings();
+		$source_map = [
+			'bookmarklet' => __( 'بوکمارکلت', 'wapm' ),
+			'feed'        => __( 'فید CSV', 'wapm' ),
+			'api'         => __( 'ورود برنامه‌نویسی', 'wapm' ),
+			'manual'      => __( 'اتصال دستی', 'wapm' ),
+			''            => __( '—', 'wapm' ),
+		];
+
+		if ( ! $identify ) {
+			echo '<div class="notice notice-error inline"><p><strong>' .
+				esc_html__( 'شناسه یا نام فروشگاه تنظیم نشده است.', 'wapm' ) .
+				'</strong> ' .
+				esc_html__( 'تا وقتی مشخص نباشد کدام فروشنده خودتان هستید، «ارزان‌ترین رقیب» قابل محاسبه نیست و افزونه مقایسه را انجام نمی‌دهد.', 'wapm' ) .
+				'</p></div>';
+		}
+
+		if ( ! empty( $last['structure_warning'] ) ) {
+			echo '<div class="notice notice-warning inline"><p><strong>' .
+				esc_html__( 'ساختار صفحه‌ی ترب تغییر کرده است؟', 'wapm' ) .
+				'</strong> ' .
+				esc_html__( 'آخرین همگام‌سازی هیچ محصولی پیدا نکرد. یعنی یا صفحه‌ی اشتباهی باز شده، یا ترب ساختار داده‌اش را عوض کرده و بوکمارکلت باید به‌روزرسانی شود.', 'wapm' ) .
+				'</p></div>';
+		}
+
+		echo '<div class="wapm-stats">';
+		printf(
+			'<div class="wapm-stat"><b>%s</b><small>%s</small></div>',
+			esc_html( number_format_i18n( $matched ) ),
+			esc_html__( 'محصول متصل به ترب', 'wapm' )
+		);
+		printf(
+			'<div class="wapm-stat"><b>%s</b><small>%s</small></div>',
+			esc_html( number_format_i18n( $unmatched ) ),
+			esc_html__( 'تطبیق‌نیافته', 'wapm' )
+		);
+		printf(
+			'<div class="wapm-stat"><b>%s</b><small>%s</small></div>',
+			esc_html( number_format_i18n( (int) $settings['fresh_days'] ) ),
+			esc_html__( 'روز تا کهنه‌شدن داده', 'wapm' )
+		);
+		echo '</div>';
+
+		if ( empty( $last['at'] ) ) {
+			echo '<p class="description">' . esc_html__( 'هنوز هیچ داده‌ای از ترب دریافت نشده است.', 'wapm' ) . '</p>';
+			return;
+		}
+
+		echo '<table class="widefat striped" style="max-width:720px"><tbody>';
+		$rows = [
+			__( 'آخرین همگام‌سازی', 'wapm' ) => $last['at'] ? date_i18n( 'Y/m/d H:i', strtotime( (string) $last['at'] ) ) : '—',
+			__( 'منبع', 'wapm' )            => $source_map[ (string) $last['source'] ] ?? (string) $last['source'],
+			__( 'محصولات یافت‌شده', 'wapm' ) => (int) $last['discovered'],
+			__( 'صفحات خوانده‌شده', 'wapm' ) => (int) $last['pages'],
+			__( 'تطبیق‌خورده', 'wapm' )     => (int) $last['matched'],
+			__( 'قیمت بررسی‌شده', 'wapm' )   => (int) $last['checked'],
+			__( 'تطبیق‌نیافته', 'wapm' )    => (int) $last['unmatched'],
+			__( 'مبهم (نیاز به بررسی)', 'wapm' ) => (int) ( $last['ambiguous'] ?? 0 ),
+		];
+		foreach ( $rows as $label => $value ) {
+			echo '<tr><th style="width:220px">' . esc_html( $label ) . '</th><td>' . esc_html( (string) $value ) . '</td></tr>';
+		}
+		echo '</tbody></table>';
+	}
+
+	/**
 	 * آدرس عمومی صفحه‌ی محصولات فروشگاه در ترب (برای راهنمای Bookmarklet).
 	 */
 	private function torob_shop_products_url(): string {
@@ -740,107 +945,308 @@ class WAPM_Admin {
 
 		$js = <<<'JS'
 (function(){
-	var WP_ENDPOINT = "%%ENDPOINT%%";
-	var TOKEN = "%%TOKEN%%";
+	'use strict';
+	var VERSION     = '2.0';
+	var ENDPOINT    = "%%ENDPOINT%%";
+	var TOKEN       = "%%TOKEN%%";
+	var DEFAULT_SHOP = "%%SHOP_ID%%";
+	var BATCH_SIZE  = 20;
+	var KEY_PREFIX  = 'wapm_bm_state_';
 
-	function showStatus(msg){
-		var el = document.getElementById('wapm-bm-status');
-		if(!el){
-			el = document.createElement('div');
-			el.id = 'wapm-bm-status';
-			el.style.cssText = 'position:fixed;bottom:20px;left:20px;z-index:2147483647;background:#111;color:#fff;padding:12px 16px;border-radius:10px;font-family:sans-serif;font-size:13px;max-width:320px;direction:rtl;box-shadow:0 8px 24px rgba(0,0,0,.3)';
-			document.body.appendChild(el);
+	var stopped = false;
+	var ui = null;
+
+	/* ---------- رابط وضعیت ---------- */
+
+	function buildUi(){
+		if (ui) return ui;
+		var box = document.createElement('div');
+		box.id = 'wapm-bm-box';
+		box.style.cssText = 'position:fixed;bottom:20px;left:20px;z-index:2147483647;background:#111;color:#fff;padding:14px 16px;border-radius:12px;font-family:Tahoma,sans-serif;font-size:13px;max-width:340px;direction:rtl;box-shadow:0 10px 30px rgba(0,0,0,.35);line-height:1.7';
+
+		var title = document.createElement('div');
+		title.textContent = 'همگام‌سازی با ترب (WAPM)';
+		title.style.cssText = 'font-weight:700;margin-bottom:8px';
+
+		var status = document.createElement('div');
+		status.id = 'wapm-bm-status';
+
+		var bar = document.createElement('div');
+		bar.style.cssText = 'height:6px;background:#333;border-radius:3px;margin:10px 0;overflow:hidden';
+		var fill = document.createElement('div');
+		fill.style.cssText = 'height:100%;width:0;background:#7f54b3;transition:width .2s';
+		bar.appendChild(fill);
+
+		var stop = document.createElement('button');
+		stop.type = 'button';
+		stop.textContent = 'توقف';
+		stop.style.cssText = 'background:#b32d2e;color:#fff;border:0;border-radius:8px;padding:6px 14px;font-weight:700;cursor:pointer';
+		stop.onclick = function(){ stopped = true; status.textContent = 'در حال توقف… (صفحه‌ی جاری تمام می‌شود)'; };
+
+		box.appendChild(title);
+		box.appendChild(status);
+		box.appendChild(bar);
+		box.appendChild(stop);
+		document.body.appendChild(box);
+
+		ui = { box: box, status: status, fill: fill, stop: stop };
+		return ui;
+	}
+
+	function say(msg){ buildUi().status.textContent = msg; }
+	function progress(pct){ buildUi().fill.style.width = Math.max(0, Math.min(100, pct)) + '%'; }
+	function finish(msg, autoHide){
+		say(msg);
+		buildUi().stop.style.display = 'none';
+		if (autoHide) {
+			setTimeout(function(){ var el = document.getElementById('wapm-bm-box'); if (el) el.remove(); ui = null; }, 12000);
 		}
-		el.textContent = msg;
 	}
 
 	function delay(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+	function jitter(base){ return base + Math.floor(Math.random() * 250); }
+
+	function loadState(key){
+		try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { return null; }
+	}
+	function saveState(key, state){
+		try { localStorage.setItem(key, JSON.stringify(state)); } catch (e) {}
+	}
+	function clearState(key){
+		try { localStorage.removeItem(key); } catch (e) {}
+	}
+
+	/* ---------- خواندن داده از صفحات ترب ---------- */
 
 	function getNextData(html){
 		var m = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
-		if(!m){ return null; }
-		try { return JSON.parse(m[1]); } catch(e){ return null; }
+		if (!m) { return null; }
+		try { return JSON.parse(m[1]); } catch (e) { return null; }
 	}
 
-	async function fetchShopPage(shopId, page){
-		var url = 'https://torob.com/shop/' + encodeURIComponent(shopId) + '/-/' + encodeURIComponent('محصولات') + '/?page=' + page + '&available=true&sort=-date';
-		var res = await fetch(url, { credentials: 'omit' });
-		var html = await res.text();
-		var data = getNextData(html);
-		if(!data){ return []; }
-		var pp = data.props.pageProps;
-		var listKey = Object.keys(pp).find(function(k){ return Array.isArray(pp[k]) && pp[k].length && pp[k][0] && pp[k][0].random_key; });
-		if(!listKey){ return []; }
-		return pp[listKey].map(function(p){ return { name: p.name1, prk: p.random_key }; });
+	function fetchWithRetry(url, tries){
+		tries = tries || 0;
+		return fetch(url, { credentials: 'omit' })
+			.then(function(res){
+				if (!res.ok) { throw new Error('HTTP ' + res.status); }
+				return res.text();
+			})
+			.catch(function(err){
+				if (tries < 2) {
+					return delay(1200 * (tries + 1)).then(function(){ return fetchWithRetry(url, tries + 1); });
+				}
+				throw err;
+			});
 	}
 
-	async function fetchProductSellers(prk){
+	/* پیدا کردن آرایه‌ی محصولات در pageProps، مستقل از نام کلید. */
+	function extractList(pageProps){
+		if (!pageProps) { return null; }
+		var keys = Object.keys(pageProps);
+		for (var i = 0; i < keys.length; i++) {
+			var val = pageProps[keys[i]];
+			if (Array.isArray(val) && val.length && val[0] && (val[0].random_key || val[0].prk)) {
+				return val;
+			}
+		}
+		// ساختارهای تودرتو رایج
+		var nested = ['products', 'results', 'items', 'data'];
+		for (var j = 0; j < nested.length; j++) {
+			var node = pageProps[nested[j]];
+			if (node && Array.isArray(node.results) && node.results.length && node.results[0] && node.results[0].random_key) {
+				return node.results;
+			}
+			if (Array.isArray(node) && node.length && node[0] && node[0].random_key) {
+				return node;
+			}
+		}
+		return null;
+	}
+
+	function fetchShopPage(shopId, page){
+		var url = 'https://torob.com/shop/' + encodeURIComponent(shopId) + '/-/' + encodeURIComponent('محصولات')
+			+ '/?page=' + page + '&available=true&sort=-date';
+
+		return fetchWithRetry(url).then(function(html){
+			var data = getNextData(html);
+			if (!data) { return { items: [], structure: false, error: 'no_next_data' }; }
+
+			var list = extractList(data.props && data.props.pageProps);
+			if (null === list) { return { items: [], structure: true, error: 'no_list' }; }
+
+			return {
+				items: list.map(function(p){
+					return { name: p.name1 || p.name || p.title || '', prk: p.random_key || p.prk || '' };
+				}).filter(function(p){ return p.prk; }),
+				structure: false,
+				error: ''
+			};
+		});
+	}
+
+	function fetchProductSellers(prk){
 		var url = 'https://torob.com/p/' + encodeURIComponent(prk) + '/';
-		var res = await fetch(url, { credentials: 'omit' });
-		var html = await res.text();
-		var data = getNextData(html);
-		if(!data){ return []; }
-		var bp = data.props.pageProps.baseProduct;
-		if(!bp){ return []; }
-		var result = (bp.products_info && bp.products_info.result) || [];
-		return result.map(function(s){ return { shop_id: s.shop_id, price: s.price }; });
+
+		return fetchWithRetry(url).then(function(html){
+			var data = getNextData(html);
+			if (!data) { return { sellers: [], error: 'no_next_data' }; }
+
+			var bp = data.props && data.props.pageProps && data.props.pageProps.baseProduct;
+			if (!bp) { return { sellers: [], error: 'no_base_product' }; }
+
+			var info = bp.products_info || {};
+			var result = info.result || info.results || (Array.isArray(info) ? info : []) || [];
+
+			var sellers = result.map(function(s){
+				return {
+					shop_id: s.shop_id || s.shopId || 0,
+					shop_name: s.shop_name || s.seller_name || s.name || '',
+					price: s.price || 0
+				};
+			}).filter(function(s){ return s.price > 0; });
+
+			return { sellers: sellers, error: '' };
+		}).catch(function(err){
+			return { sellers: [], error: err.message };
+		});
 	}
 
-	function sendBatch(items){
+	function sendBatch(items, meta){
 		var body = new URLSearchParams();
-		body.set('action', 'wapm_torob_bookmarklet_sync');
+		body.set('action', 'wapm_torob_ingest');
+		body.set('source', 'bookmarklet');
 		body.set('token', TOKEN);
 		body.set('items', JSON.stringify(items));
-		return fetch(WP_ENDPOINT, { method: 'POST', body: body }).then(function(r){ return r.json(); });
+		body.set('meta', JSON.stringify(meta || {}));
+
+		return fetch(ENDPOINT, { method: 'POST', body: body, credentials: 'omit' })
+			.then(function(r){ return r.json(); });
 	}
 
-	async function run(){
-		var shopId = prompt('شناسه فروشگاه ترب را وارد کنید:', '%%SHOP_ID%%');
-		if(!shopId){ return; }
+	/* ---------- اجرای اصلی ---------- */
 
-		showStatus('در حال خواندن فهرست محصولات از ترب…');
-		var all = [];
-		var page = 1;
-		while(true){
-			var items = await fetchShopPage(shopId, page);
-			if(!items.length){ break; }
-			all = all.concat(items);
-			showStatus('صفحه ' + page + ' — ' + all.length + ' محصول یافت شد…');
-			page++;
-			await delay(400);
-			if(page > 200){ break; }
+	async function run(){
+		var shopId = window.prompt('شناسه فروشگاه ترب را وارد کنید:', DEFAULT_SHOP || '');
+		if (!shopId) { return; }
+		shopId = String(shopId).replace(/[^0-9]/g, '');
+		if (!shopId) { window.alert('شناسه فروشگاه باید عددی باشد (مثل 118417).'); return; }
+
+		var key = KEY_PREFIX + shopId;
+		var state = loadState(key);
+		var startPage = 1;
+
+		if (state && state.nextPage && state.nextPage > 1) {
+			if (window.confirm('همگام‌سازی قبلی تا صفحه‌ی ' + (state.nextPage - 1) + ' انجام شده است. از صفحه‌ی ' + state.nextPage + ' ادامه دهم؟\n(«لغو» = شروع از ابتدا)')) {
+				startPage = state.nextPage;
+			} else {
+				clearState(key);
+			}
 		}
 
-		if(!all.length){
-			showStatus('هیچ محصولی پیدا نشد. مطمئن شوید در صفحه‌ی محصولات فروشگاه خودتان در ترب هستید.');
+		buildUi();
+		progress(0);
+
+		var page = startPage;
+		var discovered = 0;
+		var totals = { matched: 0, checked: 0, unmatched: 0 };
+		var lastError = '';
+		var mismatchSeen = 0;
+
+		while (!stopped && page <= 200) {
+			say('خواندن فهرست محصولات — صفحه ' + page + '…');
+
+			var pageResult;
+			try {
+				pageResult = await fetchShopPage(shopId, page);
+			} catch (e) {
+				lastError = e.message || 'خطای شبکه';
+				break;
+			}
+
+			if (pageResult.structure) {
+				await sendBatch([], { probe: true, discovered: 0, pages: page, version: VERSION });
+				finish('⚠ ساختار صفحه‌ی ترب قابل خواندن نبود. یا صفحه‌ی محصولات فروشگاه باز نیست، یا ترب ساختارش را عوض کرده است. این را به پشتیبانی افزونه اطلاع دهید.');
+				return;
+			}
+
+			if (!pageResult.items.length) {
+				if (page === 1) {
+					await sendBatch([], { probe: true, discovered: 0, pages: 1, version: VERSION });
+					finish('هیچ محصولی پیدا نشد. مطمئن شوید در صفحه‌ی محصولات فروشگاه خودتان در ترب هستید و شناسه‌ی فروشگاه درست است.');
+					return;
+				}
+				break; // پایان صفحات
+			}
+
+			discovered += pageResult.items.length;
+
+			var batch = [];
+			for (var i = 0; i < pageResult.items.length && !stopped; i++) {
+				var item = pageResult.items[i];
+				var info;
+				try {
+					info = await fetchProductSellers(item.prk);
+				} catch (e) {
+					info = { sellers: [], error: e.message };
+				}
+
+				if (info.error === 'no_base_product' || info.error === 'no_next_data') {
+					mismatchSeen++;
+				}
+
+				batch.push({ name: item.name, prk: item.prk, sellers: info.sellers });
+
+				say('صفحه ' + page + ' — بررسی ' + (i + 1) + ' از ' + pageResult.items.length + ' (مجموع: ' + (discovered - pageResult.items.length + i + 1) + ')');
+
+				if (batch.length >= BATCH_SIZE || i === pageResult.items.length - 1) {
+					var res = await sendBatch(batch, {
+						discovered: discovered,
+						pages: page,
+						version: VERSION
+					});
+					if (res && res.success) {
+						totals.matched   += res.data.matched || 0;
+						totals.checked   += res.data.checked || 0;
+						totals.unmatched += res.data.unmatched || 0;
+					} else {
+						lastError = (res && res.data && res.data.message) ? res.data.message : 'پاسخ نامعتبر از سایت';
+					}
+					batch = [];
+				}
+
+				await delay(jitter(280));
+			}
+
+			page++;
+			saveState(key, { nextPage: page, at: Date.now() });
+			progress(Math.min(96, (page - startPage + 1) * 12));
+
+			if (stopped) { break; }
+			await delay(jitter(350));
+		}
+
+		progress(100);
+
+		if (stopped) {
+			finish('متوقف شد. دفعه‌ی بعد از همین‌جا ادامه می‌دهد.\nتا اینجا: ' + totals.matched + ' محصول متصل، ' + totals.checked + ' قیمت بررسی‌شده.');
 			return;
 		}
 
-		var totalMatched = 0, totalChecked = 0;
-		var batch = [];
-		for(var i = 0; i < all.length; i++){
-			var sellers = await fetchProductSellers(all[i].prk);
-			batch.push({ name: all[i].name, prk: all[i].prk, sellers: sellers });
-			showStatus('بررسی قیمت‌ها: ' + (i+1) + ' از ' + all.length);
+		clearState(key);
 
-			if(batch.length >= 25 || i === all.length - 1){
-				try {
-					var res = await sendBatch(batch);
-					if(res && res.success){
-						totalMatched += res.data.matched;
-						totalChecked += res.data.checked;
-					}
-				} catch(e){}
-				batch = [];
-			}
-			await delay(300);
+		var msg = '✓ همگام‌سازی کامل شد — ' + totals.matched + ' محصول متصل شد و ' + totals.checked + ' قیمت بررسی شد.';
+		if (totals.unmatched) {
+			msg += '\n' + totals.unmatched + ' محصول ترب به محصول ووکامرس وصل نشد؛ در تب «ترب» می‌توانید دستی وصل کنید.';
 		}
-
-		showStatus('✓ همگام‌سازی کامل شد — ' + totalMatched + ' محصول match و ' + totalChecked + ' قیمت بررسی شد.');
-		setTimeout(function(){ var el = document.getElementById('wapm-bm-status'); if(el){ el.remove(); } }, 8000);
+		if (lastError) {
+			msg += '\n⚠ برخی دسته‌ها ناموفق بود: ' + lastError;
+		}
+		finish(msg, true);
 	}
 
-	run().catch(function(e){ showStatus('خطا: ' + e.message); });
+	run().catch(function(e){
+		finish('خطا: ' + (e && e.message ? e.message : e));
+	});
 })();
 JS;
 
@@ -850,6 +1256,6 @@ JS;
 			$js
 		);
 
-		return 'javascript:' . rawurlencode( $js );
+				return 'javascript:' . rawurlencode( $js );
 	}
 }
