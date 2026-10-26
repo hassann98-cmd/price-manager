@@ -169,4 +169,5 @@ CI (`.github/workflows/ci.yml`) روی هر push و PR: لینت PHP روی ۸.�
 
 ## مجوز
 
-GPL-2.0-or-later
+GPL-2.0-or-later — متن کامل در [`LICENSE`](LICENSE) (همان فایل در بسته‌ی نصب
+به‌صورت `license.txt` هم هست).

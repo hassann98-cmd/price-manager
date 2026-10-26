@@ -49,6 +49,7 @@
 - زمان‌بندی روی Action Scheduler با fallback خودکار به WP-Cron.
 - اجرای خودکار قوانین با کلید صریح و فاصله‌ی قابل تنظیم.
 - `uninstall.php` با پاک‌سازی کامل + تست هم‌خوانی کلیدها.
+- `LICENSE` (متن کامل GPL-2.0) در ریشه و `license.txt` داخل بسته‌ی نصب.
 - تجمیع ویرایش‌های inline (قیمت و موجودی) در یک Batch روزانه per کاربر، به‌جای یک Batch برای هر تغییر.
 - `languages/wapm.pot` + `tools/make-pot.py`، `tools/build-zip.py`، README فارسی، GitHub Actions.
 - ترجمه‌پذیری کامل ادمین: رشته‌های JS به `__()`/`sprintf()` روی `wp.i18n` منتقل شدند، `wp_set_script_translations` برای هر اسکریپت ثبت شد و `make-pot.py` حالا `.js` را هم استخراج می‌کند (۵۲۳ رشته).
