@@ -109,7 +109,7 @@ class WAPM_Ajax {
 	public function search_products(): void {
 		$this->guard();
 		$term = sanitize_text_field( wp_unslash( $_POST['term'] ?? '' ) );
-		if ( mb_strlen( $term ) < 2 ) {
+		if ( WAPM_Str::len( $term ) < 2 ) {
 			wp_send_json_success( [] );
 		}
 		wp_send_json_success( WAPM_Product_Handler::search_products( $term ) );
@@ -1095,7 +1095,7 @@ class WAPM_Ajax {
 		$this->guard();
 
 		$q = sanitize_text_field( wp_unslash( $_POST['q'] ?? '' ) );
-		if ( mb_strlen( $q ) < 2 ) {
+		if ( WAPM_Str::len( $q ) < 2 ) {
 			wp_send_json_error( [ 'message' => __( 'حداقل دو حرف از نام فروشگاه را بنویسید.', 'wapm' ) ] );
 		}
 

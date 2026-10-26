@@ -118,7 +118,7 @@ class WAPM_List {
 
 			$list[] = [
 				'id'      => $id,
-				'name'    => mb_substr( $name, 0, 60 ),
+				'name'    => WAPM_Str::sub( $name, 0, 60 ),
 				'filters' => $filters,
 				'at'      => sanitize_text_field( (string) ( $row['at'] ?? '' ) ),
 			];
@@ -140,7 +140,7 @@ class WAPM_List {
 		$list    = self::sanitize_saved_filters( $list );
 		$filters = self::sanitize_filters( $filters );
 		$name    = trim( $name );
-		$name    = '' !== $name ? mb_substr( $name, 0, 60 ) : self::saved_filter_label( $filters );
+		$name    = '' !== $name ? WAPM_Str::sub( $name, 0, 60 ) : self::saved_filter_label( $filters );
 
 		// فیلتر یکسان (بی‌توجه به per_page/paged) دوباره ذخیره نمی‌شود؛ ولی اسم
 		// جدید کاربر پذیرفته و همان ردیف به‌روز می‌شود.

@@ -60,6 +60,7 @@ final class WAPM_Plugin {
 
 		load_plugin_textdomain( 'wapm', false, dirname( plugin_basename( WAPM_FILE ) ) . '/languages' );
 
+		require_once WAPM_PATH . 'includes/class-str.php';
 		require_once WAPM_PATH . 'includes/class-logger.php';
 		require_once WAPM_PATH . 'includes/class-price-engine.php';
 		require_once WAPM_PATH . 'includes/class-product-handler.php';

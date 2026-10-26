@@ -213,6 +213,7 @@ class WC_Product {
 	}
 }
 
+require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-str.php';
 require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-price-engine.php';
 require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-logger.php';
 require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-torob.php';
@@ -1716,6 +1717,48 @@ test( 'حذف افزونه: جدول‌ها، کرون و نگهبان WP_UNINST
 	ok( false !== strpos( $uninstall, 'delete_metadata( \'user\', 0' ), 'متای کاربران (فیلترهای ذخیره‌شده)' );
 	ok( false !== strpos( $uninstall, 'wapm_keep_data_on_uninstall' ), 'راه حفظ داده' );
 	ok( false !== strpos( $uninstall, 'is_multisite()' ), 'مالتی‌سایت' );
+} );
+
+/* -------------------------------------------------------------------------
+ * ۱۸) سازگاری رشته/کاراکتر — بدون mbstring هم صفحه سفید نمی‌شود
+ * ---------------------------------------------------------------------- */
+
+test( 'رشته: طول و برش کاراکتری برای فارسی (بدون شکستن کاراکتر)', function () {
+	eq( 9, WAPM_Str::len( 'سلام دنیا' ), 'طول «سلام دنیا» ۹ کاراکتر' );
+	eq( 4, WAPM_Str::len( '۱۲۳۴' ), 'ارقام فارسی' );
+	eq( 2, WAPM_Str::len( '👕👖' ), 'ایموجی (۴ بایت)' );
+
+	eq( 'سلام', WAPM_Str::sub( 'سلام دنیا', 0, 4 ), 'برش ۴ کاراکتر اول' );
+	eq( 'دنیا', WAPM_Str::sub( 'سلام دنیا', 5 ), 'برش از وسط تا انتها' );
+	eq( 4, WAPM_Str::len( WAPM_Str::sub( 'سلام دنیا', 0, 4 ) ), 'طول نتیجه‌ی برش' );
+	eq( '', WAPM_Str::sub( 'سلام', 10 ), 'شروع بیرون از رشته' );
+} );
+
+test( 'رشته: contains و lower', function () {
+	ok( WAPM_Str::contains( 'از ۸٫۶۸۰٫۰۰۰ ریال', 'ریال' ), 'جستجوی فارسی' );
+	ok( ! WAPM_Str::contains( 'از ۸٫۶۸۰٫۰۰۰ تومان', 'ریال' ), 'نبود' );
+	ok( WAPM_Str::contains( 'هرچیز', '' ), 'سوزن خالی = درست' );
+	eq( 'iphone 15 pro', WAPM_Str::lower( 'IPHONE 15 Pro' ), 'لاتین' );
+	eq( 'آیفون', WAPM_Str::lower( 'آیفون' ), 'فارسی بدون تغییر' );
+} );
+
+test( 'رشته: هیچ فایل افزونه‌ای مستقیم mb_* صدا نمی‌زند (به‌جز WAPM_Str)', function () {
+	$root = __DIR__ . '/../woocommerce-advanced-price-manager';
+	$hits = [];
+
+	foreach ( glob( $root . '/includes/*.php' ) ?: [] as $file ) {
+		$name = basename( $file );
+		if ( 'class-str.php' === $name ) {
+			continue;
+		}
+		$code = (string) file_get_contents( $file );
+		// فراخوانی واقعی، نه اسم تابع در string: «mb_strlen(»
+		if ( preg_match( '/\bmb_[a-z_]+\s*\(/', $code ) ) {
+			$hits[] = $name;
+		}
+	}
+
+	eq( [], $hits, 'فایل‌های با mb_* بدون گارد' );
 } );
 
 /* -------------------------------------------------------------------------

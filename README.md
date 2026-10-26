@@ -21,7 +21,7 @@ git clone https://github.com/hassann98-cmd/price-manager.git
 cp -r price-manager/woocommerce-advanced-price-manager /path/to/wp-content/plugins/
 ```
 
-**نیازمندی‌ها:** وردپرس ۶.۰+ · PHP 8.0+ · ووکامرس ۷.۰+ · افزونه‌ی `mbstring`
+**نیازمندی‌ها:** وردپرس ۶.۰+ · PHP 8.0+ · ووکامرس ۷.۰+ · `mbstring` اختیاری است (بدون آن هم متن فارسی درست مدیریت می‌شود — `WAPM_Str` مسیر جایگزین دارد)
 
 > بسته‌ی zip با `python3 tools/build-zip.py` از سورس ساخته می‌شود و در CI بررسی می‌شود که از کد عقب نماند.
 

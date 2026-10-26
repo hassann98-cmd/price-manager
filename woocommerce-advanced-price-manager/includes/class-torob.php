@@ -287,7 +287,7 @@ class WAPM_Torob {
 		$s = preg_replace( '/[«»"\'`”“‘’\[\]\(\)\{\}<>|*_+=\/\\\\،؛,.:!?؟…—–ـ~^%$#@&]+/u', ' ', $s );
 
 		// کوچک‌سازی و جمع‌کردن فاصله‌ها.
-		$s = function_exists( 'mb_strtolower' ) ? mb_strtolower( (string) $s, 'UTF-8' ) : strtolower( (string) $s );
+		$s = WAPM_Str::lower( (string) $s );
 		$s = preg_replace( '/\s+/u', ' ', (string) $s );
 
 		return trim( (string) $s );
@@ -1412,7 +1412,7 @@ class WAPM_Torob {
 					$hit = true;
 				}
 				if ( ! $hit && '' !== $q_norm && '' !== self::normalize( (string) ( $row['name'] ?? '' ) ) ) {
-					$hit = false !== mb_strpos( self::normalize( (string) $row['name'] ), $q_norm );
+					$hit = WAPM_Str::contains( self::normalize( (string) $row['name'] ), $q_norm );
 				}
 				if ( ! $hit ) {
 					continue;

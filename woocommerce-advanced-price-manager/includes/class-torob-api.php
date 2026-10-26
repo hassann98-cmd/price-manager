@@ -249,7 +249,7 @@ class WAPM_Torob_Api {
 	 */
 	public static function find_shops( string $query, int $size = 10 ): array {
 		$query = trim( $query );
-		if ( mb_strlen( $query ) < 2 ) {
+		if ( WAPM_Str::len( $query ) < 2 ) {
 			return [];
 		}
 
@@ -417,7 +417,7 @@ class WAPM_Torob_Api {
 	public static function parse_price_text( string $text ): ?float {
 		$text = WAPM_Torob::to_ascii_digits( $text );
 
-		$is_rial = false !== mb_strpos( $text, 'ریال' );
+		$is_rial = WAPM_Str::contains( $text, 'ریال' );
 
 		// هر چیزی جز رقم و جداکننده حذف شود، بعد جداکننده‌ها برداشته شوند.
 		$digits = preg_replace( '/[^0-9]/', '', str_replace( [ '٫', '،', ',', ' ' ], '', $text ) );
