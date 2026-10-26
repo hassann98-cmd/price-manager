@@ -77,6 +77,14 @@ function number_format_i18n( $number, $decimals = 0 ) {
 	return number_format( (float) $number, (int) $decimals );
 }
 
+function wp_json_encode( $data, $options = 0 ) {
+	return json_encode( $data, $options );
+}
+
+function current_time( $type = 'mysql', $gmt = 0 ) {
+	return 'mysql' === $type ? gmdate( 'Y-m-d H:i:s' ) : time();
+}
+
 function get_option( $key, $default = false ) {
 	return $GLOBALS['wapm_options'][ $key ] ?? $default;
 }
@@ -152,6 +160,7 @@ require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-lo
 require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-torob.php';
 require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-torob-api.php';
 require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-stock.php';
+require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-list.php';
 
 /* -------------------------------------------------------------------------
  * چارچوب تست کوچک
@@ -1205,6 +1214,80 @@ test( 'موجودی/expand_ids: انتخاب همه‌ی نتایج هم از ه
 
 	eq( [ 101, 102, 20 ], WAPM_Stock::expand_ids( [ 10, 20 ] ), 'والد متغیر + محصول ساده' );
 	eq( 0.0, WAPM_Stock::compute_qty( 0, 'set', 'count', 0 ), 'تنظیم روی صفر مجاز است' );
+} );
+
+/* -------------------------------------------------------------------------
+ * ۱۶) فیلترهای ذخیره‌شده‌ی لیست
+ * ---------------------------------------------------------------------- */
+
+test( 'فیلتر/برچسب خودکار: از شرط‌ها ساخته می‌شود', function () {
+	$label = WAPM_List::saved_filter_label( WAPM_List::sanitize_filters( [
+		'torob_status' => 'pricier',
+		'price_min'    => 100000,
+		'on_sale'      => 1,
+	] ) );
+
+	ok( false !== mb_strpos( $label, 'گران‌تر از رقیب' ), 'وضعیت ترب' );
+	ok( false !== mb_strpos( $label, 'قیمت' ), 'بازه‌ی قیمت' );
+	ok( false !== mb_strpos( $label, 'تخفیف' ), 'فقط تخفیف‌دار' );
+} );
+
+test( 'فیلتر/برچسب خودکار: فیلتر خالی «همه‌ی محصولات» است', function () {
+	eq( 'همه‌ی محصولات', WAPM_List::saved_filter_label( WAPM_List::sanitize_filters( [] ) ), 'بدون شرط' );
+} );
+
+test( 'فیلتر/ذخیره: ردیف نامعتبر حذف و شناسه‌ی تکراری یکتا می‌شود', function () {
+	$list = WAPM_List::sanitize_saved_filters( [
+		'رشته-نامعتبر',
+		[ 'id' => 'f1', 'name' => 'اول', 'filters' => [ 'search' => 'آیفون' ] ],
+		[ 'id' => 'f1', 'name' => 'تکراری', 'filters' => [ 'search' => 'شیائومی' ] ],
+		[ 'id' => 'f2', 'filters' => [ 'stock_status' => 'instock' ] ],
+	] );
+
+	eq( 3, count( $list ), 'سه ردیف معتبر' );
+	ok( $list[0]['id'] !== $list[1]['id'], 'شناسه‌ی تکراری عوض شد' );
+	eq( 'موجود', $list[2]['name'], 'نام خالی از فیلتر ساخته شد' );
+} );
+
+test( 'فیلتر/ذخیره: فیلتر یکسان دوباره اضافه نمی‌شود', function () {
+	$f = WAPM_List::sanitize_filters( [ 'search' => 'آیفون', 'per_page' => 25, 'paged' => 2 ] );
+	$list = WAPM_List::add_saved_filter( [], 'نام اول', $f );
+	eq( 1, count( $list ), 'یک ردیف' );
+
+	// همان شرط با نام و صفحه‌ی دیگر → همان ردیف، نام جدید.
+	$again = WAPM_List::add_saved_filter( $list, 'نام دوم', WAPM_List::sanitize_filters( [ 'search' => 'آیفون', 'paged' => 7 ] ) );
+	eq( 1, count( $again ), 'تکراری اضافه نشد' );
+	eq( 'نام دوم', $again[0]['name'], 'نام به‌روز شد' );
+	eq( $list[0]['id'], $again[0]['id'], 'شناسه ثابت ماند' );
+} );
+
+test( 'فیلتر/ذخیره: جدیدترین اول و سقف رعایت می‌شود', function () {
+	$list = [];
+	for ( $i = 1; $i <= 5; $i++ ) {
+		$list = WAPM_List::add_saved_filter( $list, 'فیلتر ' . $i, [ 'search' => 'کالا' . $i ] );
+	}
+
+	eq( 'فیلتر 5', $list[0]['name'], 'جدیدترین اول' );
+
+	$capped = [];
+	for ( $i = 1; $i <= 4; $i++ ) {
+		$capped = WAPM_List::add_saved_filter( $capped, 'x' . $i, [ 'search' => 's' . $i ], 3 );
+	}
+	eq( 3, count( $capped ), 'سقف ۳ ردیف' );
+	eq( 'x4', $capped[0]['name'], 'آخرین اضافه‌شده مانده' );
+} );
+
+test( 'فیلتر/ذخیره: حذف با شناسه و بی‌اثر بودن شناسه‌ی نامعتبر', function () {
+	$a = WAPM_List::add_saved_filter( [], 'الف', [ 'search' => 'a' ] );
+	$b = WAPM_List::add_saved_filter( $a, 'ب', [ 'search' => 'b' ] );
+
+	eq( 1, count( WAPM_List::remove_saved_filter( $b, $b[0]['id'] ) ), 'یکی حذف شد' );
+	eq( 2, count( WAPM_List::remove_saved_filter( $b, 'نامعتبر!' ) ), 'شناسه‌ی نامعتبر چیزی حذف نمی‌کند' );
+} );
+
+test( 'فیلتر/ذخیره: ورودی نامطمئن (رشته) کرش نمی‌کند', function () {
+	eq( [], WAPM_List::sanitize_saved_filters( 'چیز-نامعتبر' ), 'رشته' );
+	eq( [], WAPM_List::sanitize_saved_filters( null ), 'null' );
 } );
 
 /* -------------------------------------------------------------------------

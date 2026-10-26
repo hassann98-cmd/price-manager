@@ -46,6 +46,164 @@ class WAPM_List {
 		];
 	}
 
+	/* ---------- فیلترهای ذخیره‌شده ---------- */
+
+	const USER_META_SAVED = 'wapm_saved_filters';
+	const MAX_SAVED       = 20;
+
+	/**
+	 * برچسب خودکار از روی فیلترها (وقتی کاربر نام نمی‌دهد).
+	 *
+	 * چرا خودکار: اگر نام اجباری باشد، کاربر برای هر نمای ساده یک اسم تایپ می‌کند
+	 * و در عمل هیچ‌وقت ذخیره نمی‌کند. برچسب باید همان چیزی باشد که فیلتر می‌کند.
+	 */
+	public static function saved_filter_label( array $f ): string {
+		$parts = [];
+
+		if ( '' !== (string) ( $f['search'] ?? '' ) ) {
+			$parts[] = 'جستجو: ' . $f['search'];
+		}
+		if ( ! empty( $f['category_id'] ) ) {
+			$term = function_exists( 'get_term' ) ? get_term( (int) $f['category_id'], 'product_cat' ) : null;
+			$parts[] = 'دسته: ' . ( $term && ! is_wp_error( $term ) ? $term->name : '#' . (int) $f['category_id'] );
+		}
+		if ( '' !== (string) ( $f['stock_status'] ?? '' ) ) {
+			$labels = [ 'instock' => 'موجود', 'outofstock' => 'ناموجود', 'onbackorder' => 'پیش‌خرید' ];
+			$parts[] = $labels[ $f['stock_status'] ] ?? (string) $f['stock_status'];
+		}
+		if ( '' !== (string) ( $f['torob_status'] ?? '' ) ) {
+			$parts[] = WAPM_Torob::status_label( (string) $f['torob_status'] );
+		}
+		if ( null !== ( $f['price_min'] ?? null ) || null !== ( $f['price_max'] ?? null ) ) {
+			$parts[] = 'قیمت ' . ( $f['price_min'] ?? '۰' ) . ' تا ' . ( $f['price_max'] ?? '∞' );
+		}
+		if ( null !== ( $f['stock_min'] ?? null ) || null !== ( $f['stock_max'] ?? null ) ) {
+			$parts[] = 'موجودی ' . ( $f['stock_min'] ?? '۰' ) . ' تا ' . ( $f['stock_max'] ?? '∞' );
+		}
+		if ( '' !== (string) ( $f['product_type'] ?? '' ) ) {
+			$parts[] = 'variable' === $f['product_type'] ? 'محصول متغیر' : 'محصول ساده';
+		}
+		if ( ! empty( $f['on_sale'] ) ) {
+			$parts[] = 'تخفیف‌دار';
+		}
+
+		return $parts ? implode(' · ', $parts) : 'همه‌ی محصولات';
+	}
+
+	/**
+	 * پاک‌سازی لیست ذخیره‌شده (ورودی نامطمئن از user meta یا درخواست).
+	 *
+	 * @return array<int, array{id:string,name:string,filters:array,at:string}>
+	 */
+	public static function sanitize_saved_filters( $raw ): array {
+		$list = [];
+		$seen = [];
+
+		foreach ( (array) $raw as $row ) {
+			if ( ! is_array( $row ) || ! is_array( $row['filters'] ?? null ) ) {
+				continue;
+			}
+
+			$id = preg_replace( '/[^a-zA-Z0-9_-]/', '', (string) ( $row['id'] ?? '' ) );
+			if ( '' === $id || isset( $seen[ $id ] ) ) {
+				$id = 'f' . substr( md5( wp_json_encode( $row['filters'] ) . ( $row['name'] ?? '' ) . count( $list ) ), 0, 8 );
+			}
+			$seen[ $id ] = true;
+
+			$filters = self::sanitize_filters( $row['filters'] );
+			$name    = trim( (string) ( $row['name'] ?? '' ) );
+			if ( '' === $name ) {
+				$name = self::saved_filter_label( $filters );
+			}
+
+			$list[] = [
+				'id'      => $id,
+				'name'    => mb_substr( $name, 0, 60 ),
+				'filters' => $filters,
+				'at'      => sanitize_text_field( (string) ( $row['at'] ?? '' ) ),
+			];
+
+			if ( count( $list ) >= self::MAX_SAVED ) {
+				break;
+			}
+		}
+
+		return $list;
+	}
+
+	/**
+	 * افزودن یک فیلتر ذخیره‌شده (جدیدترین اول؛ فیلتر یکسان دوباره اضافه نمی‌شود).
+	 *
+	 * @return array<int, array>
+	 */
+	public static function add_saved_filter( array $list, string $name, array $filters, int $max = self::MAX_SAVED ): array {
+		$list    = self::sanitize_saved_filters( $list );
+		$filters = self::sanitize_filters( $filters );
+		$name    = trim( $name );
+		$name    = '' !== $name ? mb_substr( $name, 0, 60 ) : self::saved_filter_label( $filters );
+
+		// فیلتر یکسان (بی‌توجه به per_page/paged) دوباره ذخیره نمی‌شود؛ ولی اسم
+		// جدید کاربر پذیرفته و همان ردیف به‌روز می‌شود.
+		$signature = static function ( array $f ): string {
+			unset( $f['per_page'], $f['paged'] );
+			ksort( $f );
+
+			return md5( (string) wp_json_encode( $f ) );
+		};
+
+		$key = $signature( $filters );
+		foreach ( $list as $i => $row ) {
+			if ( $signature( $row['filters'] ) === $key ) {
+				$list[ $i ]['name'] = $name;
+				$list[ $i ]['at']   = current_time( 'mysql' );
+
+				return $list;
+			}
+		}
+
+		array_unshift( $list, [
+			'id'      => 'f' . substr( md5( $key . microtime( true ) ), 0, 8 ),
+			'name'    => $name,
+			'filters' => $filters,
+			'at'      => current_time( 'mysql' ),
+		] );
+
+		return array_slice( $list, 0, max( 1, $max ) );
+	}
+
+	/** حذف با شناسه. */
+	public static function remove_saved_filter( array $list, string $id ): array {
+		$id = preg_replace( '/[^a-zA-Z0-9_-]/', '', $id );
+
+		return array_values( array_filter(
+			self::sanitize_saved_filters( $list ),
+			static fn( $row ) => $row['id'] !== $id
+		) );
+	}
+
+	/** لیست فیلترهای ذخیره‌شده‌ی کاربر جاری. */
+	public static function user_saved_filters(): array {
+		$user_id = get_current_user_id();
+		if ( ! $user_id ) {
+			return [];
+		}
+
+		return self::sanitize_saved_filters( get_user_meta( $user_id, self::USER_META_SAVED, true ) );
+	}
+
+	/** ذخیره‌ی لیست برای کاربر جاری. */
+	public static function save_user_filters( array $list ): array {
+		$user_id = get_current_user_id();
+		if ( ! $user_id ) {
+			return [];
+		}
+
+		$list = self::sanitize_saved_filters( $list );
+		update_user_meta( $user_id, self::USER_META_SAVED, $list );
+
+		return $list;
+	}
+
 	/**
 	 * کوئری محصولات هدف + تخت‌سازی واریشن‌های محصولات متغیر به‌صورت ردیف‌های جداگانه.
 	 *

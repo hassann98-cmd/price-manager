@@ -251,6 +251,14 @@ class WAPM_Admin {
 							</select>
 						</div>
 
+						<div class="wapm-saved-filters">
+							<select id="wapm-list-saved-filters" class="h-11 rounded-xl border border-slate-200 text-sm px-3" title="<?php esc_attr_e( 'فیلترهای ذخیره‌شده', 'wapm' ); ?>">
+								<option value=""><?php esc_html_e( 'فیلترهای ذخیره‌شده…', 'wapm' ); ?></option>
+							</select>
+							<button type="button" id="wapm-list-save-filter" class="h-11 px-4 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600" title="<?php esc_attr_e( 'ذخیره‌ی فیلتر فعلی', 'wapm' ); ?>"><?php esc_html_e( 'ذخیره', 'wapm' ); ?></button>
+							<button type="button" id="wapm-list-delete-filter" class="h-11 px-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-400" title="<?php esc_attr_e( 'حذف فیلتر انتخاب‌شده', 'wapm' ); ?>" disabled>×</button>
+						</div>
+
 						<button type="button" id="wapm-list-smart-toggle" class="h-11 px-5 bg-white border border-slate-200 rounded-xl flex items-center gap-2 text-sm font-bold text-slate-600">
 							<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
 							<?php esc_html_e( 'فیلتر هوشمند', 'wapm' ); ?>

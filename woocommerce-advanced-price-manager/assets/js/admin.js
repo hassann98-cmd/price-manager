@@ -1205,6 +1205,140 @@
 		loadProductList(1);
 	});
 
+	/* ---- فیلترهای ذخیره‌شده ---- */
+
+	/**
+	 * فیلترها در user meta ذخیره می‌شوند (هر کاربر نمای خودش را دارد) و در
+	 * مرورگر کش می‌شوند تا انتخاب، بدون درخواست دوم اعمال شود.
+	 */
+	var savedFilters = [];
+
+	function renderSavedFilters(rows) {
+		savedFilters = rows || [];
+
+		var $sel = $('#wapm-list-saved-filters');
+		var current = $sel.val();
+
+		$sel.find('option:not(:first)').remove();
+		savedFilters.forEach(function (row) {
+			$sel.append($('<option>').attr('value', row.id).text(row.name));
+		});
+
+		// اگر فیلتر انتخاب‌شده هنوز هست، انتخاب حفظ شود.
+		if (current && savedFilters.some(function (r) { return r.id === current; })) {
+			$sel.val(current);
+		} else {
+			$sel.val('');
+		}
+
+		$('#wapm-list-delete-filter').prop('disabled', !$sel.val());
+	}
+
+	function loadSavedFilters() {
+		if (!$('#wapm-list-saved-filters').length) { return; }
+		ajax('list_saved_filters').done(function (res) {
+			if (res.success) { renderSavedFilters(res.data.rows); }
+		});
+	}
+
+	/** اعمال یک فیلتر ذخیره‌شده روی state و کنترل‌های جدول. */
+	function applySavedFilter(filters) {
+		if (!filters) { return; }
+
+		listState.search = filters.search || '';
+		listState.category_id = filters.category_id || 0;
+		listState.stock_status = filters.stock_status || '';
+		listState.torob_status = filters.torob_status || '';
+		listState.orderby = filters.orderby || 'id_desc';
+		listState.per_page = filters.per_page || listState.per_page;
+		listState.price_min = filters.price_min === null || filters.price_min === undefined ? '' : filters.price_min;
+		listState.price_max = filters.price_max === null || filters.price_max === undefined ? '' : filters.price_max;
+		listState.stock_min = filters.stock_min === null || filters.stock_min === undefined ? '' : filters.stock_min;
+		listState.stock_max = filters.stock_max === null || filters.stock_max === undefined ? '' : filters.stock_max;
+		listState.product_type = filters.product_type || '';
+		listState.on_sale = !!filters.on_sale;
+
+		// کنترل‌ها هم باید همان چیزی را نشان دهند که اعمال شده؛ وگرنه کاربر فکر
+		// می‌کند فیلتر ذخیره‌شده اعمال نشده است.
+		$('#wapm-list-search').val(listState.search);
+		$('#wapm-list-category').val(String(listState.category_id));
+		$('#wapm-list-stock').val(listState.stock_status);
+		$('#wapm-list-torob').val(listState.torob_status);
+		$('#wapm-list-orderby').val(listState.orderby);
+		$('#wapm-list-per-page').val(String(listState.per_page));
+
+		$('#wapm-smart-price-min').val(listState.price_min);
+		$('#wapm-smart-price-max').val(listState.price_max);
+		$('#wapm-smart-stock-min').val(listState.stock_min);
+		$('#wapm-smart-stock-max').val(listState.stock_max);
+		$('#wapm-smart-type').val(listState.product_type);
+		$('#wapm-smart-on-sale').prop('checked', listState.on_sale);
+
+		var smartUsed = listState.price_min !== '' || listState.price_max !== ''
+			|| listState.stock_min !== '' || listState.stock_max !== ''
+			|| listState.product_type !== '' || listState.on_sale;
+		if (smartUsed) { $('#wapm-list-smart-panel').show(); }
+
+		loadProductList(1);
+	}
+
+	$('#wapm-list-saved-filters').on('change', function () {
+		var id = $(this).val();
+		$('#wapm-list-delete-filter').prop('disabled', !id);
+		if (!id) { return; }
+
+		var row = savedFilters.filter(function (r) { return r.id === id; })[0];
+		if (!row) { return; }
+
+		applySavedFilter(row.filters);
+	});
+
+	$('#wapm-list-save-filter').on('click', function () {
+		var filters = listFilters();
+		var name = window.prompt('نام این فیلتر (خالی = نام خودکار از روی شرط‌ها):', '');
+		if (name === null) { return; }
+
+		var $btn = $(this).prop('disabled', true);
+
+		ajax('list_save_filter', {
+			name: name,
+			filters: JSON.stringify(filters)
+		}).done(function (res) {
+			if (!res.success) {
+				wapmToast((res.data && res.data.message) || WAPM.i18n.error, 'warning');
+				return;
+			}
+			renderSavedFilters(res.data.rows);
+			wapmToast(res.data.message || 'ذخیره شد.', 'success');
+		}).fail(function () {
+			wapmToast(WAPM.i18n.error, 'error');
+		}).always(function () { $btn.prop('disabled', false); });
+	});
+
+	$('#wapm-list-delete-filter').on('click', function () {
+		var id = $('#wapm-list-saved-filters').val();
+		if (!id) { return; }
+
+		var row = savedFilters.filter(function (r) { return r.id === id; })[0];
+		if (!window.confirm('فیلتر «' + ((row && row.name) || id) + '» حذف شود؟')) { return; }
+
+		var $btn = $(this).prop('disabled', true);
+
+		ajax('list_delete_filter', { id: id }).done(function (res) {
+			if (!res.success) {
+				wapmToast((res.data && res.data.message) || WAPM.i18n.error, 'error');
+				return;
+			}
+			$('#wapm-list-saved-filters').val('');
+			renderSavedFilters(res.data.rows);
+			wapmToast(res.data.message || 'حذف شد.', 'info');
+		}).fail(function () {
+			wapmToast(WAPM.i18n.error, 'error');
+		}).always(function () { $btn.prop('disabled', false); });
+	});
+
+	loadSavedFilters();
+
 	/* ---- حالت نمایش (ساده/اکسل) و حالت ذخیره (خودکار/دستی) ---- */
 
 	$('.wapm-view-mode-btn').on('click', function () {

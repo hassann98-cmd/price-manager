@@ -1529,3 +1529,41 @@
 #wapm-sd-foot-note:empty {
 	display: none;
 }
+
+/* فیلترهای ذخیره‌شده — یک گروه فشرده در نوار ابزار جدول */
+.wapm-saved-filters {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 3px 6px 3px 3px;
+	border-radius: 14px;
+	background: var(--wapm-brand-50);
+	border: 1px solid var(--wapm-brand-100);
+}
+
+.wapm-saved-filters select {
+	max-width: 220px;
+	background: #fff;
+}
+
+.wapm-saved-filters button {
+	font-family: inherit;
+	white-space: nowrap;
+}
+
+.wapm-saved-filters button:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+@media (max-width: 782px) {
+	.wapm-saved-filters {
+		width: 100%;
+		flex-wrap: wrap;
+	}
+
+	.wapm-saved-filters select {
+		flex: 1 1 160px;
+		max-width: none;
+	}
+}

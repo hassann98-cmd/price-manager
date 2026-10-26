@@ -18,6 +18,9 @@ class WAPM_Ajax {
 			'get_terms',
 			'list_products',
 			'list_ids',
+			'list_saved_filters',
+			'list_save_filter',
+			'list_delete_filter',
 			'update_field',
 			'update_terms',
 			'toggle_manage_stock',
@@ -150,6 +153,81 @@ class WAPM_Ajax {
 		$limit   = max( 1, min( 5000, absint( $_POST['limit'] ?? 1000 ) ) );
 
 		wp_send_json_success( WAPM_List::query_ids( $filters, $limit ) );
+	}
+
+	/**
+	 * فیلترهای ذخیره‌شده‌ی کاربر (فقط شناسه و نام — خود فیلتر در پاسخ مرورگر
+	 * نگه داشته می‌شود تا انتخاب، بدون یک درخواست دیگر اعمال شود).
+	 */
+	public function list_saved_filters(): void {
+		$this->guard();
+
+		$list = WAPM_List::user_saved_filters();
+
+		wp_send_json_success( [
+			'rows'  => array_map(
+				static fn( $row ) => [ 'id' => $row['id'], 'name' => $row['name'], 'filters' => $row['filters'], 'at' => $row['at'] ],
+				$list
+			),
+			'count' => count( $list ),
+			'max'   => WAPM_List::MAX_SAVED,
+		] );
+	}
+
+	/**
+	 * ذخیره‌ی فیلتر فعلی جدول برای همین کاربر.
+	 */
+	public function list_save_filter(): void {
+		$this->guard();
+
+		$name = sanitize_text_field( wp_unslash( $_POST['name'] ?? '' ) );
+		$raw  = isset( $_POST['filters'] ) ? json_decode( wp_unslash( $_POST['filters'] ), true ) : [];
+
+		if ( ! is_array( $raw ) || ! $raw ) {
+			wp_send_json_error( [ 'message' => __( 'فیلتری برای ذخیره وجود ندارد.', 'wapm' ) ] );
+		}
+
+		$filters = WAPM_List::sanitize_filters( $raw );
+
+		// فیلتر خالی (بدون هیچ شرطی) ارزش ذخیره ندارد و لیست را شلوغ می‌کند.
+		$meaningful = array_filter( [
+			$filters['search'],
+			$filters['category_id'],
+			$filters['stock_status'],
+			$filters['torob_status'],
+			$filters['price_min'],
+			$filters['price_max'],
+			$filters['stock_min'],
+			$filters['stock_max'],
+			$filters['product_type'],
+			$filters['on_sale'],
+		], static fn( $v ) => '' !== $v && null !== $v && 0 !== $v && false !== $v );
+
+		if ( ! $meaningful ) {
+			wp_send_json_error( [ 'message' => __( 'اول یک فیلتر بزنید، بعد ذخیره کنید.', 'wapm' ) ] );
+		}
+
+		$list = WAPM_List::add_saved_filter( WAPM_List::user_saved_filters(), $name, $filters );
+
+		wp_send_json_success( [
+			'rows'    => WAPM_List::save_user_filters( $list ),
+			'message' => __( 'فیلتر ذخیره شد.', 'wapm' ),
+		] );
+	}
+
+	/**
+	 * حذف یک فیلتر ذخیره‌شده.
+	 */
+	public function list_delete_filter(): void {
+		$this->guard();
+
+		$id   = sanitize_text_field( wp_unslash( $_POST['id'] ?? '' ) );
+		$list = WAPM_List::remove_saved_filter( WAPM_List::user_saved_filters(), $id );
+
+		wp_send_json_success( [
+			'rows'    => WAPM_List::save_user_filters( $list ),
+			'message' => __( 'فیلتر حذف شد.', 'wapm' ),
+		] );
 	}
 
 	public function update_field(): void {
