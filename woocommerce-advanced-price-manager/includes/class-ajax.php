@@ -768,6 +768,8 @@ class WAPM_Ajax {
 			'shop_name'     => wp_unslash( $_POST['shop_name'] ?? '' ),
 			'fresh_days'    => $_POST['fresh_days'] ?? null,
 			'tolerance_pct' => $_POST['tolerance_pct'] ?? null,
+			'exclude_categories' => $_POST['exclude_categories'] ?? null,
+			'exclude_brands'     => $_POST['exclude_brands'] ?? null,
 		] );
 
 		wp_send_json_success( array_merge( $this->torob_stats_payload(), [

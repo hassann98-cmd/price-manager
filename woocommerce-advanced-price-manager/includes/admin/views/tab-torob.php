@@ -49,6 +49,42 @@ if ( ! defined( 'ABSPATH' ) ) {
 								<p class="description"><?php esc_html_e( 'اختلاف کمتر از این مقدار، «برابر با رقیب» حساب می‌شود.', 'wapm' ); ?></p>
 							</td>
 						</tr>
+						<tr>
+							<th><?php esc_html_e( 'دسته‌های مستثنا', 'wapm' ); ?></th>
+							<td>
+								<?php
+								$wapm_exclude_cats = (array) WAPM_Torob::settings()['exclude_categories'];
+								$wapm_brand_tax    = $brand_taxes ? (string) $brand_taxes[0] : '';
+								$wapm_exclude_brands = (array) WAPM_Torob::settings()['exclude_brands'];
+								$wapm_brands         = $wapm_brand_tax
+									? get_terms( [ 'taxonomy' => $wapm_brand_tax, 'hide_empty' => false ] )
+									: [];
+								?>
+								<select id="wapm-torob-exclude-categories" multiple size="5" style="min-width:260px">
+									<?php foreach ( (array) $categories as $cat ) : ?>
+										<option value="<?php echo esc_attr( (string) $cat->term_id ); ?>" <?php echo in_array( (int) $cat->term_id, array_map( 'intval', $wapm_exclude_cats ), true ) ? 'selected' : ''; ?>>
+											<?php echo esc_html( $cat->name ); ?>
+										</option>
+									<?php endforeach; ?>
+								</select>
+								<p class="description"><?php esc_html_e( 'محصولات این دسته‌ها در حالت ترب قیمت خودکار نمی‌گیرند (همه‌ی جستجوها و پیش‌نمایش‌های خودکار). عملیات دستی شما دست‌نخورده می‌ماند.', 'wapm' ); ?></p>
+							</td>
+						</tr>
+						<?php if ( ! empty( $wapm_brands ) && ! is_wp_error( $wapm_brands ) ) : ?>
+						<tr>
+							<th><?php esc_html_e( 'برندهای مستثنا', 'wapm' ); ?></th>
+							<td>
+								<select id="wapm-torob-exclude-brands" multiple size="5" style="min-width:260px">
+									<?php foreach ( (array) $wapm_brands as $brand ) : ?>
+										<option value="<?php echo esc_attr( (string) $brand->term_id ); ?>" <?php echo in_array( (int) $brand->term_id, array_map( 'intval', $wapm_exclude_brands ), true ) ? 'selected' : ''; ?>>
+											<?php echo esc_html( $brand->name ); ?>
+										</option>
+									<?php endforeach; ?>
+								</select>
+								<p class="description"><?php esc_html_e( 'برای برندهایی که قیمت‌شان را دستی نگه می‌دارید.', 'wapm' ); ?></p>
+							</td>
+						</tr>
+						<?php endif; ?>
 					</table>
 					<p>
 						<button type="button" class="button button-primary" id="wapm-torob-save-settings"><?php esc_html_e( 'ذخیره تنظیمات', 'wapm' ); ?></button>

@@ -109,9 +109,12 @@ class WAPM_Torob {
 	 */
 	public static function default_settings(): array {
 		return [
-			'shop_name'     => '',
-			'fresh_days'    => 3,
-			'tolerance_pct' => 1.0,
+			'shop_name'          => '',
+			'fresh_days'         => 3,
+			'tolerance_pct'      => 1.0,
+			// دسته/برندهایی که از قیمت‌گذاری خودکار ترب مستثنا هستند.
+			'exclude_categories' => [],
+			'exclude_brands'     => [],
 		];
 	}
 
@@ -124,6 +127,11 @@ class WAPM_Torob {
 		$settings['tolerance_pct'] = max( 0, min( 100, (float) $settings['tolerance_pct'] ) );
 		$settings['shop_name']     = sanitize_text_field( (string) $settings['shop_name'] );
 
+		foreach ( [ 'exclude_categories', 'exclude_brands' ] as $key ) {
+			$value                 = is_array( $settings[ $key ] ) ? $settings[ $key ] : [];
+			$settings[ $key ]      = array_values( array_unique( array_filter( array_map( 'absint', $value ) ) ) );
+		}
+
 		return $settings;
 	}
 
@@ -134,6 +142,13 @@ class WAPM_Torob {
 			'shop_name'     => sanitize_text_field( (string) ( $raw['shop_name'] ?? $current['shop_name'] ) ),
 			'fresh_days'    => isset( $raw['fresh_days'] ) ? absint( $raw['fresh_days'] ) : $current['fresh_days'],
 			'tolerance_pct' => isset( $raw['tolerance_pct'] ) ? (float) $raw['tolerance_pct'] : $current['tolerance_pct'],
+			// فقط کلید ارسال‌شده عوض می‌شود؛ فرم‌های قدیمی این کلید را ندارند.
+			'exclude_categories' => isset( $raw['exclude_categories'] )
+				? array_map( 'absint', (array) $raw['exclude_categories'] )
+				: $current['exclude_categories'],
+			'exclude_brands' => isset( $raw['exclude_brands'] )
+				? array_map( 'absint', (array) $raw['exclude_brands'] )
+				: $current['exclude_brands'],
 		];
 
 		update_option( self::OPTION_SETTINGS, $next, false );
@@ -760,6 +775,52 @@ class WAPM_Torob {
 	 * قیمت‌گذاری خودکار باید انجام شود و نه درصد اختلاف نمایش داده شود.
 	 */
 	/**
+	 * آیا این فهرست شناسه با فهرست استثناها اشتراک دارد؟ (تابع خالص)
+	 *
+	 * @param int[] $term_ids شناسه‌ی دسته/برند محصول
+	 * @param int[] $excluded شناسه‌های استثناشده
+	 */
+	public static function matches_exclusion( array $term_ids, array $excluded ): bool {
+		if ( ! $excluded || ! $term_ids ) {
+			return false;
+		}
+
+		return (bool) array_intersect( array_map( 'intval', $term_ids ), array_map( 'intval', $excluded ) );
+	}
+
+	/**
+	 * دلیل استثنا‌شدن محصول از قیمت‌گذاری خودکار ترب (خالی = مستثنا نیست).
+	 *
+	 * چرا وجود دارد: بعضی دسته‌ها (مثلاً «هدیه/کارت شارژ») نباید با منطق رقیب
+	 * قیمت بخورند. بدون این، تنها راه، تیک زدن تک‌تک محصولات به‌عنوان
+	 * مستثنا بود که با هر محصول جدید از دست می‌رفت.
+	 *
+	 * @return string '' | 'excluded_category' | 'excluded_brand'
+	 */
+	public static function exclusion_reason( int $product_id ): string {
+		$settings = self::settings();
+
+		if ( empty( $settings['exclude_categories'] ) && empty( $settings['exclude_brands'] ) ) {
+			return '';
+		}
+
+		$cat_ids = wp_get_post_terms( $product_id, 'product_cat', [ 'fields' => 'ids' ] );
+		if ( self::matches_exclusion( is_array( $cat_ids ) ? $cat_ids : [], (array) $settings['exclude_categories'] ) ) {
+			return 'excluded_category';
+		}
+
+		$brand_tax = class_exists( 'WAPM_List' ) ? WAPM_List::get_brand_taxonomy() : '';
+		if ( '' !== $brand_tax ) {
+			$brand_ids = wp_get_post_terms( $product_id, $brand_tax, [ 'fields' => 'ids' ] );
+			if ( self::matches_exclusion( is_array( $brand_ids ) ? $brand_ids : [], (array) $settings['exclude_brands'] ) ) {
+				return 'excluded_brand';
+			}
+		}
+
+		return '';
+	}
+
+	/**
 	 * پرچم‌های نمایشی/فیلتری از قیمت ووکامرس و «قیمت ما از دید ترب».
 	 *
 	 * چرا یک تابع مشترک: ستون جدول و فیلتر SQL باید یک چیز بگویند. اگر آستانه
@@ -889,6 +950,8 @@ class WAPM_Torob {
 			'unit_suspect'    => __( 'واحد قیمت مشکوک (تومان/ریال)', 'wapm' ),
 			'no_data'         => __( 'داده‌ی تازه‌ی ترب ندارد', 'wapm' ),
 			'missing'         => __( 'محصول پیدا نشد', 'wapm' ),
+			'excluded_category' => __( 'دسته‌ی این محصول از مقایسه مستثنا شده است', 'wapm' ),
+			'excluded_brand'    => __( 'برند این محصول از مقایسه مستثنا شده است', 'wapm' ),
 		];
 
 		return $labels[ $reason ] ?? $reason;

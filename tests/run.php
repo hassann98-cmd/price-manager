@@ -1811,6 +1811,44 @@ test( 'CSV مقایسه‌ی ترب: اکشن، ستون‌ها و فیلتره�
 	ok( false !== strpos( $view, 'wapm-torob-export-btn' ), 'دکمه در تب CSV هست' );
 } );
 
+test( 'استثنای دسته/برند: اشتراک شناسه‌ها', function () {
+	eq( true, WAPM_Torob::matches_exclusion( [ 5, 7 ], [ 7 ] ), 'دسته‌ی مستثنا' );
+	eq( false, WAPM_Torob::matches_exclusion( [ 5 ], [ 7 ] ), 'بی‌ربط' );
+	eq( false, WAPM_Torob::matches_exclusion( [ 5 ], [] ), 'بدون استثنا' );
+	eq( false, WAPM_Torob::matches_exclusion( [], [ 5 ] ), 'محصول بدون دسته' );
+	eq( true, WAPM_Torob::matches_exclusion( [ '5' ], [ 5 ] ), 'شناسه‌ی رشته‌ای (خروجی wp_get_post_terms)' );
+} );
+
+test( 'استثنای دسته/برند: در تنظیمات ذخیره و نرمال می‌شود', function () {
+	$GLOBALS['wapm_options'] = [];
+
+	WAPM_Torob::save_settings( [
+		'shop_name'          => 'فروشگاه تست',
+		'fresh_days'         => 5,
+		'tolerance_pct'      => 2,
+		'exclude_categories' => [ '12', 12, 0, 'x', 30 ],
+		'exclude_brands'     => [ 4 ],
+	] );
+
+	$saved = WAPM_Torob::settings();
+
+	eq( [ 12, 30 ], $saved['exclude_categories'], 'یکتا + عددی + بدون صفر' );
+	eq( [ 4 ], $saved['exclude_brands'], 'برندها' );
+	eq( 5, $saved['fresh_days'], 'بقیه‌ی تنظیمات حفظ شد' );
+
+	// ذخیره‌ی جزئی (فرم قدیمی) استثناها را پاک نمی‌کند.
+	WAPM_Torob::save_settings( [ 'fresh_days' => 6 ] );
+	$after = WAPM_Torob::settings();
+
+	eq( 6, $after['fresh_days'], 'مقدار جدید' );
+	eq( [ 12, 30 ], $after['exclude_categories'], 'استثناها دست‌نخورده' );
+} );
+
+test( 'استثنای دسته/برند: برچسب دلیل در حالت ترب', function () {
+	ok( WAPM_Torob::skip_label( 'excluded_category' ) !== 'excluded_category', 'برچسب دسته' );
+	ok( WAPM_Torob::skip_label( 'excluded_brand' ) !== 'excluded_brand', 'برچسب برند' );
+} );
+
 test( 'آزمون ساختار ترب: سه حالت ok / structure / empty', function () {
 	$ok = WAPM_Torob_Api::judge_probe( [ 'items' => [ [ 'prk' => 'a' ] ], 'count' => 5, 'raw_count' => 5 ] );
 	eq( true, $ok['ok'], 'کارت سالم = آماده' );

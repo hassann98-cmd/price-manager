@@ -155,7 +155,9 @@
 			shop_id: $('#wapm-torob-shop-id').val(),
 			shop_name: $('#wapm-torob-shop-name').val(),
 			fresh_days: $('#wapm-torob-fresh-days').val(),
-			tolerance_pct: $('#wapm-torob-tolerance').val()
+			tolerance_pct: $('#wapm-torob-tolerance').val(),
+			exclude_categories: $('#wapm-torob-exclude-categories').val() || [],
+			exclude_brands: $('#wapm-torob-exclude-brands').val() || []
 		}).done(function (res) {
 			if (!res.success) {
 				wapmToast((res.data && res.data.message) || WAPM.i18n.error, 'error');
