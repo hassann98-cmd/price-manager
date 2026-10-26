@@ -94,6 +94,7 @@ class WAPM_Admin {
 			'ajax_url'       => admin_url( 'admin-ajax.php' ),
 			'export_url'     => admin_url( 'admin-post.php?action=wapm_export_csv' ),
 			'stock_export_url' => admin_url( 'admin-post.php?action=wapm_export_stock_csv' ),
+			'torob_export_url' => admin_url( 'admin-post.php?action=wapm_export_torob_csv' ),
 			'nonce'          => wp_create_nonce( WAPM_Ajax::NONCE ),
 			'currency'       => get_woocommerce_currency_symbol(),
 			'brand_taxonomy' => $brand_taxonomy,

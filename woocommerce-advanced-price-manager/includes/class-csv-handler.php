@@ -50,6 +50,98 @@ class WAPM_CSV_Handler {
 	}
 
 	/**
+	 * خروجی CSV «مقایسه با ترب» — همان چیزی که ستون ترب نشان می‌دهد، در یک فایل.
+	 *
+	 * چرا جدا از stream_export: آن یکی «قیمت فعلی و قیمت پیشنهادی» است؛ این یکی
+	 * وضعیت مقایسه (رقیب، اختلاف، تازگی، روند). گزارش‌گیری بیرونی با آن یکی
+	 * ممکن نبود چون قیمت رقیب در آن نبود.
+	 *
+	 * محصولات بدون اتصال ترب هم می‌آیند (ستون وضعیت = «وصل نشده») تا جمع کل با
+	 * فیلتر لیست یکی بماند.
+	 */
+	public static function stream_torob_comparison( array $filters ): void {
+		if ( function_exists( 'wc_set_time_limit' ) ) {
+			wc_set_time_limit( 0 );
+		}
+
+		header( 'Content-Type: text/csv; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename=wapm-torob-' . gmdate( 'Ymd-His' ) . '.csv' );
+
+		$out = fopen( 'php://output', 'w' );
+		fwrite( $out, "\xEF\xBB\xBF" ); // BOM برای اکسل
+		fputcsv( $out, [
+			'Product ID',
+			'Name',
+			'SKU',
+			'WC Price',
+			'Torob Our Price',
+			'Cheapest Competitor',
+			'Diff %',
+			'Status',
+			'Competitor Change % (7d)',
+			'Sellers',
+			'Data Age (days)',
+			'Torob URL',
+		] );
+
+		/*
+		 * فیلترهای این خروجی از تب «لیست» می‌آیند (جستجو/دسته/وضعیت ترب/مرتب‌سازی)،
+		 * پس با همان کوئری لیست خوانده می‌شوند — نه با فیلترهای تب قیمت که
+		 * مفهوم دیگری دارند. سقف ۵۰۰۰ ردیف اعلام‌شده است تا یک کلیک، یک فایل
+		 * چند صد مگابایتی نسازد.
+		 */
+		$ids = WAPM_List::query_ids( $filters, 5000 )['ids'];
+
+		foreach ( $ids as $pid ) {
+			$product = wc_get_product( $pid );
+			if ( ! $product ) {
+				continue;
+			}
+
+			$our_price = (float) $product->get_price();
+			$data      = WAPM_Torob::get_row_data( $pid, $our_price );
+
+			if ( null === $data ) {
+				fputcsv( $out, [
+					$product->get_id(),
+					$product->get_name(),
+					$product->get_sku(),
+					$our_price,
+					'',
+					'',
+					'',
+					__( 'وصل نشده به ترب', 'wapm' ),
+					'',
+					'',
+					'',
+					'',
+				] );
+				continue;
+			}
+
+			$change = $data['history_change'] ?? null;
+
+			fputcsv( $out, [
+				$product->get_id(),
+				$product->get_name(),
+				$product->get_sku(),
+				$our_price,
+				null === $data['our_price_torob'] ? '' : $data['our_price_torob'],
+				null === $data['competitor_price'] ? '' : $data['competitor_price'],
+				null === $data['diff_pct'] ? '' : $data['diff_pct'],
+				WAPM_Torob::status_label( (string) $data['status'] ),
+				null === $change ? '' : $change['pct'],
+				(int) $data['sellers'],
+				null === $data['age_days'] ? '' : (int) $data['age_days'],
+				(string) $data['url'],
+			] );
+		}
+
+		fclose( $out );
+		exit;
+	}
+
+	/**
 	 * ورود قیمت جدید از CSV.
 	 * ستون‌های شناسایی: Variation ID > Product ID > SKU. ستون قیمت: New Price.
 	 * ستون اختیاری: Price Type (regular/sale).

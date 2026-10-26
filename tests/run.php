@@ -1790,6 +1790,27 @@ test( 'رشته: هیچ فایل افزونه‌ای مستقیم mb_* صدا ن
  * ۱۹) «هم‌تراز با ترب» — تنظیمات، برچسب دلیل و ثبت اکشن
  * ---------------------------------------------------------------------- */
 
+test( 'CSV مقایسه‌ی ترب: اکشن، ستون‌ها و فیلترهای تب لیست', function () {
+	$base = __DIR__ . '/../woocommerce-advanced-price-manager';
+
+	$ajax = (string) file_get_contents( $base . '/includes/class-ajax.php' );
+	ok( false !== strpos( $ajax, "add_action( 'admin_post_wapm_export_torob_csv'" ), 'اکشن admin-post ثبت شده' );
+	ok( false !== strpos( $ajax, 'WAPM_List::sanitize_filters' ), 'فیلترهای لیست (نه تب قیمت) sanitize می‌شوند' );
+
+	$csv = (string) file_get_contents( $base . '/includes/class-csv-handler.php' );
+	ok( false !== strpos( $csv, 'function stream_torob_comparison' ), 'تابع خروجی وجود دارد' );
+	ok( false !== strpos( $csv, 'WAPM_List::query_ids' ), 'از کوئری همان لیست استفاده می‌کند' );
+	foreach ( [ 'Cheapest Competitor', 'Diff %', 'Status', 'Sellers', 'Data Age (days)' ] as $column ) {
+		ok( false !== strpos( $csv, $column ), 'ستون ' . $column );
+	}
+
+	$admin = (string) file_get_contents( $base . '/includes/class-admin.php' );
+	ok( false !== strpos( $admin, 'torob_export_url' ), 'آدرس خروجی به JS داده می‌شود' );
+
+	$view = (string) file_get_contents( $base . '/includes/admin/views/tab-csv.php' );
+	ok( false !== strpos( $view, 'wapm-torob-export-btn' ), 'دکمه در تب CSV هست' );
+} );
+
 test( 'پرچم‌ها: ناسازگاری فید و واحد مشکوک (همان چیزی که ستون نشان می‌دهد)', function () {
 	$same = WAPM_Torob::price_flags( 1000000, 1000000, 1 );
 	eq( false, $same['mismatch'], 'قیمت یکسان = بدون ناسازگاری' );

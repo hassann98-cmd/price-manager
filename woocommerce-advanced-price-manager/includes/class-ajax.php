@@ -71,6 +71,7 @@ class WAPM_Ajax {
 		}
 		add_action( 'admin_post_wapm_export_csv', [ $this, 'export_csv' ] );
 		add_action( 'admin_post_wapm_export_stock_csv', [ $this, 'export_stock_csv' ] );
+		add_action( 'admin_post_wapm_export_torob_csv', [ $this, 'export_torob_csv' ] );
 
 		// این یکی از torob.com (Bookmarklet) صدا زده می‌شود، نه از پنل ادمین — پس باید
 		// بدون لاگین (nopriv) هم در دسترس باشد؛ احراز هویتش با توکن اختصاصی است، نه nonce.
@@ -1609,6 +1610,28 @@ class WAPM_Ajax {
 		$settings = WAPM_Price_Engine::sanitize_settings( is_array( $raw_s ) ? $raw_s : [] );
 
 		WAPM_CSV_Handler::stream_export( $filters, $settings );
+	}
+
+	/**
+	 * خروجی CSV مقایسه با ترب (از دکمه‌ی تب CSV).
+	 *
+	 * فیلترها از همان فیلترهای تب «لیست» می‌آیند تا فایل با آنچه کاربر
+	 * می‌بیند یکی باشد. nonce و دسترسی جدا بررسی می‌شوند چون این مسیر
+	 * `admin-post.php` است، نه Ajax احرازهویت‌شده.
+	 */
+	public function export_torob_csv(): void {
+		if ( ! isset( $_GET['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['nonce'] ) ), self::NONCE ) ) {
+			wp_die( esc_html__( 'دسترسی نامعتبر.', 'wapm' ) );
+		}
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_die( esc_html__( 'شما دسترسی لازم را ندارید.', 'wapm' ) );
+		}
+
+		// فیلترها همان فیلترهای تب «لیست» هستند (sanitize مخصوص خودشان).
+		$raw     = json_decode( wp_unslash( $_GET['filters'] ?? '{}' ), true );
+		$filters = WAPM_List::sanitize_filters( is_array( $raw ) ? $raw : [] );
+
+		WAPM_CSV_Handler::stream_torob_comparison( $filters );
 	}
 
 	/**

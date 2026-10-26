@@ -1388,6 +1388,14 @@
 		window.location.href = url;
 	});
 
+	// خروجی مقایسه‌ی ترب — با فیلترهای تب لیست (نه فیلترهای تب قیمت).
+	$('#wapm-torob-export-btn').on('click', function () {
+		var url = WAPM.torob_export_url +
+			'&nonce=' + encodeURIComponent(WAPM.nonce) +
+			'&filters=' + encodeURIComponent(JSON.stringify(listFilters({ per_page: 0, paged: 0 })));
+		window.location.href = url;
+	});
+
 	$('#wapm-import-btn').on('click', function () {
 		var file = $('#wapm-import-file')[0].files[0];
 		if (!file) { wapmToast('فایلی انتخاب نشده است.', 'warning'); return; }
