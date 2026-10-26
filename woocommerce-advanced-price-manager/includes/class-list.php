@@ -233,6 +233,18 @@ class WAPM_List {
 		$regular = $product->get_regular_price( 'edit' );
 		$sale    = $product->get_sale_price( 'edit' );
 
+		// محدوده‌ی قیمت واریشن‌ها — برای نمایش read-only در ردیف محصول متغیر.
+		$price_range = '';
+		if ( $product->is_type( 'variable' ) ) {
+			$min = $product->get_variation_price( 'min', false, false );
+			$max = $product->get_variation_price( 'max', false, false );
+			if ( '' !== $min && '' !== $max && null !== $min && null !== $max ) {
+				$price_range = ( (float) $min === (float) $max )
+					? wp_strip_all_tags( wc_price( $min ) )
+					: wp_strip_all_tags( wc_price( $min ) ) . ' – ' . wp_strip_all_tags( wc_price( $max ) );
+			}
+		}
+
 		return [
 			'id'                 => $product->get_id(),
 			'parent_id'          => $parent ? $parent->get_id() : ( $is_variation ? $product->get_parent_id() : 0 ),
@@ -246,6 +258,7 @@ class WAPM_List {
 			'sale_price'         => $sale,
 			'regular_price_fmt'  => '' !== $regular ? wp_strip_all_tags( wc_price( $regular ) ) : '',
 			'sale_price_fmt'     => '' !== $sale ? wp_strip_all_tags( wc_price( $sale ) ) : '',
+			'price_range'        => $price_range,
 			'manage_stock'       => (bool) $product->managing_stock(),
 			'stock_quantity'     => $product->get_stock_quantity(),
 			'stock_status'       => $stock_status,
@@ -340,6 +353,15 @@ class WAPM_List {
 		$product = wc_get_product( $product_id );
 		if ( ! $product ) {
 			return [ 'success' => false, 'message' => __( 'محصول یافت نشد.', 'wapm' ) ];
+		}
+
+		// قیمت محصول متغیر از واریشن‌ها می‌آید؛ نوشتن _regular_price روی والد
+		// ذخیره می‌شود ولی هیچ‌جا نمایش داده نمی‌شود (تغییر بی‌اثر و گمراه‌کننده).
+		if ( $product->is_type( 'variable' ) && in_array( $field, [ 'regular_price', 'sale_price' ], true ) ) {
+			return [
+				'success' => false,
+				'message' => __( 'قیمت محصول متغیر باید روی واریشن‌ها تغییر کند، نه روی والد.', 'wapm' ),
+			];
 		}
 
 		$log_price_type = null;

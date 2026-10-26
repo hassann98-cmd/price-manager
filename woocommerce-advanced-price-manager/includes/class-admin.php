@@ -672,11 +672,17 @@ class WAPM_Admin {
 			<tr>
 				<th><?php esc_html_e( 'محصولات متغیر', 'wapm' ); ?></th>
 				<td>
-					<select class="wapm-variable-scope">
-						<option value="variations"><?php esc_html_e( 'فقط واریشن‌ها', 'wapm' ); ?></option>
-						<option value="parent"><?php esc_html_e( 'فقط قیمت والد', 'wapm' ); ?></option>
-						<option value="both"><?php esc_html_e( 'هر دو', 'wapm' ); ?></option>
-					</select>
+					<?php
+					/*
+					 * گزینه‌های «فقط قیمت والد» و «هر دو» حذف شدند: در ووکامرس قیمتی که
+					 * مشتری می‌بیند برای محصول متغیر از واریشن‌ها می‌آید و مقدار
+					 * _regular_price والد هیچ اثری روی فروشگاه ندارد؛ پس آن گزینه‌ها
+					 * تغییر «بی‌اثر» بودند. مقدار برای سازگاری با قوانین ذخیره‌شده
+					 * همچنان ارسال می‌شود.
+					 */
+					?>
+					<input type="hidden" class="wapm-variable-scope" value="variations">
+					<p class="description"><?php esc_html_e( 'قیمت محصولات متغیر روی واریشن‌ها اعمال می‌شود. (قیمت والد در ووکامرس قیمت فروش را تعیین نمی‌کند.)', 'wapm' ); ?></p>
 				</td>
 			</tr>
 			<tr>

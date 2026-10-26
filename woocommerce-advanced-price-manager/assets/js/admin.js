@@ -420,6 +420,18 @@
 
 	/* ---------------- قوانین ---------------- */
 
+	/**
+	 * هشدار برای موارد ذخیره‌شده‌ای که با گزینه‌ی حذف‌شده‌ی «فقط قیمت والد» ساخته شده‌اند.
+	 * آن گزینه در ووکامرس اثری روی قیمت فروش نداشت، پس این موارد باید بازبینی شوند.
+	 */
+	function legacyScopeWarning(settings) {
+		if (settings && settings.variable_scope === 'parent') {
+			return ' <span class="wapm-badge wapm-badge-pending" title="این مورد با گزینه‌ی «فقط قیمت والد» ذخیره شده است؛ در ووکامرس قیمت فروش از واریشن‌ها می‌آید و آن گزینه اثری نداشت. آن را ویرایش و دوباره ذخیره کنید.">⚠ قیمت والد (بی‌اثر)</span>';
+		}
+		return '';
+	}
+
+
 	function renderRules() {
 		var $tbody = $('#wapm-rules-table tbody').empty();
 		if (!state.rules.length) {
@@ -432,7 +444,7 @@
 				: '<span class="wapm-badge wapm-badge-off">' + WAPM.i18n.disabled + '</span>';
 			var dates = (r.start || r.end) ? '<br><small>' + esc(r.start || '…') + ' ← ' + esc(r.end || '…') + '</small>' : '';
 			$tbody.append('<tr data-id="' + esc(r.id) + '">' +
-				'<td>' + esc(r.title || r.id) + dates + '</td>' +
+				'<td>' + esc(r.title || r.id) + legacyScopeWarning(r.settings) + dates + '</td>' +
 				'<td>' + esc(r.priority) + '</td>' +
 				'<td>' + badge + '</td>' +
 				'<td>' +
@@ -522,7 +534,7 @@
 		var badgeCls = { pending: 'wapm-badge-pending', running: 'wapm-badge-pending', applied: 'wapm-badge-on', reverting: 'wapm-badge-pending', reverted: 'wapm-badge-off' };
 		state.schedules.forEach(function (s) {
 			$tbody.append('<tr data-id="' + esc(s.id) + '">' +
-				'<td>' + esc(s.title || s.id) + '</td>' +
+				'<td>' + esc(s.title || s.id) + legacyScopeWarning(s.settings) + '</td>' +
 				'<td>' + esc(s.start || '—') + '</td>' +
 				'<td>' + esc(s.end || '—') + '</td>' +
 				'<td><span class="wapm-badge ' + (badgeCls[s.status] || '') + '">' + (statusMap[s.status] || s.status) + '</span></td>' +
@@ -650,6 +662,18 @@
 		var raw = (field === 'regular_price') ? r.regular_price : r.sale_price;
 		var fmtVal = (field === 'regular_price') ? r.regular_price_fmt : r.sale_price_fmt;
 		var val = (raw === null || raw === undefined) ? '' : raw;
+
+		// محصول متغیر: قیمت از واریشن‌ها می‌آید. ویرایش قیمت والد بی‌اثر است،
+		// پس فقط محدوده‌ی قیمت واریشن‌ها را نشان می‌دهیم (غیرقابل ویرایش).
+		if (r.is_variable) {
+			var hint = '<span style="font-size:9px;color:#94a3b8;display:block">محدوده‌ی واریشن‌ها</span>';
+			if (field === 'sale_price') {
+				return '<span class="text-slate-300 text-[11px]" title="قیمت ویژه‌ی هر واریشن را در ردیف همان واریشن ویرایش کنید">—</span>';
+			}
+			return '<div class="text-[11px] font-bold text-slate-500" style="line-height:1.6">' +
+				(r.price_range ? esc(r.price_range) : '—') + hint + '</div>';
+		}
+
 		if (listState.viewMode === 'excel') {
 			return '<input type="number" step="any" min="0" class="wapm-cell-input" style="width:100%;height:34px;padding:0 8px;border-radius:8px;border:1px solid #e2e8f0;font-size:12px;font-weight:700" ' +
 				'data-id="' + r.id + '" data-field="' + field + '" value="' + esc(val) + '">';
