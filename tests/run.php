@@ -89,10 +89,65 @@ function delete_option( $key ) {
 
 $GLOBALS['wapm_options'] = [];
 
+/** دفتر محصولات stub — کلید: شناسه، مقدار: WC_Product */
+function wc_get_product( $id ) {
+	return $GLOBALS['wapm_stub']['products'][ (int) $id ] ?? false;
+}
+
+/**
+ * stub حداقلی محصول ووکامرس — فقط برای تست can_manage در WAPM_Stock.
+ * WAPM_Stock::can_manage با instanceof WC_Product کار می‌کند، پس کلاس باید وجود داشته باشد.
+ */
+class WC_Product {
+
+	public string $type       = 'simple';
+	public bool   $managing   = true;
+	public $qty                = 10;
+	public bool   $backorders = false;
+	public string $status     = 'instock';
+	public int    $id         = 1;
+	public array  $children   = [];
+
+	public function __construct( array $props = [] ) {
+		foreach ( $props as $key => $value ) {
+			$this->$key = $value;
+		}
+	}
+
+	public function get_id(): int {
+		return $this->id;
+	}
+
+	public function is_type( $type ): bool {
+		return $type === $this->type;
+	}
+
+	public function managing_stock(): bool {
+		return $this->managing;
+	}
+
+	public function get_stock_quantity() {
+		return $this->qty;
+	}
+
+	public function backorders_allowed(): bool {
+		return $this->backorders;
+	}
+
+	public function get_stock_status( $context = 'view' ): string {
+		return $this->status;
+	}
+
+	public function get_children(): array {
+		return $this->children;
+	}
+}
+
 require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-price-engine.php';
 require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-logger.php';
 require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-torob.php';
 require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-torob-api.php';
+require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-stock.php';
 
 /* -------------------------------------------------------------------------
  * چارچوب تست کوچک
@@ -813,6 +868,124 @@ test( 'ترب/cheapest: داده‌ی قدیمی فید (بدون پرچم) مث
 	$r = WAPM_Torob::cheapest_competitor( $s, 99 );
 	eq( 800.0, $r['competitor'], 'سازگاری با فید قدیمی' );
 	eq( 0, $r['unreliable_skipped'], 'چیزی رد نشد' );
+} );
+
+
+/* -------------------------------------------------------------------------
+ * موجودی — WAPM_Stock (توابع خالص)
+ * ---------------------------------------------------------------------- */
+
+test( 'موجودی/compute_qty: تنظیم، افزایش و کاهش با تعداد', function () {
+	eq( 25.0, WAPM_Stock::compute_qty( 10, 'set', 'count', 25 ), 'تنظیم' );
+	eq( 30.0, WAPM_Stock::compute_qty( 10, 'increase', 'count', 20 ), 'افزایش' );
+	eq( 4.0, WAPM_Stock::compute_qty( 10, 'decrease', 'count', 6 ), 'کاهش' );
+} );
+
+test( 'موجودی/compute_qty: درصد از موجودی فعلی', function () {
+	eq( 15.0, WAPM_Stock::compute_qty( 10, 'increase', 'percent', 50 ), 'ده + پنجاه درصد' );
+	eq( 5.0, WAPM_Stock::compute_qty( 10, 'decrease', 'percent', 50 ), 'ده منهای پنجاه درصد' );
+	eq( 0.0, WAPM_Stock::compute_qty( 0, 'increase', 'percent', 50 ), 'درصد روی صفر اثری ندارد' );
+} );
+
+test( 'موجودی/compute_qty: کاهش زیر صفر مسدود می‌شود مگر پیش‌خرید', function () {
+	eq( 0.0, WAPM_Stock::compute_qty( 3, 'decrease', 'count', 10 ), 'پیش‌فرض: صفر' );
+	eq( -7.0, WAPM_Stock::compute_qty( 3, 'decrease', 'count', 10, true ), 'پیش‌خرید: منفی مجاز' );
+} );
+
+test( 'موجودی/compute_qty: مقدار منفی ورودی مثل قدرمطلق رفتار می‌کند', function () {
+	eq( 20.0, WAPM_Stock::compute_qty( 10, 'increase', 'count', -10 ), 'افزایش با عدد منفی' );
+} );
+
+test( 'موجودی/compute_qty: گرد کردن تا سه رقم', function () {
+	eq( 3.333, WAPM_Stock::compute_qty( 10, 'decrease', 'percent', 66.67 ), 'کاهش درصدی گرد می‌شود' );
+} );
+
+test( 'موجودی/needs_change: تفاوت ناچیز تغییر حساب نمی‌شود', function () {
+	ok( true === WAPM_Stock::needs_change( 5, 6 ), '۵ → ۶ تغییر است' );
+	ok( false === WAPM_Stock::needs_change( 5, 5 ), '۵ → ۵ تغییر نیست' );
+	ok( false === WAPM_Stock::needs_change( 5, 5.0000001 ), 'اختلاف میکروسکوپی نادیده' );
+} );
+
+test( 'موجودی/is_valid_amount: محدوده‌ی مجاز', function () {
+	ok( true === WAPM_Stock::is_valid_amount( 0, 'count' ), 'صفر مجاز' );
+	ok( false === WAPM_Stock::is_valid_amount( -1, 'count' ), 'منفی رد' );
+	ok( false === WAPM_Stock::is_valid_amount( 1e9, 'count' ), 'عدد بزرگ رد' );
+	ok( false === WAPM_Stock::is_valid_amount( 1001, 'percent' ), 'درصد بیش از ۱۰۰۰ رد' );
+	ok( true === WAPM_Stock::is_valid_amount( 1000, 'percent' ), 'درصد ۱۰۰۰ مجاز' );
+	ok( false === WAPM_Stock::is_valid_amount( INF, 'count' ), 'بی‌نهایت رد' );
+	ok( false === WAPM_Stock::is_valid_amount( NAN, 'count' ), 'NaN رد' );
+} );
+
+test( 'موجودی/sanitize_operation: «تنظیم» همیشه با تعداد است', function () {
+	$op = WAPM_Stock::sanitize_operation( [ 'mode' => 'set', 'unit' => 'percent', 'amount' => '12' ] );
+	eq( 'set', $op['mode'], 'حالت' );
+	eq( 'count', $op['unit'], 'درصد بی‌معنی است، تعداد می‌شود' );
+	eq( 12.0, $op['amount'], 'مقدار عددی' );
+} );
+
+test( 'موجودی/sanitize_operation: ورودی نامعتبر null می‌دهد', function () {
+	ok( null === WAPM_Stock::sanitize_operation( [ 'mode' => 'multiply', 'unit' => 'count', 'amount' => 5 ] ), 'حالت ناشناخته' );
+	ok( null === WAPM_Stock::sanitize_operation( [ 'mode' => 'increase', 'unit' => 'count', 'amount' => -5 ] ), 'مقدار منفی' );
+	ok( null === WAPM_Stock::sanitize_operation( [ 'mode' => 'increase', 'unit' => 'percent', 'amount' => 5000 ] ), 'درصد بزرگ' );
+	ok( null === WAPM_Stock::sanitize_operation( [ 'mode' => '', 'amount' => 5 ] ), 'حالت خالی' );
+} );
+
+test( 'موجودی/sanitize_stock_status: فارسی، انگلیسی و نیم‌فاصله', function () {
+	eq( 'instock', WAPM_Stock::sanitize_stock_status( 'In Stock' ), 'انگلیسی با فاصله' );
+	eq( 'instock', WAPM_Stock::sanitize_stock_status( 'in_stock' ), 'آندرلاین' );
+	eq( 'instock', WAPM_Stock::sanitize_stock_status( 'موجود' ), 'فارسی' );
+	eq( 'outofstock', WAPM_Stock::sanitize_stock_status( 'out of stock' ), 'انگلیسی ناموجود' );
+	eq( 'outofstock', WAPM_Stock::sanitize_stock_status( 'ناموجود' ), 'فارسی ناموجود' );
+	eq( 'onbackorder', WAPM_Stock::sanitize_stock_status( 'backorder' ), 'پیش‌خرید' );
+	eq( 'onbackorder', WAPM_Stock::sanitize_stock_status( "پیش\u{200C}خرید" ), 'فارسی با نیم‌فاصله' );
+	eq( '', WAPM_Stock::sanitize_stock_status( 'چیزی دیگر' ), 'ناشناخته → خالی' );
+} );
+
+test( 'موجودی/can_manage: محصول ساده‌ی دارای مدیریت انبار', function () {
+	$r = WAPM_Stock::can_manage( new WC_Product( [ 'qty' => 7 ] ) );
+	ok( true === $r['ok'], 'مجاز' );
+	eq( 7.0, $r['qty'], 'موجودی فعلی' );
+	eq( '', $r['reason'], 'بدون دلیل رد' );
+} );
+
+test( 'موجودی/can_manage: والد متغیر و محصول بدون مدیریت انبار رد می‌شوند', function () {
+	$var = WAPM_Stock::can_manage( new WC_Product( [ 'type' => 'variable' ] ) );
+	ok( false === $var['ok'], 'والد متغیر' );
+	eq( 'variable_parent', $var['reason'], 'دلیل' );
+
+	$off = WAPM_Stock::can_manage( new WC_Product( [ 'managing' => false ] ) );
+	ok( false === $off['ok'], 'مدیریت انبار خاموش' );
+	eq( 'not_managed', $off['reason'], 'دلیل' );
+
+	$nothing = WAPM_Stock::can_manage( null );
+	ok( false === $nothing['ok'], 'محصولی وجود ندارد' );
+	eq( 'not_found', $nothing['reason'], 'دلیل' );
+} );
+
+test( 'موجودی/can_manage: موجودی null صفر گزارش می‌شود', function () {
+	$r = WAPM_Stock::can_manage( new WC_Product( [ 'qty' => null ] ) );
+	ok( true === $r['ok'], 'مجاز' );
+	eq( 0.0, $r['qty'], 'null → صفر' );
+} );
+
+test( 'موجودی/reason_label: دلیل ناشناخته خودش برگردانده می‌شود', function () {
+	eq( 'محصول پیدا نشد', WAPM_Stock::reason_label( 'not_found' ), 'ترجمه‌ی شناخته‌شده' );
+	eq( 'salam', WAPM_Stock::reason_label( 'salam' ), 'ناشناخته' );
+} );
+
+
+test( 'موجودی/expand_ids: والد متغیر به واریشن‌ها باز می‌شود', function () {
+	stub_reset();
+	$GLOBALS['wapm_stub']['products'] = [
+		10  => new WC_Product( [ 'id' => 10, 'type' => 'variable', 'managing' => false, 'children' => [ 101, 102 ] ] ),
+		101 => new WC_Product( [ 'id' => 101, 'type' => 'variation', 'qty' => 3 ] ),
+		20  => new WC_Product( [ 'id' => 20 ] ),
+	];
+
+	eq( [ 101, 102 ], WAPM_Stock::expand_ids( [ 10 ] ), 'والد → دو واریشن' );
+	eq( [ 20 ], WAPM_Stock::expand_ids( [ 20 ] ), 'محصول ساده دست‌نخورده' );
+	eq( [ 10 ], WAPM_Stock::expand_ids( [ 10 ], false ), 'با خاموش‌کردن باز شدن، والد می‌ماند' );
+	eq( [ 101, 102, 20 ], WAPM_Stock::expand_ids( [ 10, 101, 0, 20 ] ), 'تکراری/صفر حذف می‌شود' );
 } );
 
 /* -------------------------------------------------------------------------
