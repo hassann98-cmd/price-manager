@@ -895,7 +895,34 @@ class WAPM_List {
 
 		self::purge_caches( $duplicate->get_id() );
 
-		return [ 'success' => true, 'row' => self::build_row( $duplicate ) ];
+		return self::duplicate_result( $duplicate->get_id(), (string) $duplicate->get_status() )
+			+ [ 'row' => self::build_row( $duplicate ) ];
+	}
+
+	/**
+	 * پاسخ «کپی محصول» با پیام روشن درباره‌ی وضعیت نسخه‌ی جدید.
+	 *
+	 * چرا لازم است: `WC_Admin_Duplicate_Product` کپی را در وضعیت `draft` می‌سازد،
+	 * ولی این لیست فقط محصولات منتشرشده را می‌خواند. قبلاً پاسخ فقط ردیف بود و
+	 * JS لیست را دوباره می‌خواند؛ کپی در جدول ظاهر نمی‌شد و کاربر فکر می‌کرد کپی
+	 * انجام نشده و دوباره می‌زد (هر بار یک نسخه‌ی جدید).
+	 *
+	 * @return array{success:bool,id:int,status:string,message:string,edit_url:string}
+	 */
+	public static function duplicate_result( int $product_id, string $status ): array {
+		$status = '' !== $status ? $status : 'draft';
+
+		$message = 'publish' === $status
+			? __( 'کپی ساخته و منتشر شد.', 'wapm' )
+			: __( 'کپی ساخته شد، ولی ووکامرس آن را «پیش‌نویس» ذخیره می‌کند و این لیست فقط محصولات منتشرشده را نشان می‌دهد. برای دیدن و انتشار کپی، «ویرایش کپی» را بزنید.', 'wapm' );
+
+		return [
+			'success'  => true,
+			'id'       => $product_id,
+			'status'   => $status,
+			'message'  => $message,
+			'edit_url' => admin_url( 'post.php?post=' . $product_id . '&action=edit' ),
+		];
 	}
 
 	/**

@@ -73,6 +73,10 @@ function absint( $v ) {
 	return abs( (int) $v );
 }
 
+function admin_url( $path = '' ) {
+	return 'https://example.test/wp-admin/' . ltrim( (string) $path, '/' );
+}
+
 function number_format_i18n( $number, $decimals = 0 ) {
 	return number_format( (float) $number, (int) $decimals );
 }
@@ -1329,6 +1333,21 @@ test( 'موجودی/expand_ids: انتخاب همه‌ی نتایج هم از ه
 /* -------------------------------------------------------------------------
  * ۱۶) فیلترهای ذخیره‌شده‌ی لیست
  * ---------------------------------------------------------------------- */
+
+test( 'لیست: پاسخ «کپی محصول» وضعیت پیش‌نویس را توضیح می‌دهد (P1-8)', function () {
+	stub_reset();
+
+	$draft = WAPM_List::duplicate_result( 321, 'draft' );
+
+	eq( true, $draft['success'], 'موفق' );
+	eq( 'draft', $draft['status'], 'وضعیت' );
+	eq( 321, $draft['id'], 'شناسه‌ی کپی' );
+	ok( false !== strpos( $draft['message'], 'پیش‌نویس' ), 'پیام می‌گوید چرا در لیست دیده نمی‌شود', $draft['message'] );
+	ok( false !== strpos( $draft['edit_url'], 'post=321' ), 'لینک ویرایش', $draft['edit_url'] );
+
+	eq( 'draft', WAPM_List::duplicate_result( 322, '' )['status'], 'وضعیت خالی = پیش‌نویس (محافظ)' );
+	eq( 'publish', WAPM_List::duplicate_result( 323, 'publish' )['status'], 'کپی منتشرشده' );
+} );
 
 test( 'فیلتر/برچسب خودکار: از شرط‌ها ساخته می‌شود', function () {
 	$label = WAPM_List::saved_filter_label( WAPM_List::sanitize_filters( [

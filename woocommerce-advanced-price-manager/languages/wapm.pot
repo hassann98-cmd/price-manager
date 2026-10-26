@@ -142,7 +142,7 @@ msgstr ""
 msgid "اختلاف کمتر از این مقدار، «برابر با رقیب» حساب می‌شود."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-torob.php:791
+#: woocommerce-advanced-price-manager/includes/class-torob.php:825
 msgid "ارزان‌تر از رقیب"
 msgstr ""
 
@@ -215,7 +215,7 @@ msgstr ""
 msgid "انصراف"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-torob.php:1590
+#: woocommerce-advanced-price-manager/includes/class-torob.php:1624
 msgid "اول شناسه‌ی فروشگاه در ترب را تنظیم کنید."
 msgstr ""
 
@@ -268,7 +268,7 @@ msgstr ""
 msgid "این محصول از تغییرات گروهی قیمت افزونه Advanced Price Manager خارج شود."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-torob.php:1640
+#: woocommerce-advanced-price-manager/includes/class-torob.php:1674
 msgid "این محصول به ترب وصل نیست؛ اول از لیست «تطبیق‌نیافته‌ها» یا با همگام‌سازی کاتالوگ وصلش کنید."
 msgstr ""
 
@@ -326,7 +326,7 @@ msgid "بر اساس فیلترهای تب «تغییر قیمت». والد م�
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/class-admin.php:233
-#: woocommerce-advanced-price-manager/includes/class-torob.php:792
+#: woocommerce-advanced-price-manager/includes/class-torob.php:826
 msgid "برابر با رقیب"
 msgstr ""
 
@@ -372,7 +372,7 @@ msgstr ""
 msgid "به این آدرس بروید: %s"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-torob.php:1431
+#: woocommerce-advanced-price-manager/includes/class-torob.php:1465
 msgid "به‌طور خودکار تطبیق نخورد"
 msgstr ""
 
@@ -429,11 +429,11 @@ msgstr ""
 msgid "ترب (نسبت به ارزان‌ترین رقیب)"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-torob.php:1651
+#: woocommerce-advanced-price-manager/includes/class-torob.php:1685
 msgid "ترب برای این محصول فروشنده‌ای برنگرداند."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-torob-api.php:178
+#: woocommerce-advanced-price-manager/includes/class-torob-api.php:187
 msgid "ترب درخواست را بلاک کرد (کد %d). ۳۰ دقیقه صبر کنید؛ افزونه تا آن زمان درخواستی به ترب نمی‌فرستد."
 msgstr ""
 
@@ -441,7 +441,7 @@ msgstr ""
 msgid "ترب درخواست را محدود کرده است؛ حدود %d دقیقه دیگر تلاش کنید."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-torob-api.php:122
+#: woocommerce-advanced-price-manager/includes/class-torob-api.php:131
 msgid "ترب درخواست‌های این سرور را موقتاً محدود کرده است. حدود %d دقیقه دیگر تلاش کنید (تلاش زودتر، زمان بلاک را طولانی‌تر می‌کند)."
 msgstr ""
 
@@ -449,7 +449,7 @@ msgstr ""
 msgid "ترب متصل"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-torob-api.php:189
+#: woocommerce-advanced-price-manager/includes/class-torob-api.php:198
 msgid "ترب پاسخ ناموفق داد (کد %d)."
 msgstr ""
 
@@ -684,7 +684,7 @@ msgid "خطا در آپلود فایل."
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/class-csv-handler.php:62
-#: woocommerce-advanced-price-manager/includes/class-torob.php:1733
+#: woocommerce-advanced-price-manager/includes/class-torob.php:1767
 msgid "خطا در خواندن فایل."
 msgstr ""
 
@@ -709,7 +709,7 @@ msgid "داده قانون نامعتبر است."
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/class-admin.php:234
-#: woocommerce-advanced-price-manager/includes/class-torob.php:789
+#: woocommerce-advanced-price-manager/includes/class-torob.php:823
 msgid "داده کهنه"
 msgstr ""
 
@@ -920,7 +920,7 @@ msgstr ""
 msgid "ستون Stock Status خالی یا نامعتبر است و مدیریت انبار هم خاموش است"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-torob.php:1753
+#: woocommerce-advanced-price-manager/includes/class-torob.php:1787
 msgid "ستون prk در فایل پیدا نشد."
 msgstr ""
 
@@ -940,7 +940,7 @@ msgstr ""
 msgid "ستون‌های لازم: Product ID یا SKU + New Price. ستون اختیاری: Price Type (regular/sale)."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-torob-api.php:133
+#: woocommerce-advanced-price-manager/includes/class-torob-api.php:142
 msgid "سقف درخواست‌های روزانه‌ی ترب (%d) پر شده است. برای مقایسه‌ی انبوه از بوکمارکلت استفاده کنید؛ آن از مرورگر خودتان کار می‌کند."
 msgstr ""
 
@@ -988,7 +988,7 @@ msgid "شناسه فروشگاه ترب تنظیم نشده"
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/class-admin.php:237
-#: woocommerce-advanced-price-manager/includes/class-torob.php:786
+#: woocommerce-advanced-price-manager/includes/class-torob.php:820
 msgid "شناسه فروشگاه تنظیم نشده"
 msgstr ""
 
@@ -1004,11 +1004,11 @@ msgstr ""
 msgid "شناسه‌ام را ندارم؛ با نام فروشگاه پیدا کن"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-torob-api.php:306
+#: woocommerce-advanced-price-manager/includes/class-torob-api.php:315
 msgid "شناسه‌ی فروشگاه تنظیم نشده است."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-torob-api.php:347
+#: woocommerce-advanced-price-manager/includes/class-torob-api.php:377
 msgid "شناسه‌ی محصول ترب معتبر نیست."
 msgstr ""
 
@@ -1076,7 +1076,7 @@ msgid "فایل آپلودشده معتبر نیست."
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/class-csv-handler.php:72
-#: woocommerce-advanced-price-manager/includes/class-torob.php:1739
+#: woocommerce-advanced-price-manager/includes/class-torob.php:1773
 msgid "فایل خالی است."
 msgstr ""
 
@@ -1086,11 +1086,11 @@ msgstr ""
 msgid "فایلی انتخاب نشده است."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-torob.php:1703
+#: woocommerce-advanced-price-manager/includes/class-torob.php:1737
 msgid "فروشگاه «%1$s» در ترب فعال نیست (%2$s). تا فعال‌شدن، محصولات شما در ترب نمایش داده نمی‌شوند و مقایسه معنی ندارد."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-torob-api.php:283
+#: woocommerce-advanced-price-manager/includes/class-torob-api.php:292
 msgid "فروشگاه پیدا نشد."
 msgstr ""
 
@@ -1113,7 +1113,7 @@ msgid "فقط فایل CSV مجاز است."
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/class-admin.php:236
-#: woocommerce-advanced-price-manager/includes/class-torob.php:787
+#: woocommerce-advanced-price-manager/includes/class-torob.php:821
 msgid "فقط ما در ترب"
 msgstr ""
 
@@ -1256,7 +1256,7 @@ msgstr ""
 msgid "قیمت مطلق"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-torob.php:788
+#: woocommerce-advanced-price-manager/includes/class-torob.php:822
 msgid "قیمت نامشخص"
 msgstr ""
 
@@ -1539,7 +1539,7 @@ msgstr ""
 msgid "نام فیلتر (خالی = خودکار)"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-torob.php:1426
+#: woocommerce-advanced-price-manager/includes/class-torob.php:1460
 msgid "نام مشابه چند محصول — شباهت %s٪"
 msgstr ""
 
@@ -1565,7 +1565,7 @@ msgstr ""
 msgid "نشست شما منقضی شده است. صفحه را رفرش کنید."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-torob.php:1758
+#: woocommerce-advanced-price-manager/includes/class-torob.php:1792
 msgid "نه ستون قیمت رقیب (price) در فایل هست و نه قیمت خودمان (our_price)."
 msgstr ""
 
@@ -1636,7 +1636,7 @@ msgstr ""
 msgid "همگام‌سازی با ترب"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-torob.php:785
+#: woocommerce-advanced-price-manager/includes/class-torob.php:819
 msgid "همگام‌سازی نشده"
 msgstr ""
 
@@ -1644,7 +1644,7 @@ msgstr ""
 msgid "همگام‌سازی کاتالوگ از API ترب"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-torob.php:1415
+#: woocommerce-advanced-price-manager/includes/class-torob.php:1449
 msgid "همین عنوان در ووکامرس به محصول دیگری در ترب وصل است"
 msgstr ""
 
@@ -1660,7 +1660,7 @@ msgstr ""
 msgid "هیچ ردیفی برای اتصال انتخاب نشده است."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-torob.php:1418
+#: woocommerce-advanced-price-manager/includes/class-torob.php:1452
 msgid "هیچ محصول مشابهی پیدا نشد"
 msgstr ""
 
@@ -1700,7 +1700,7 @@ msgstr ""
 msgid "واریشن"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-torob.php:1412
+#: woocommerce-advanced-price-manager/includes/class-torob.php:1446
 msgid "واریشن هم‌نام شد — ترب در سطح والد مقایسه می‌کند"
 msgstr ""
 
@@ -1756,7 +1756,7 @@ msgstr ""
 msgid "ویژگی خاص"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-torob-api.php:201
+#: woocommerce-advanced-price-manager/includes/class-torob-api.php:210
 msgid "پاسخ ترب JSON نبود (احتمالاً صفحه‌ی «ربات نیستید»). ۳۰ دقیقه صبر کنید یا از بوکمارکلت استفاده کنید."
 msgstr ""
 
@@ -1817,13 +1817,13 @@ msgstr ""
 msgid "کاهش (−)"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-torob.php:1421
+#: woocommerce-advanced-price-manager/includes/class-torob.php:1455
 msgid "کد/SKU پیدا شد ولی نام نمی‌خواند"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-torob.php:1593
-#: woocommerce-advanced-price-manager/includes/class-torob.php:1643
-#: woocommerce-advanced-price-manager/includes/class-torob.php:1685
+#: woocommerce-advanced-price-manager/includes/class-torob.php:1627
+#: woocommerce-advanced-price-manager/includes/class-torob.php:1677
+#: woocommerce-advanced-price-manager/includes/class-torob.php:1719
 msgid "کلاینت API ترب بارگذاری نشده است."
 msgstr ""
 
@@ -1831,11 +1831,19 @@ msgstr ""
 msgid "کمتر از ارزان‌ترین رقیب:"
 msgstr ""
 
+#: woocommerce-advanced-price-manager/includes/class-list.php:917
+msgid "کپی ساخته شد، ولی ووکامرس آن را «پیش‌نویس» ذخیره می‌کند و این لیست فقط محصولات منتشرشده را نشان می‌دهد. برای دیدن و انتشار کپی، «ویرایش کپی» را بزنید."
+msgstr ""
+
+#: woocommerce-advanced-price-manager/includes/class-list.php:916
+msgid "کپی ساخته و منتشر شد."
+msgstr ""
+
 #: woocommerce-advanced-price-manager/includes/class-list.php:893
 msgid "کپی محصول ناموفق بود."
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-torob.php:790
+#: woocommerce-advanced-price-manager/includes/class-torob.php:824
 msgid "گران‌تر از رقیب"
 msgstr ""
 

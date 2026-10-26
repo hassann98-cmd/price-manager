@@ -1633,10 +1633,26 @@
 	$(document).on('click', function () { $('.wapm-actions-menu').hide(); });
 
 	$(document).on('click', '.wapm-action-duplicate', function () {
+		var $btn = $(this).prop('disabled', true);
+
 		ajax('duplicate_product', { product_id: $(this).data('id') }).done(function (res) {
-			if (res.success) { loadProductList(listState.paged); }
-			else { wapmToast((res.data && res.data.message) || WAPM.i18n.error, 'error'); }
-		});
+			if (!res.success) {
+				wapmToast((res.data && res.data.message) || WAPM.i18n.error, 'error');
+				return;
+			}
+
+			var data = res.data || {};
+			var published = data.status === 'publish';
+
+			// کپی معمولاً «پیش‌نویس» است و در این لیست (فقط منتشرشده‌ها) دیده
+			// نمی‌شود؛ پس به‌جای بارگذاری بی‌اثر لیست، پیام + راه ویرایش می‌دهیم.
+			wapmToast(data.message || 'کپی ساخته شد.', published ? 'success' : 'warning', {
+				actionLabel: data.edit_url ? 'ویرایش کپی' : null,
+				action: data.edit_url ? function () { window.open(data.edit_url, '_blank'); } : null
+			});
+
+			if (published) { loadProductList(listState.paged); }
+		}).always(function () { $btn.prop('disabled', false); });
 	});
 
 	$(document).on('click', '.wapm-action-delete', function () {
