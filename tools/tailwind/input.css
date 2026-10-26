@@ -1,0 +1,10 @@
+/**
+ * ورودی بیلد Tailwind — خروجی: assets/css/tailwind.css
+ * ساخت: npm run build:css   (یا دستور معادل در CI)
+ *
+ * preflight در پیکربندی خاموش است، پس لایه‌ی base چیزی تولید نمی‌کند؛ به‌همین
+ * دلیل هر سه لایه این‌جا هستند تا خروجی با رفتار Play CDN قبلی یکی بماند.
+ */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

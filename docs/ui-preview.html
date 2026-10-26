@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>پیش‌نمایش ظاهر پنل — مدیریت پیشرفته قیمت</title>
+<link rel="stylesheet" href="../woocommerce-advanced-price-manager/assets/css/admin.css">
+<style>
+	/*
+	 * این فایل «پیش‌نمایش طراحی» است، نه بخشی از افزونه.
+	 * فقط اجزای واقعی (تب‌ها، کارت، نوار انتخاب، کشو، اعلان، جدول) با همان
+	 * admin.css کنار هم گذاشته شده‌اند تا بدون نصب وردپرس ظاهر را ببینید.
+	 * Tailwind در این صفحه بارگذاری نمی‌شود؛ پس فقط استایل‌های خود افزونه دیده می‌شود.
+	 */
+	body {
+		margin: 0;
+		padding: 24px clamp(12px, 4vw, 48px) 120px;
+		background: #f6f7f9;
+		font-family: Tahoma, "Segoe UI", -apple-system, sans-serif;
+		font-size: 13px;
+	}
+	.pv-note {
+		background: #fffaeb;
+		border: 1px solid #fedf89;
+		color: #b54708;
+		border-radius: 12px;
+		padding: 10px 14px;
+		margin-bottom: 14px;
+		font-weight: 700;
+		font-size: 12px;
+	}
+	.pv-shell {
+		max-width: 1280px;
+		margin: 0 auto;
+	}
+	.pv-list {
+		background: #fff;
+		border: 1px solid var(--wapm-line);
+		border-radius: 16px;
+		overflow: hidden;
+		box-shadow: var(--wapm-shadow-sm);
+	}
+	.pv-toolbar {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 10px;
+		align-items: center;
+		padding: 14px 16px;
+		border-bottom: 1px solid var(--wapm-line-soft);
+		background: #fbfaff;
+	}
+	.pv-search {
+		position: relative;
+		flex: 1 1 260px;
+	}
+	.pv-search input {
+		width: 100%;
+		height: 42px;
+		padding: 0 38px 0 12px;
+	}
+	.pv-search span {
+		position: absolute;
+		top: 50%;
+		right: 12px;
+		transform: translateY(-50%);
+		color: var(--wapm-ink-400);
+	}
+	.pv-toolbar select { height: 42px; padding: 0 10px; }
+	.pv-btn-ghost {
+		height: 42px;
+		padding: 0 16px;
+		background: #fff;
+		border: 1px solid var(--wapm-line);
+		border-radius: 12px;
+		font-weight: 700;
+		color: var(--wapm-ink-600);
+		cursor: pointer;
+	}
+	.pv-table { width: 100%; border-collapse: collapse; }
+	.pv-table th {
+		padding: 11px 12px;
+		text-align: right;
+		font-size: 11px;
+		font-weight: 800;
+		color: var(--wapm-ink-400);
+		background: #f9fafb;
+		border-bottom: 1px solid var(--wapm-line-soft);
+		white-space: nowrap;
+	}
+	.pv-table td {
+		padding: 10px 12px;
+		border-bottom: 1px solid var(--wapm-line-soft);
+		vertical-align: middle;
+	}
+	.pv-table tr:hover td { background: var(--wapm-brand-50); }
+	.pv-name { font-weight: 800; color: var(--wapm-ink-800); font-size: 12px; }
+	.pv-sku {
+		display: inline-block;
+		margin-top: 4px;
+		padding: 2px 8px;
+		border-radius: 8px;
+		background: #f2f4f7;
+		color: var(--wapm-ink-500);
+		font-size: 10px;
+		font-weight: 800;
+	}
+	.pv-thumb {
+		width: 40px;
+		height: 40px;
+		border-radius: 10px;
+		background: linear-gradient(135deg, #ece1f8, #f6f2fc);
+		border: 1px solid var(--wapm-brand-100);
+		display: grid;
+		place-items: center;
+		color: var(--wapm-brand-500);
+		font-weight: 900;
+		font-size: 11px;
+	}
+	.pv-foot {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 14px 16px;
+		background: #fbfaff;
+		color: var(--wapm-ink-500);
+		font-weight: 700;
+		font-size: 12px;
+	}
+	.pv-section-title {
+		margin: 26px 0 10px;
+		font-size: 13px;
+		font-weight: 800;
+		color: var(--wapm-ink-700);
+	}
+	/* در این صفحه کشو به‌صورت باز و داخل جریان صفحه نشان داده می‌شود */
+	.pv-drawer-demo {
+		position: relative;
+		transform: none;
+		width: min(560px, 100%);
+		border-radius: 16px;
+		overflow: hidden;
+		box-shadow: var(--wapm-shadow-md);
+		border: 1px solid var(--wapm-line);
+	}
+	.pv-row { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+	.pv-col { flex: 1 1 420px; }
+	.pv-toast-demo { position: static; max-width: 100%; }
+	.sr-only {
+		position: absolute; width: 1px; height: 1px; overflow: hidden;
+		clip: rect(0 0 0 0); white-space: nowrap;
+	}
+</style>
+</head>
+<body>
+<div class="wapm-wrap pv-shell">
+
+	<div class="pv-note">
+		این صفحه فقط <strong>پیش‌نمایش ظاهر</strong> است (داده‌ها ساختگی‌اند و هیچ اتصالی به وردپرس ندارد).
+		همان <code>admin.css</code> افزونه بارگذاری شده تا رنگ‌ها و اجزا دقیقاً همان چیزی باشد که در پنل می‌بینید.
+	</div>
+
+	<h1><span class="dashicons dashicons-tag">◈</span> مدیریت پیشرفته قیمت ووکامرس</h1>
+
+	<div class="wapm-hero">
+		<div class="wapm-hero__text">
+			<strong>قیمت و موجودی را از یک‌جا مدیریت کنید.</strong>
+			همه‌ی تغییرها با پیش‌نمایش و Batch ذخیره می‌شوند و هر عملیات یک «بازگردانی» دارد.
+		</div>
+		<div class="wapm-hero__chips">
+			<span class="wapm-chip wapm-chip--brand">نسخه <b>1.1.0</b></span>
+			<span class="wapm-chip">محصول منتشرشده <b>۱٬۲۴۸</b></span>
+			<span class="wapm-chip">IRT</span>
+			<span class="wapm-chip wapm-chip--ok">ترب متصل <b>ای ام موبایل</b></span>
+		</div>
+	</div>
+
+	<nav class="wapm-tabs nav-tab-wrapper">
+		<a href="#" class="nav-tab nav-tab-active" onclick="return false">تغییر قیمت</a>
+		<a href="#" class="nav-tab" onclick="return false">لیست محصولات</a>
+		<a href="#" class="nav-tab" onclick="return false">موجودی</a>
+		<a href="#" class="nav-tab" onclick="return false">قوانین</a>
+		<a href="#" class="nav-tab" onclick="return false">زمان‌بندی</a>
+		<a href="#" class="nav-tab" onclick="return false">تاریخچه</a>
+		<a href="#" class="nav-tab" onclick="return false">خروجی / ورودی CSV</a>
+		<a href="#" class="nav-tab" onclick="return false">ترب</a>
+	</nav>
+
+	<div class="wapm-card">
+		<h2>نمونه‌ی کارت و فرم‌ها</h2>
+		<div class="wapm-drawer__row">
+			<label class="wapm-field">
+				<span>حالت</span>
+				<select><option>درصدی</option><option>مبلغ ثابت</option><option>قیمت مطلق</option></select>
+			</label>
+			<label class="wapm-field">
+				<span>مقدار</span>
+				<input type="number" value="10">
+			</label>
+			<label class="wapm-field">
+				<span>قیمت هدف</span>
+				<select><option>قیمت اصلی</option><option>قیمت فروش</option><option>هر دو</option></select>
+			</label>
+		</div>
+		<p style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+			<button type="button" class="button button-primary">اعمال تغییرات</button>
+			<button type="button" class="button">پیش‌نمایش</button>
+			<button type="button" class="button wapm-danger">بازگردانی آخرین عملیات</button>
+		</p>
+		<div class="wapm-progress">
+			<div class="wapm-progress-bar"><span style="width:62%"></span></div>
+			<p class="wapm-progress-text">پردازش ۳۱ از ۵۰ محصول…</p>
+		</div>
+	</div>
+
+	<div class="wapm-card">
+		<h2>لیست محصولات — نوار انتخاب و جدول</h2>
+
+		<div class="pv-list" id="wapm-list-root">
+			<div class="pv-toolbar">
+				<div class="pv-search">
+					<span>⌕</span>
+					<input type="text" placeholder="جستجوی نام یا SKU…">
+				</div>
+				<select><option>همه دسته‌بندی‌ها</option><option>موبایل (۳۲۰)</option></select>
+				<select><option>وضعیت موجودی</option><option>موجود</option><option>ناموجود</option></select>
+				<select><option>وضعیت نسبت به ترب</option><option>گران‌تر از رقیب</option></select>
+				<button type="button" class="pv-btn-ghost">فیلتر هوشمند</button>
+				<button type="button" class="pv-btn-ghost">ستون‌ها</button>
+			</div>
+
+			<div class="wapm-bulkbar" style="display:flex;border-bottom:1px solid var(--wapm-brand-100)">
+				<span class="wapm-bulkbar__count">
+					<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
+					<b>۳</b> مورد انتخاب شده
+				</span>
+				<button type="button" class="button button-primary" style="min-height:38px">
+					<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+					تغییر قیمت
+				</button>
+				<select style="height:38px"><option>— انتخاب عملیات —</option><option>تغییر وضعیت به: موجود</option></select>
+				<button type="button" class="button" style="min-height:38px">اجرا</button>
+				<button type="button" class="button" style="min-height:38px">لغو انتخاب</button>
+			</div>
+
+			<table class="pv-table">
+				<thead>
+					<tr>
+						<th style="width:34px"><input type="checkbox" checked></th>
+						<th style="width:52px"></th>
+						<th>محصول</th>
+						<th>قیمت اصلی</th>
+						<th>قیمت ویژه</th>
+						<th>مدیریت انبار</th>
+						<th>موجودی</th>
+						<th>وضعیت</th>
+						<th>قیمت ترب</th>
+						<th>آخرین تغییر</th>
+						<th style="width:44px"></th>
+					</tr>
+				</thead>
+				<tbody id="wapm-list-tbody">
+					<tr class="is-selected">
+						<td><input type="checkbox" checked></td>
+						<td><div class="pv-thumb">گوشی</div></td>
+						<td>
+							<div class="pv-name">گوشی سامسونگ Galaxy A55 128GB</div>
+							<span class="pv-sku">SM-A556</span>
+						</td>
+						<td><div class="wapm-price-display">۱۸٬۵۰۰٬۰۰۰</div></td>
+						<td><div class="wapm-price-display wapm-price-display--sale">۱۷٬۹۰۰٬۰۰۰</div></td>
+						<td><div style="display:flex;align-items:center;gap:8px">
+							<button type="button" class="wapm-switch is-on" role="switch" aria-checked="true" aria-label="مدیریت انبار"></button>
+							<span style="font-size:10px;font-weight:700;color:var(--wapm-ink-500)">فعال</span>
+						</div></td>
+						<td><div class="wapm-price-display" data-field="stock_quantity">۱۴</div></td>
+						<td><span class="wapm-pill wapm-pill--cheaper">موجود</span></td>
+						<td>
+							<div><span class="wapm-pill wapm-pill--pricier">🔴 ۴.۲٪ گران‌تر</span></div>
+							<div style="font-size:10px;color:var(--wapm-ink-600);font-weight:700;margin-top:3px">ارزان‌ترین رقیب: ۱۷٬۷۵۰٬۰۰۰</div>
+							<div style="font-size:9px;color:var(--wapm-ink-400)">۸ فروشنده · قیمت ترب: دیروز</div>
+							<div style="margin-top:2px">
+								<a href="#" class="wapm-mini-link" onclick="return false">ترب</a>
+								<button type="button" class="wapm-mini-link">بررسی الان</button>
+								<button type="button" class="wapm-mini-link wapm-mini-link--danger">جداکردن</button>
+							</div>
+						</td>
+						<td><span class="wapm-pill wapm-pill--info">۲ روز پیش</span></td>
+						<td><button type="button" class="wapm-actions-toggle" aria-label="عملیات">⋮</button></td>
+					</tr>
+
+					<tr>
+						<td><input type="checkbox"></td>
+						<td><div class="pv-thumb">هدفون</div></td>
+						<td>
+							<div class="pv-name">هدفون بی‌سیم انکر Soundcore R50i</div>
+							<span class="pv-sku">A3949</span>
+						</td>
+						<td><div class="wapm-price-display">۹۸۰٬۰۰۰</div></td>
+						<td><div class="wapm-price-display wapm-price-display--empty">—</div></td>
+						<td><div style="display:flex;align-items:center;gap:8px">
+							<button type="button" class="wapm-switch" role="switch" aria-checked="false" aria-label="مدیریت انبار"></button>
+							<span style="font-size:10px;font-weight:700;color:var(--wapm-ink-500)">غیرفعال</span>
+						</div></td>
+						<td><span class="wapm-price-muted">—</span></td>
+						<td><span class="wapm-pill wapm-pill--pricier">ناموجود</span></td>
+						<td>
+							<div><span class="wapm-pill wapm-pill--cheaper">🟢 ۷.۵٪ ارزان‌تر</span></div>
+							<div style="font-size:9px;color:var(--wapm-ink-400)">قیمت ترب: امروز</div>
+						</td>
+						<td><span class="wapm-pill wapm-pill--muted">—</span></td>
+						<td><button type="button" class="wapm-actions-toggle" aria-label="عملیات">⋮</button></td>
+					</tr>
+
+					<tr class="is-selected">
+						<td><input type="checkbox" checked></td>
+						<td><div class="pv-thumb">مچ</div></td>
+						<td>
+							<div class="pv-name">ساعت هوشمند شیائومی Redmi Watch 5</div>
+							<span class="pv-sku">BHR8607</span>
+						</td>
+						<td><div class="wapm-price-display">۴٬۲۰۰٬۰۰۰</div></td>
+						<td><div class="wapm-price-display wapm-price-display--sale">۳٬۹۸۰٬۰۰۰</div></td>
+						<td><div style="display:flex;align-items:center;gap:8px">
+							<button type="button" class="wapm-switch is-on" role="switch" aria-checked="true" aria-label="مدیریت انبار"></button>
+							<span style="font-size:10px;font-weight:700;color:var(--wapm-ink-500)">فعال</span>
+						</div></td>
+						<td><div class="wapm-price-display wapm-price-display--low" title="موجودی کم">۳</div></td>
+						<td><span class="wapm-pill wapm-pill--cheaper">موجود</span></td>
+						<td>
+							<div><span class="wapm-pill wapm-pill--stale">⚠ داده کهنه</span></div>
+							<div style="font-size:9px;color:var(--wapm-ink-400)">قیمت ترب: ۱۴ روز پیش</div>
+						</td>
+						<td><span class="wapm-pill wapm-pill--muted">۳۱ روز پیش</span></td>
+						<td><button type="button" class="wapm-actions-toggle" aria-label="عملیات">⋮</button></td>
+					</tr>
+				</tbody>
+			</table>
+
+			<div class="pv-foot">
+				<span>محصولات (صفحه ۱ از ۵۰ — مجموع ۱٬۲۴۸)</span>
+				<span style="display:flex;gap:8px">
+					<button type="button" class="pv-btn-ghost" disabled>قبلی</button>
+					<button type="button" class="pv-btn-ghost">بعدی</button>
+				</span>
+			</div>
+		</div>
+	</div>
+
+	<div class="pv-row">
+		<div class="pv-col">
+			<p class="pv-section-title">کشوی «تغییر قیمت» (حالت باز)</p>
+			<aside class="wapm-drawer pv-drawer-demo">
+				<div class="wapm-drawer__head">
+					<div>
+						<h2>تغییر قیمت انتخاب‌شده‌ها</h2>
+						<p>اول پیش‌نمایش، بعد اعمال. کل تغییر یک Batch است و با یک دکمه بازگردانی می‌شود.</p>
+					</div>
+					<button type="button" class="wapm-drawer__close" aria-label="بستن">×</button>
+				</div>
+				<div class="wapm-drawer__body">
+					<div class="wapm-drawer__section">
+						<h3>میان‌برهای سریع</h3>
+						<div class="wapm-presets">
+							<button type="button" class="wapm-preset wapm-preset--down">−۲۰٪</button>
+							<button type="button" class="wapm-preset wapm-preset--down is-active">−۱۰٪</button>
+							<button type="button" class="wapm-preset wapm-preset--down">−۵٪</button>
+							<button type="button" class="wapm-preset">+۵٪</button>
+							<button type="button" class="wapm-preset">+۱۰٪</button>
+							<button type="button" class="wapm-preset">قیمت مطلق</button>
+						</div>
+						<p class="description">با انتخاب هر میان‌بر فقط فیلدها پر می‌شوند؛ تا «پیش‌نمایش» را نزنید هیچ چیزی عوض نمی‌شود.</p>
+					</div>
+
+					<div class="wapm-drawer__section">
+						<h3>نوع تغییر</h3>
+						<div class="wapm-drawer__row">
+							<label class="wapm-field"><span>حالت</span><select><option>درصدی</option><option>مبلغ ثابت</option><option>قیمت مطلق</option></select></label>
+							<label class="wapm-field"><span>جهت</span><select><option>کاهش (−)</option><option>افزایش (+)</option></select></label>
+							<label class="wapm-field"><span>مقدار</span><input type="number" value="10"></label>
+						</div>
+						<p class="description">درصد از قیمت فعلی هر محصول. مثال: ۱۰٪ کاهش روی ۱٬۰۰۰٬۰۰۰ می‌شود ۹۰۰٬۰۰۰.</p>
+					</div>
+
+					<div class="wapm-drawer__section">
+						<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+							<h3 style="margin:0">پیش‌نمایش</h3>
+							<button type="button" class="button button-primary">محاسبه پیش‌نمایش</button>
+						</div>
+						<p class="wapm-count" style="margin:10px 0 0">۳ تغییر قیمت روی ۳ محصول</p>
+						<table class="wapm-preview-table">
+							<thead><tr><th style="text-align:right">محصول</th><th>نوع</th><th>فعلی</th><th>جدید</th><th>تغییر</th></tr></thead>
+							<tbody>
+								<tr>
+									<td style="text-align:right">
+										<div style="font-weight:800;color:#344054">گوشی سامسونگ Galaxy A55 128GB</div>
+										<div style="font-size:10px;color:#98a2b3">SM-A556 · ساده</div>
+									</td>
+									<td>قیمت اصلی</td>
+									<td>۱۸٬۵۰۰٬۰۰۰</td>
+									<td>۱۶٬۶۵۰٬۰۰۰</td>
+									<td class="wapm-down">-۱۰.۰٪</td>
+								</tr>
+								<tr class="wapm-warn">
+									<td style="text-align:right">
+										<div style="font-weight:800;color:#344054">ساعت هوشمند شیائومی Redmi Watch 5</div>
+										<div style="font-size:10px;color:#98a2b3">BHR8607 · ساده · <span style="color:#b42318;font-weight:900">افت شدید</span></div>
+									</td>
+									<td>قیمت اصلی</td>
+									<td>۴٬۲۰۰٬۰۰۰</td>
+									<td>۳٬۷۸۰٬۰۰۰</td>
+									<td class="wapm-down">-۱۰.۰٪</td>
+								</tr>
+								<tr>
+									<td style="text-align:right">
+										<div style="font-weight:800;color:#344054">هدفون انکر R50i</div>
+										<div style="font-size:10px;color:#98a2b3">A3949 · ساده</div>
+									</td>
+									<td>قیمت ویژه</td>
+									<td>۹۸۰٬۰۰۰</td>
+									<td>—</td>
+									<td>حذف</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+				<div class="wapm-drawer__foot">
+					<span class="wapm-mini-link">۳ محصول انتخاب شده</span>
+					<div style="display:flex;gap:8px">
+						<button type="button" class="button">انصراف</button>
+						<button type="button" class="button button-primary">اعمال روی انتخاب‌شده‌ها</button>
+					</div>
+				</div>
+			</aside>
+		</div>
+
+		<div class="pv-col">
+			<p class="pv-section-title">اعلان‌ها (toast)</p>
+			<div class="wapm-toasts pv-toast-demo">
+				<div class="wapm-toast wapm-toast--success">
+					<span class="wapm-toast__icon">✓</span>
+					<div class="wapm-toast__body">
+						<div>۲۷ قیمت تغییر کرد (Batch bulk_k3x9).</div>
+						<div class="wapm-toast__actions">
+							<button type="button" class="wapm-toast__btn">بازگردانی این تغییر</button>
+						</div>
+					</div>
+				</div>
+				<div class="wapm-toast wapm-toast--warning">
+					<span class="wapm-toast__icon">⚠</span>
+					<div class="wapm-toast__body">در پیش‌نمایش ۱ قیمت افت بیش از ۹۰٪ دارد. قبل از اعمال نگاه کنید.</div>
+				</div>
+				<div class="wapm-toast wapm-toast--error">
+					<span class="wapm-toast__icon">!</span>
+					<div class="wapm-toast__body">۱ مورد ذخیره نشد و در صف ماند.</div>
+				</div>
+				<div class="wapm-toast wapm-toast--info">
+					<span class="wapm-toast__icon">i</span>
+					<div class="wapm-toast__body">محصولات متغیر به واریشن‌ها باز می‌شوند.</div>
+				</div>
+			</div>
+
+			<p class="pv-section-title">فیلترهای ذخیره‌شده</p>
+			<div class="wapm-saved-filters" style="margin-bottom:64px;display:inline-flex">
+				<select>
+					<option>گران‌تر از رقیب · قیمت ۱۰۰٬۰۰۰ تا ∞</option>
+					<option>موجود · فقط تخفیف‌دار</option>
+				</select>
+				<button type="button" class="button">ذخیره</button>
+				<button type="button" class="button" disabled>×</button>
+				<div class="wapm-saved-filters__pop">
+					<input type="text" placeholder="نام فیلتر (خالی = خودکار)">
+					<button type="button" class="button button-primary">ذخیره</button>
+					<button type="button" class="button">لغو</button>
+				</div>
+			</div>
+
+			<p class="pv-section-title">نوار عملیات گروهی</p>
+			<div class="wapm-bulkbar is-visible" style="position:static;border:1px solid var(--wapm-brand-100);border-radius:12px;margin-bottom:14px">
+				<span class="wapm-bulkbar__count">
+					<b>۲۵</b> مورد انتخاب شده
+					<span id="wapm-list-selected-scope">— همه‌ی ۱٬۲۴۸ نتیجه‌ی فیلتر</span>
+				</span>
+				<button type="button" class="wapm-select-results">انتخاب همه‌ی <b>۱٬۲۴۸</b> نتیجه</button>
+				<button type="button" class="button button-primary">تغییر قیمت</button>
+				<button type="button" class="button">موجودی</button>
+				<button type="button" class="button">لغو انتخاب</button>
+				<span class="description" style="margin-inline-start:auto">سقف انتخاب خودکار: ۱۰۰۰ محصول</span>
+			</div>
+
+			<p class="pv-section-title">نشان‌ها و اعداد</p>
+			<div class="wapm-card">
+				<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+					<span class="wapm-pill wapm-pill--pricier">🔴 ۴.۲٪ گران‌تر</span>
+					<span class="wapm-pill wapm-pill--cheaper">🟢 ۷.۵٪ ارزان‌تر</span>
+					<span class="wapm-pill wapm-pill--equal">برابر با رقیب</span>
+					<span class="wapm-pill wapm-pill--stale">⚠ داده کهنه</span>
+					<span class="wapm-pill wapm-pill--info">فقط ما در ترب</span>
+					<span class="wapm-pill wapm-pill--muted">بدون داده</span>
+				</div>
+				<div class="wapm-stats" style="margin-top:14px">
+					<div class="wapm-stat"><b>۱٬۲۴۸</b><small>محصول بررسی‌شده</small></div>
+					<div class="wapm-stat"><b>۲۷</b><small>قیمت تغییر کرد</small></div>
+					<div class="wapm-stat"><b>۴</b><small>هشدار افت شدید</small></div>
+				</div>
+				<div style="margin-top:16px">
+					<span class="wapm-skeleton" style="width:70%;margin-bottom:8px"></span>
+					<span class="wapm-skeleton" style="width:45%"></span>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="wapm-card">
+		<h2>صف تأیید تطبیق ترب <span class="wapm-count">۴</span></h2>
+		<p class="description">
+			تطبیق ترب بر اساس «نام» است و همیشه چند مورد مبهم می‌ماند. این‌جا می‌توانید
+			فیلتر بزنید، چند مورد را انتخاب کنید و یک‌جا وصل یا نادیده بگیرید.
+			کنار هر ردیف، «قیمت ووکامرس» در برابر «ارزان‌ترین رقیب» دیده می‌شود؛
+			اختلاف بزرگ یعنی احتمالاً این دو محصول یکی نیستند.
+		</p>
+
+		<div class="wapm-review">
+			<div class="wapm-review__filters">
+				<div class="wapm-review__search">
+					<input type="search" placeholder="جستجوی نام یا شناسه‌ی ترب…">
+				</div>
+				<div class="wapm-review__chips">
+					<button type="button" class="wapm-chip is-active">همه <b>۴۲</b></button>
+					<button type="button" class="wapm-chip">با کاندید <b>۳۱</b></button>
+					<button type="button" class="wapm-chip">بدون کاندید <b>۱۱</b></button>
+					<button type="button" class="wapm-chip">واریشن <b>۲</b></button>
+				</div>
+				<div class="wapm-review__sort">
+					<label>ترتیب</label>
+					<select><option>تازه‌ترین</option><option>بیشترین شباهت</option></select>
+				</div>
+			</div>
+
+			<div class="wapm-bulkbar is-active" id="wapm-torob-review-bar">
+				<label class="wapm-bulkbar__all"><input type="checkbox" checked> همه‌ی این صفحه</label>
+				<span class="wapm-bulkbar__count">۲ انتخاب</span>
+				<div class="wapm-bulkbar__actions">
+					<button type="button" class="button button-primary">اتصال انتخاب‌شده‌ها</button>
+					<button type="button" class="button">نادیده‌گرفتن</button>
+				</div>
+			</div>
+
+			<table class="widefat striped wapm-review__table">
+				<thead>
+					<tr>
+						<th class="wapm-review__check"><input type="checkbox" checked></th>
+						<th>محصول ترب</th>
+						<th>ارزان‌ترین رقیب</th>
+						<th>محصول ووکامرس</th>
+						<th class="wapm-review__actions">اقدام</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td class="wapm-review__check"><input type="checkbox" checked></td>
+						<td>
+							<div class="wapm-review__name">گوشی موبایل سامسونگ مدل Galaxy A55 حافظه ۱۲۸ گیگابایت</div>
+							<div class="wapm-review__why"><span class="wapm-pill wapm-pill--info">نام مشابه چند محصول — شباهت ۹۳٪</span></div>
+							<div class="wapm-review__meta">۴ فروشنده • آخرین مشاهده: ۱۴۰۵/۰۸/۰۳ ۱۱:۲۰ • <a href="#">ترب ↗</a></div>
+						</td>
+						<td class="wapm-review__price">۹٬۰۰۰٬۰۰۰</td>
+						<td>
+							<select><option>گوشی سامسونگ A55 128 گیگ (SKU: SM-A556)</option></select>
+							<div class="wapm-review__diff">قیمت ووکامرس: <b>۹٬۴۵۰٬۰۰۰</b> <span class="wapm-pill wapm-pill--pricier">ما ۵٪ گران‌تر</span></div>
+						</td>
+						<td class="wapm-review__actions">
+							<button type="button" class="button button-primary">اتصال</button>
+							<button type="button" class="button">نادیده‌گرفتن</button>
+						</td>
+					</tr>
+					<tr>
+						<td class="wapm-review__check"><input type="checkbox" checked></td>
+						<td>
+							<div class="wapm-review__name">کفش ورزشی نایک مدل Air Zoom</div>
+							<div class="wapm-review__why"><span class="wapm-pill wapm-pill--info">واریشن هم‌نام شد — ترب در سطح والد مقایسه می‌کند</span></div>
+							<div class="wapm-review__meta">۲ فروشنده • آخرین مشاهده: ۱۴۰۵/۰۸/۰۲ ۰۹:۱۰ • <a href="#">ترب ↗</a></div>
+						</td>
+						<td class="wapm-review__price">۲٬۵۰۰٬۰۰۰</td>
+						<td>
+							<select><option>کفش نایک Air Zoom (والد)</option></select>
+							<div class="wapm-review__diff">قیمت ووکامرس: <b>۱٬۹۰۰٬۰۰۰</b> <span class="wapm-pill wapm-pill--cheaper">ما ۲۴٪ ارزان‌تر</span></div>
+						</td>
+						<td class="wapm-review__actions">
+							<button type="button" class="button button-primary">اتصال</button>
+							<button type="button" class="button">نادیده‌گرفتن</button>
+						</td>
+					</tr>
+					<tr>
+						<td class="wapm-review__check"><input type="checkbox"></td>
+						<td>
+							<div class="wapm-review__name">لپ تاپ ایسوس VivoBook 15</div>
+							<div class="wapm-review__why"><span class="wapm-pill wapm-pill--muted">هیچ محصول مشابهی پیدا نشد</span></div>
+							<div class="wapm-review__meta">بدون فروشنده • آخرین مشاهده: ۱۴۰۵/۰۸/۰۱ ۱۸:۴۵ • <a href="#">ترب ↗</a></div>
+						</td>
+						<td class="wapm-review__price">—</td>
+						<td>
+							<select><option>جستجوی محصول ووکامرس…</option></select>
+							<div class="wapm-review__warn">اختلاف بیش از ۶۰٪ — پیش از اتصال، محصول ترب را باز کنید.</div>
+						</td>
+						<td class="wapm-review__actions">
+							<button type="button" class="button button-primary">اتصال</button>
+							<button type="button" class="button">نادیده‌گرفتن</button>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+
+			<div class="wapm-review__pager">
+				<button type="button" class="button" disabled>قبلی</button>
+				<span>صفحه‌ی <b>۱</b> از ۳ — ۴۲ ردیف</span>
+				<button type="button" class="button">بعدی</button>
+			</div>
+		</div>
+	</div>
+</div>
+</body>
+</html>

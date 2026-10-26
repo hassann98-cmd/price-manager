@@ -1,0 +1,17 @@
+# سیستم‌عامل
+.DS_Store
+Thumbs.db
+*.log
+
+# ابزارها و کش‌ها
+__pycache__/
+*.py[cod]
+node_modules/
+vendor/
+.cache/
+.phpunit.result.cache
+
+# ویرایشگر
+.idea/
+.vscode/
+*.swp

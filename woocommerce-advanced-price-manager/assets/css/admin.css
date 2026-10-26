@@ -1,0 +1,1703 @@
+/*
+ * WooCommerce Advanced Price Manager — Admin (RTL)
+ *
+ * این فایل «سیستم طراحی» پنل است: رنگ‌ها، فاصله‌ها و اجزای مشترک یک‌جا تعریف
+ * می‌شوند تا ظاهر پنل در همه‌ی تب‌ها یکدست بماند و تغییر رنگ در آینده یعنی
+ * تغییر یک متغیر، نه گشتن در ده فایل.
+ *
+ * قاعده‌ی مهم: وردپرس استایل پایه‌ی خودش را دارد؛ اینجا فقط داخل `.wapm-wrap`
+ * تغییر می‌دهیم تا بقیه‌ی پنل مدیریت دست‌نخورده بماند.
+ */
+
+.wapm-wrap {
+	/* ---- رنگ‌ها ---- */
+	--wapm-brand-50: #f6f2fc;
+	--wapm-brand-100: #ece1f8;
+	--wapm-brand-200: #d9c4f0;
+	--wapm-brand-300: #bd9ce4;
+	--wapm-brand-400: #a377d6;
+	--wapm-brand-500: #8b5cb8;
+	--wapm-brand-600: #7f54b3;
+	--wapm-brand-700: #6a4494;
+	--wapm-brand-800: #563778;
+	--wapm-brand-900: #452c61;
+
+	--wapm-ink-900: #101828;
+	--wapm-ink-800: #1d2939;
+	--wapm-ink-700: #344054;
+	--wapm-ink-600: #475467;
+	--wapm-ink-500: #667085;
+	--wapm-ink-400: #98a2b3;
+
+	--wapm-line: #e7e5ef;
+	--wapm-line-soft: #f1eef7;
+	--wapm-surface: #ffffff;
+	--wapm-surface-soft: #fbfaff;
+
+	--wapm-ok-50: #ecfdf3;
+	--wapm-ok-600: #067647;
+	--wapm-ok-700: #05603a;
+	--wapm-warn-50: #fffaeb;
+	--wapm-warn-600: #b54708;
+	--wapm-danger-50: #fef3f2;
+	--wapm-danger-600: #b42318;
+	--wapm-info-50: #eff8ff;
+	--wapm-info-600: #175cd3;
+
+	/* ---- فرم ---- */
+	--wapm-radius-sm: 8px;
+	--wapm-radius: 12px;
+	--wapm-radius-lg: 16px;
+	--wapm-shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.05);
+	--wapm-shadow-sm: 0 1px 3px rgba(16, 24, 40, 0.08), 0 1px 2px rgba(16, 24, 40, 0.04);
+	--wapm-shadow-md: 0 8px 24px -6px rgba(16, 24, 40, 0.16);
+	--wapm-shadow-lg: 0 24px 48px -12px rgba(16, 24, 40, 0.26);
+	--wapm-ring: 0 0 0 3px rgba(127, 84, 179, 0.22);
+	--wapm-speed: 0.16s;
+
+	direction: rtl;
+	text-align: right;
+	color: var(--wapm-ink-700);
+	/* اعداد قیمت/موجودی با ارقام هم‌عرض خواندن جدول را راحت می‌کند */
+	font-variant-numeric: tabular-nums;
+}
+
+/* ==========================================================================
+   سرصفحه
+   ========================================================================== */
+
+.wapm-wrap > h1 {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	font-size: 22px;
+	font-weight: 800;
+	color: var(--wapm-ink-900);
+	letter-spacing: -0.2px;
+	margin: 8px 0 4px;
+}
+
+.wapm-wrap > h1 .dashicons {
+	font-size: 26px;
+	width: 26px;
+	height: 26px;
+	color: var(--wapm-brand-600);
+	background: linear-gradient(135deg, var(--wapm-brand-50), #fff);
+	border: 1px solid var(--wapm-brand-100);
+	border-radius: 10px;
+	padding: 6px;
+	box-sizing: content-box;
+}
+
+.wapm-hero {
+	position: relative;
+	overflow: hidden;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px;
+	margin: 0 0 14px;
+	padding: 12px 16px;
+	background:
+		radial-gradient(120% 160% at 100% 0%, rgba(127, 84, 179, 0.14), transparent 60%),
+		linear-gradient(180deg, #ffffff, var(--wapm-surface-soft));
+	border: 1px solid var(--wapm-line);
+	border-radius: var(--wapm-radius-lg);
+	box-shadow: var(--wapm-shadow-xs);
+	color: var(--wapm-ink-600);
+	font-size: 12.5px;
+	line-height: 1.9;
+}
+
+.wapm-hero__text {
+	flex: 1 1 320px;
+}
+
+.wapm-hero__text strong {
+	color: var(--wapm-ink-900);
+	font-weight: 800;
+}
+
+.wapm-hero__chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+/* ==========================================================================
+   تب‌ها (segmented pills)
+   ========================================================================== */
+
+.wapm-tabs.nav-tab-wrapper {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin: 0 0 18px;
+	padding: 6px;
+	border: 1px solid var(--wapm-line);
+	border-radius: var(--wapm-radius-lg);
+	background: var(--wapm-surface);
+	box-shadow: var(--wapm-shadow-xs);
+}
+
+.wapm-tabs .nav-tab {
+	margin: 0;
+	padding: 9px 16px;
+	border: 1px solid transparent;
+	border-radius: 999px;
+	background: transparent;
+	color: var(--wapm-ink-600);
+	font-size: 13px;
+	font-weight: 700;
+	line-height: 1.4;
+	transition: background var(--wapm-speed) ease, color var(--wapm-speed) ease, box-shadow var(--wapm-speed) ease;
+}
+
+.wapm-tabs .nav-tab:hover {
+	background: var(--wapm-brand-50);
+	color: var(--wapm-brand-700);
+}
+
+.wapm-tabs .nav-tab:focus-visible {
+	outline: 0;
+	box-shadow: var(--wapm-ring);
+}
+
+.wapm-tabs .nav-tab.nav-tab-active {
+	background: linear-gradient(135deg, var(--wapm-brand-600), var(--wapm-brand-500));
+	color: #fff;
+	box-shadow: 0 6px 16px -6px rgba(127, 84, 179, 0.75);
+}
+
+.wapm-tab-content {
+	padding-bottom: 24px;
+}
+
+/* ==========================================================================
+   کارت‌ها
+   ========================================================================== */
+
+.wapm-columns {
+	display: flex;
+	gap: 16px;
+	flex-wrap: wrap;
+	align-items: flex-start;
+}
+
+.wapm-columns .wapm-card {
+	flex: 1 1 420px;
+}
+
+.wapm-card {
+	background: var(--wapm-surface);
+	border: 1px solid var(--wapm-line);
+	border-radius: var(--wapm-radius-lg);
+	padding: 18px 20px;
+	margin-bottom: 16px;
+	box-shadow: var(--wapm-shadow-xs);
+}
+
+.wapm-card > h2 {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: 0 0 12px;
+	padding-bottom: 10px;
+	border-bottom: 1px solid var(--wapm-line-soft);
+	font-size: 15px;
+	font-weight: 800;
+	color: var(--wapm-ink-900);
+}
+
+/* نشانه‌ی کوچک رنگی کنار عنوان کارت — بدون تغییر مارک‌آپ در PHP */
+.wapm-card > h2::before {
+	content: "";
+	flex: 0 0 auto;
+	width: 8px;
+	height: 22px;
+	border-radius: 999px;
+	background: linear-gradient(180deg, var(--wapm-brand-500), var(--wapm-brand-300));
+}
+
+.wapm-card > h3 {
+	margin: 18px 0 6px;
+	font-size: 13px;
+	font-weight: 800;
+	color: var(--wapm-ink-700);
+}
+
+.wapm-card .description {
+	color: var(--wapm-ink-500);
+	font-size: 12px;
+	line-height: 1.9;
+}
+
+/* ==========================================================================
+   دکمه‌ها
+   ========================================================================== */
+
+.wapm-wrap .button,
+.wapm-wrap .button-secondary,
+.wapm-wrap .button-primary {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	min-height: 34px;
+	padding: 0 14px;
+	border-radius: 10px;
+	font-size: 12.5px;
+	font-weight: 700;
+	line-height: 1;
+	box-shadow: var(--wapm-shadow-xs);
+	transition: transform var(--wapm-speed) ease, box-shadow var(--wapm-speed) ease, background var(--wapm-speed) ease;
+}
+
+.wapm-wrap .button:hover {
+	transform: translateY(-1px);
+	box-shadow: var(--wapm-shadow-sm);
+}
+
+.wapm-wrap .button:active {
+	transform: translateY(0);
+}
+
+.wapm-wrap .button:focus-visible {
+	outline: 0;
+	box-shadow: var(--wapm-ring);
+}
+
+.wapm-wrap .button-primary {
+	background: linear-gradient(135deg, var(--wapm-brand-600), var(--wapm-brand-500));
+	border-color: var(--wapm-brand-600);
+	color: #fff;
+}
+
+.wapm-wrap .button-primary:hover {
+	background: linear-gradient(135deg, var(--wapm-brand-700), var(--wapm-brand-600));
+	border-color: var(--wapm-brand-700);
+}
+
+.wapm-wrap .button-primary:disabled,
+.wapm-wrap .button:disabled {
+	opacity: 0.55;
+	transform: none;
+	box-shadow: none;
+	cursor: not-allowed;
+}
+
+.wapm-wrap .wapm-danger,
+.wapm-wrap .button.wapm-danger {
+	color: var(--wapm-danger-600) !important;
+	border-color: #f3c9c5 !important;
+	background: #fff;
+}
+
+.wapm-wrap .button.wapm-danger:hover {
+	background: var(--wapm-danger-50) !important;
+}
+
+/* دکمه‌ی خیلی کوچک داخل جدول */
+.wapm-wrap .button.button-small {
+	min-height: 26px;
+	padding: 0 10px;
+	font-size: 11px;
+	border-radius: 8px;
+}
+
+/* ==========================================================================
+   ورودی‌ها
+   ========================================================================== */
+
+.wapm-wrap input[type="text"],
+.wapm-wrap input[type="number"],
+.wapm-wrap input[type="search"],
+.wapm-wrap input[type="datetime-local"],
+.wapm-wrap select,
+.wapm-wrap textarea {
+	border: 1px solid var(--wapm-line);
+	border-radius: 10px;
+	background: #fff;
+	color: var(--wapm-ink-800);
+	box-shadow: none;
+	transition: border-color var(--wapm-speed) ease, box-shadow var(--wapm-speed) ease;
+}
+
+.wapm-wrap input[type="text"]:focus,
+.wapm-wrap input[type="number"]:focus,
+.wapm-wrap input[type="search"]:focus,
+.wapm-wrap input[type="datetime-local"]:focus,
+.wapm-wrap select:focus,
+.wapm-wrap textarea:focus {
+	border-color: var(--wapm-brand-400);
+	box-shadow: var(--wapm-ring);
+	outline: 0;
+}
+
+.wapm-wrap .form-table th {
+	font-size: 12.5px;
+	font-weight: 800;
+	color: var(--wapm-ink-700);
+	width: 190px;
+}
+
+.wapm-wrap .form-table td {
+	vertical-align: top;
+}
+
+.wapm-wrap .select2-container {
+	min-width: 240px;
+}
+
+/* ==========================================================================
+   نشان‌ها، چیپ‌ها و متن‌های ریز
+   ========================================================================== */
+
+.wapm-count {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	margin-inline-start: 10px;
+	padding: 5px 12px;
+	background: var(--wapm-brand-50);
+	border: 1px solid var(--wapm-brand-100);
+	border-radius: 999px;
+	font-size: 12px;
+	font-weight: 800;
+	color: var(--wapm-brand-800);
+}
+
+.wapm-count:empty {
+	display: none;
+}
+
+.wapm-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	padding: 4px 10px;
+	border: 1px solid var(--wapm-line);
+	border-radius: 999px;
+	background: #fff;
+	color: var(--wapm-ink-600);
+	font-size: 11.5px;
+	font-weight: 700;
+	white-space: nowrap;
+}
+
+.wapm-chip b {
+	color: var(--wapm-ink-900);
+	font-weight: 900;
+}
+
+.wapm-chip--brand {
+	background: var(--wapm-brand-50);
+	border-color: var(--wapm-brand-100);
+	color: var(--wapm-brand-800);
+}
+
+.wapm-chip--ok {
+	background: var(--wapm-ok-50);
+	border-color: #abefc6;
+	color: var(--wapm-ok-700);
+}
+
+.wapm-chip--warn {
+	background: var(--wapm-warn-50);
+	border-color: #fedf89;
+	color: var(--wapm-warn-600);
+}
+
+.wapm-chip--danger {
+	background: var(--wapm-danger-50);
+	border-color: #fecdca;
+	color: var(--wapm-danger-600);
+}
+
+.wapm-badge {
+	display: inline-flex;
+	align-items: center;
+	padding: 3px 10px;
+	border-radius: 999px;
+	font-size: 11px;
+	font-weight: 800;
+	border: 1px solid transparent;
+}
+
+.wapm-badge-on {
+	background: var(--wapm-ok-50);
+	color: var(--wapm-ok-700);
+	border-color: #abefc6;
+}
+
+.wapm-badge-off {
+	background: #f9fafb;
+	color: var(--wapm-ink-500);
+	border-color: var(--wapm-line);
+}
+
+.wapm-badge-pending {
+	background: var(--wapm-warn-50);
+	color: var(--wapm-warn-600);
+	border-color: #fedf89;
+}
+
+/* گلوله‌های وضعیت ترب — از این‌جا در JS استفاده می‌شود */
+.wapm-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 3px 9px;
+	border-radius: 999px;
+	border: 1px solid transparent;
+	font-size: 10.5px;
+	font-weight: 900;
+	white-space: nowrap;
+}
+
+.wapm-pill--pricier { background: var(--wapm-danger-50); border-color: #fecdca; color: var(--wapm-danger-600); }
+.wapm-pill--cheaper { background: var(--wapm-ok-50); border-color: #abefc6; color: var(--wapm-ok-700); }
+.wapm-pill--equal { background: #f9fafb; border-color: var(--wapm-line); color: var(--wapm-ink-600); }
+.wapm-pill--stale { background: var(--wapm-warn-50); border-color: #fedf89; color: var(--wapm-warn-600); }
+.wapm-pill--info { background: var(--wapm-info-50); border-color: #b2ddff; color: var(--wapm-info-600); }
+.wapm-pill--muted { background: #f9fafb; border-color: var(--wapm-line); color: var(--wapm-ink-500); }
+
+.wapm-mini-link {
+	background: none;
+	border: 0;
+	padding: 0;
+	cursor: pointer;
+	font-size: 10px;
+	font-weight: 800;
+	color: var(--wapm-brand-600);
+	text-decoration: none;
+}
+
+.wapm-mini-link:hover {
+	color: var(--wapm-brand-800);
+	text-decoration: underline;
+}
+
+.wapm-mini-link--danger {
+	color: #b42318;
+}
+
+/* ==========================================================================
+   نوار پیشرفت
+   ========================================================================== */
+
+.wapm-progress {
+	margin: 14px 0;
+}
+
+.wapm-progress-bar {
+	height: 10px;
+	background: #f2f4f7;
+	border-radius: 999px;
+	overflow: hidden;
+	border: 1px solid var(--wapm-line-soft);
+}
+
+.wapm-progress-bar span {
+	display: block;
+	height: 100%;
+	border-radius: 999px;
+	background: linear-gradient(90deg, var(--wapm-brand-500), #b98ce8);
+	transition: width 0.3s ease;
+}
+
+.wapm-progress-text {
+	margin: 6px 0 0;
+	font-size: 12px;
+	font-weight: 700;
+	color: var(--wapm-ink-500);
+}
+
+/* ==========================================================================
+   جدول‌ها
+   ========================================================================== */
+
+.wapm-card table.widefat {
+	border: 1px solid var(--wapm-line);
+	border-radius: var(--wapm-radius);
+	overflow: hidden;
+	border-collapse: separate;
+	border-spacing: 0;
+	box-shadow: none;
+}
+
+.wapm-card table.widefat thead th {
+	background: #f9fafb;
+	color: var(--wapm-ink-600);
+	font-size: 11.5px;
+	font-weight: 800;
+	border-bottom: 1px solid var(--wapm-line);
+	padding: 10px 12px;
+}
+
+.wapm-card table.widefat tbody td {
+	padding: 9px 12px;
+	font-size: 12px;
+	color: var(--wapm-ink-700);
+	border-bottom: 1px solid var(--wapm-line-soft);
+	vertical-align: middle;
+}
+
+.wapm-card table.widefat tbody tr:last-child td {
+	border-bottom: 0;
+}
+
+.wapm-card table.widefat.striped tbody tr:nth-child(odd) {
+	background: #fcfcfe;
+}
+
+.wapm-card table.widefat tbody tr:hover {
+	background: var(--wapm-brand-50);
+}
+
+/* جدول پیش‌نمایش */
+.wapm-preview-table img {
+	width: 40px;
+	height: 40px;
+	object-fit: cover;
+	border-radius: 8px;
+	border: 1px solid var(--wapm-line);
+	vertical-align: middle;
+}
+
+.wapm-preview-table .wapm-up {
+	color: var(--wapm-ok-700);
+	font-weight: 800;
+}
+
+.wapm-preview-table .wapm-down {
+	color: var(--wapm-danger-600);
+	font-weight: 800;
+}
+
+.wapm-preview-table td,
+.wapm-preview-table th {
+	vertical-align: middle;
+}
+
+.wapm-preview-table tr.wapm-warn td {
+	background: #fffcf5;
+}
+
+.wapm-pagination {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin: 12px 0 0;
+}
+
+/* آمار Dry Run */
+.wapm-stats {
+	display: flex;
+	gap: 12px;
+	flex-wrap: wrap;
+	margin: 12px 0;
+}
+
+.wapm-stat {
+	flex: 1 1 150px;
+	background: linear-gradient(180deg, #fff, var(--wapm-surface-soft));
+	border: 1px solid var(--wapm-line);
+	border-radius: var(--wapm-radius);
+	padding: 14px 12px;
+	text-align: center;
+	box-shadow: var(--wapm-shadow-xs);
+}
+
+.wapm-stat b {
+	display: block;
+	font-size: 20px;
+	font-weight: 900;
+	margin-bottom: 4px;
+	color: var(--wapm-ink-900);
+}
+
+.wapm-stat small {
+	color: var(--wapm-ink-500);
+	font-size: 11.5px;
+	font-weight: 700;
+}
+
+/* پیام خالی/راهنما */
+.wapm-empty {
+	padding: 28px 16px;
+	text-align: center;
+	color: var(--wapm-ink-400);
+	font-size: 12.5px;
+	font-weight: 700;
+}
+
+/* ==========================================================================
+   تب لیست: پوسته، نوار عملیات گروهی و جدول
+   ========================================================================== */
+
+#wapm-list-root {
+	border-color: var(--wapm-line);
+	border-radius: var(--wapm-radius-lg);
+	box-shadow: var(--wapm-shadow-sm);
+}
+
+#wapm-list-tbody tr {
+	transition: background var(--wapm-speed) ease;
+}
+
+#wapm-list-tbody tr:hover {
+	background: var(--wapm-brand-50);
+}
+
+/* ردیف انتخاب‌شده با نوار رنگی سمت راست مشخص می‌شود */
+#wapm-list-tbody tr.is-selected {
+	background: #faf7fe;
+	box-shadow: inset 3px 0 0 var(--wapm-brand-500);
+}
+
+.wapm-price-display {
+	display: inline-block;
+	min-width: 92px;
+	padding: 4px 8px;
+	border-radius: 8px;
+	font-size: 12px;
+	font-weight: 900;
+	color: var(--wapm-brand-700);
+	cursor: pointer;
+	transition: background var(--wapm-speed) ease;
+}
+
+.wapm-price-display:hover {
+	background: var(--wapm-brand-50);
+}
+
+.wapm-price-display--sale {
+	color: var(--wapm-ok-700);
+}
+
+.wapm-price-display--low {
+	color: var(--wapm-warn-600);
+	background: var(--wapm-warn-50);
+}
+
+.wapm-price-display--empty {
+	color: var(--wapm-ink-400);
+	font-weight: 700;
+}
+
+.wapm-price-input,
+.wapm-cell-input {
+	width: 100%;
+	height: 32px;
+	padding: 0 8px;
+	border: 1px solid var(--wapm-line);
+	border-radius: 8px;
+	font-size: 12px;
+	font-weight: 800;
+	background: #fff;
+}
+
+.wapm-price-input:focus,
+.wapm-cell-input:focus {
+	border-color: var(--wapm-brand-400);
+	box-shadow: var(--wapm-ring);
+	outline: 0;
+}
+
+.wapm-price-muted {
+	font-size: 11px;
+	font-weight: 700;
+	color: var(--wapm-ink-400);
+	line-height: 1.7;
+}
+
+/* سوییچ مدیریت انبار */
+.wapm-switch {
+	position: relative;
+	width: 40px;
+	height: 22px;
+	padding: 0;
+	border: 0;
+	border-radius: 999px;
+	cursor: pointer;
+	background: #d0d5dd;
+	transition: background var(--wapm-speed) ease;
+	flex: 0 0 auto;
+}
+
+.wapm-switch::after {
+	content: "";
+	position: absolute;
+	top: 3px;
+	right: 3px;
+	width: 16px;
+	height: 16px;
+	border-radius: 999px;
+	background: #fff;
+	box-shadow: 0 1px 2px rgba(16, 24, 40, 0.25);
+	transition: transform var(--wapm-speed) ease;
+}
+
+.wapm-switch.is-on {
+	background: linear-gradient(135deg, #12b76a, #039855);
+}
+
+.wapm-switch.is-on::after {
+	transform: translateX(-18px);
+}
+
+.wapm-switch:focus-visible {
+	outline: 0;
+	box-shadow: var(--wapm-ring);
+}
+
+/* منوی سه‌نقطه‌ی عملیات ردیف */
+.wapm-actions-wrap {
+	position: relative;
+}
+
+.wapm-actions-toggle {
+	padding: 6px;
+	border: 0;
+	border-radius: 8px;
+	background: none;
+	color: var(--wapm-ink-400);
+	cursor: pointer;
+	transition: background var(--wapm-speed) ease, color var(--wapm-speed) ease;
+}
+
+.wapm-actions-toggle:hover {
+	background: var(--wapm-brand-50);
+	color: var(--wapm-brand-600);
+}
+
+.wapm-actions-menu {
+	position: absolute;
+	inset-inline-start: 0;
+	top: 100%;
+	z-index: 40;
+	margin-top: 4px;
+	min-width: 120px;
+	padding: 4px;
+	background: #fff;
+	border: 1px solid var(--wapm-line);
+	border-radius: var(--wapm-radius);
+	box-shadow: var(--wapm-shadow-md);
+}
+
+.wapm-actions-menu button {
+	display: block;
+	width: 100%;
+	padding: 8px 12px;
+	border: 0;
+	border-radius: 8px;
+	background: none;
+	text-align: right;
+	font-size: 12px;
+	font-weight: 700;
+	color: var(--wapm-ink-600);
+	cursor: pointer;
+}
+
+.wapm-actions-menu button:hover {
+	background: var(--wapm-brand-50);
+	color: var(--wapm-brand-700);
+}
+
+.wapm-actions-menu button.is-danger {
+	color: var(--wapm-danger-600);
+}
+
+.wapm-actions-menu button.is-danger:hover {
+	background: var(--wapm-danger-50);
+}
+
+/*
+ * نوار عملیات گروهی.
+ * نمایش/مخفی با کلاس انجام می‌شود، نه jQuery .toggle()؛ چون .toggle() روی
+ * یک flex، استایل inline «display:block» می‌گذاشت و چیدمان نوار می‌شکست.
+ */
+#wapm-list-bulk-bar.wapm-bulkbar {
+	display: none;
+}
+
+#wapm-list-bulk-bar.wapm-bulkbar.is-visible {
+	display: flex;
+
+	position: sticky;
+	top: 32px; /* زیر نوار مدیریت وردپرس */
+	z-index: 25;
+	align-items: center;
+	gap: 10px;
+	padding: 10px 14px;
+	background:
+		linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.75)),
+		linear-gradient(90deg, var(--wapm-brand-50), #eef4ff);
+	border-bottom: 1px solid var(--wapm-brand-100);
+	box-shadow: 0 6px 18px -12px rgba(16, 24, 40, 0.35);
+	animation: wapm-slide-down 0.18s ease;
+}
+
+@keyframes wapm-slide-down {
+	from { opacity: 0; transform: translateY(-6px); }
+	to { opacity: 1; transform: translateY(0); }
+}
+
+.wapm-bulkbar__count {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 5px 12px;
+	background: #fff;
+	border: 1px solid var(--wapm-brand-200);
+	border-radius: 999px;
+	font-size: 12px;
+	font-weight: 800;
+	color: var(--wapm-brand-800);
+	box-shadow: var(--wapm-shadow-xs);
+}
+
+.wapm-bulkbar__count b {
+	font-weight: 900;
+	color: var(--wapm-brand-700);
+}
+
+/* ==========================================================================
+   کشوی تغییر قیمت (drawer)
+   ========================================================================== */
+
+.wapm-drawer-overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 100050;
+	background: rgba(16, 24, 40, 0.45);
+	backdrop-filter: blur(2px);
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 0.2s ease;
+}
+
+.wapm-drawer-overlay.is-open {
+	opacity: 1;
+	pointer-events: auto;
+}
+
+.wapm-drawer {
+	position: fixed;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	z-index: 100051;
+	width: min(560px, 96vw);
+	display: flex;
+	flex-direction: column;
+	background: #fff;
+	box-shadow: var(--wapm-shadow-lg);
+	transform: translateX(-102%);
+	transition: transform 0.24s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.wapm-drawer.is-open {
+	transform: translateX(0);
+}
+
+.wapm-drawer__head {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 18px 20px;
+	background: linear-gradient(135deg, var(--wapm-brand-700), var(--wapm-brand-500));
+	color: #fff;
+}
+
+.wapm-drawer__head h2 {
+	margin: 0;
+	font-size: 15px;
+	font-weight: 800;
+	color: #fff;
+}
+
+.wapm-drawer__head p {
+	margin: 4px 0 0;
+	font-size: 12px;
+	color: rgba(255, 255, 255, 0.82);
+}
+
+.wapm-drawer__close {
+	flex: 0 0 auto;
+	width: 32px;
+	height: 32px;
+	display: grid;
+	place-items: center;
+	border: 1px solid rgba(255, 255, 255, 0.35);
+	border-radius: 10px;
+	background: rgba(255, 255, 255, 0.12);
+	color: #fff;
+	cursor: pointer;
+	font-size: 16px;
+	line-height: 1;
+}
+
+.wapm-drawer__close:hover {
+	background: rgba(255, 255, 255, 0.22);
+}
+
+.wapm-drawer__body {
+	flex: 1 1 auto;
+	overflow-y: auto;
+	padding: 18px 20px;
+	background: var(--wapm-surface-soft);
+}
+
+.wapm-drawer__foot {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	padding: 14px 20px;
+	border-top: 1px solid var(--wapm-line);
+	background: #fff;
+}
+
+.wapm-drawer__section {
+	background: #fff;
+	border: 1px solid var(--wapm-line);
+	border-radius: var(--wapm-radius);
+	padding: 14px;
+	margin-bottom: 12px;
+}
+
+.wapm-drawer__section h3 {
+	margin: 0 0 10px;
+	font-size: 12.5px;
+	font-weight: 800;
+	color: var(--wapm-ink-800);
+}
+
+.wapm-drawer__row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	align-items: flex-end;
+}
+
+.wapm-field {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	flex: 1 1 140px;
+	min-width: 120px;
+}
+
+.wapm-field > span {
+	font-size: 11px;
+	font-weight: 800;
+	color: var(--wapm-ink-500);
+}
+
+.wapm-field input,
+.wapm-field select {
+	height: 38px;
+	padding: 0 10px;
+}
+
+/* چیپ‌های میان‌بر درصد */
+.wapm-presets {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-bottom: 10px;
+}
+
+.wapm-preset {
+	padding: 6px 12px;
+	border: 1px solid var(--wapm-line);
+	border-radius: 999px;
+	background: #fff;
+	font-size: 11.5px;
+	font-weight: 800;
+	color: var(--wapm-ink-600);
+	cursor: pointer;
+	transition: all var(--wapm-speed) ease;
+}
+
+.wapm-preset:hover {
+	border-color: var(--wapm-brand-300);
+	background: var(--wapm-brand-50);
+	color: var(--wapm-brand-700);
+}
+
+.wapm-preset.is-active {
+	background: var(--wapm-brand-600);
+	border-color: var(--wapm-brand-600);
+	color: #fff;
+}
+
+.wapm-preset--down {
+	color: var(--wapm-danger-600);
+}
+
+.wapm-preset--down:hover {
+	border-color: #f3c9c5;
+	background: var(--wapm-danger-50);
+	color: var(--wapm-danger-600);
+}
+
+/* جدول پیش‌نمایش داخل کشو */
+.wapm-drawer .wapm-preview-table {
+	width: 100%;
+	border-collapse: separate;
+	border-spacing: 0;
+}
+
+.wapm-drawer .wapm-preview-table th {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	background: #f9fafb;
+	font-size: 11px;
+	font-weight: 800;
+	color: var(--wapm-ink-500);
+	padding: 8px;
+	border-bottom: 1px solid var(--wapm-line);
+}
+
+.wapm-drawer .wapm-preview-table td {
+	padding: 8px;
+	font-size: 11.5px;
+	border-bottom: 1px solid var(--wapm-line-soft);
+}
+
+/* ==========================================================================
+   اعلان‌ها (toast)
+   ========================================================================== */
+
+.wapm-toasts {
+	position: fixed;
+	bottom: 24px;
+	inset-inline-start: 24px;
+	z-index: 100060;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	max-width: min(420px, 92vw);
+}
+
+.wapm-toast {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	padding: 12px 14px;
+	background: #fff;
+	border: 1px solid var(--wapm-line);
+	border-inline-start: 4px solid var(--wapm-ink-400);
+	border-radius: var(--wapm-radius);
+	box-shadow: var(--wapm-shadow-md);
+	font-size: 12.5px;
+	font-weight: 700;
+	color: var(--wapm-ink-700);
+	line-height: 1.8;
+	animation: wapm-toast-in 0.2s ease;
+}
+
+@keyframes wapm-toast-in {
+	from { opacity: 0; transform: translateY(10px); }
+	to { opacity: 1; transform: translateY(0); }
+}
+
+.wapm-toast.is-hiding {
+	opacity: 0;
+	transform: translateY(8px);
+	transition: all 0.18s ease;
+}
+
+.wapm-toast__icon {
+	flex: 0 0 auto;
+	font-size: 15px;
+	line-height: 1.5;
+}
+
+.wapm-toast__body {
+	flex: 1 1 auto;
+}
+
+.wapm-toast__actions {
+	display: flex;
+	gap: 8px;
+	margin-top: 6px;
+}
+
+.wapm-toast__btn {
+	border: 1px solid var(--wapm-line);
+	background: #fff;
+	border-radius: 8px;
+	padding: 4px 10px;
+	font-size: 11px;
+	font-weight: 800;
+	color: var(--wapm-brand-700);
+	cursor: pointer;
+}
+
+.wapm-toast__btn:hover {
+	background: var(--wapm-brand-50);
+}
+
+.wapm-toast--success { border-inline-start-color: #12b76a; }
+.wapm-toast--error { border-inline-start-color: #f04438; }
+.wapm-toast--warning { border-inline-start-color: #f79009; }
+.wapm-toast--info { border-inline-start-color: var(--wapm-brand-500); }
+
+/* ==========================================================================
+   اسکلت بارگذاری
+   ========================================================================== */
+
+.wapm-skeleton {
+	display: block;
+	height: 12px;
+	border-radius: 999px;
+	background: linear-gradient(90deg, #f2f4f7 25%, #e9ecf2 37%, #f2f4f7 63%);
+	background-size: 400% 100%;
+	animation: wapm-shimmer 1.2s ease infinite;
+}
+
+@keyframes wapm-shimmer {
+	0% { background-position: 100% 0; }
+	100% { background-position: 0 0; }
+}
+
+/* ==========================================================================
+   ریسپانسیو و دسترس‌پذیری
+   ========================================================================== */
+
+@media (max-width: 782px) {
+	.wapm-columns {
+		flex-direction: column;
+	}
+
+	.wapm-tabs.nav-tab-wrapper {
+		gap: 4px;
+		padding: 4px;
+	}
+
+	.wapm-tabs .nav-tab {
+		padding: 8px 12px;
+		font-size: 12px;
+	}
+
+	.wapm-drawer {
+		width: 100%;
+	}
+
+	.wapm-toasts {
+		inset-inline-start: 12px;
+		bottom: 12px;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.wapm-wrap *,
+	.wapm-drawer,
+	.wapm-drawer-overlay,
+	.wapm-toast {
+		animation-duration: 0.001ms !important;
+		transition-duration: 0.001ms !important;
+	}
+}
+
+/* اسکرول‌بار نازک برای جدول‌های طولانی */
+.wapm-drawer__body::-webkit-scrollbar,
+#wapm-list-root .overflow-auto::-webkit-scrollbar {
+	width: 10px;
+	height: 10px;
+}
+
+.wapm-drawer__body::-webkit-scrollbar-thumb,
+#wapm-list-root .overflow-auto::-webkit-scrollbar-thumb {
+	background: #d8d3e4;
+	border: 2px solid #fff;
+	border-radius: 999px;
+}
+
+.wapm-drawer__body::-webkit-scrollbar-thumb:hover,
+#wapm-list-root .overflow-auto::-webkit-scrollbar-thumb:hover {
+	background: var(--wapm-brand-300);
+}
+
+/* ==========================================================================
+   صف تأیید تطبیق ترب
+   --------------------------------------------------------------------------
+   هدف: از یک لیست ۵۰۰ ردیفی که باید با چشم گشته شود، به یک صف قابل‌کار
+   تبدیل شود: فیلتر، جستجو، انتخاب گروهی و «قیمت ما در برابر قیمت ترب».
+   ========================================================================== */
+
+.wapm-review {
+	border: 1px solid var(--wapm-line);
+	border-radius: var(--wapm-radius);
+	background: #fff;
+	overflow: hidden;
+}
+
+.wapm-review__filters {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px;
+	padding: 10px 12px;
+	background: #fbfaff;
+	border-bottom: 1px solid var(--wapm-line);
+}
+
+.wapm-review__search {
+	flex: 1 1 220px;
+	min-width: 180px;
+}
+
+.wapm-review__search input[type="search"] {
+	width: 100%;
+	margin: 0;
+	border-radius: var(--wapm-radius-sm);
+	border-color: var(--wapm-line);
+	font-size: 12.5px;
+	min-height: 32px;
+}
+
+.wapm-review__chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.wapm-review__chips .wapm-chip {
+	cursor: pointer;
+	font-family: inherit;
+	transition: background var(--wapm-speed) ease, border-color var(--wapm-speed) ease;
+}
+
+.wapm-review__chips .wapm-chip:hover {
+	border-color: var(--wapm-brand-300);
+	background: var(--wapm-brand-50);
+}
+
+.wapm-review__chips .wapm-chip.is-active {
+	background: var(--wapm-brand-600);
+	border-color: var(--wapm-brand-600);
+	color: #fff;
+}
+
+.wapm-review__chips .wapm-chip.is-active b {
+	color: #fff;
+}
+
+.wapm-review__sort {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 11.5px;
+	font-weight: 700;
+	color: var(--wapm-ink-500);
+}
+
+.wapm-review__sort select {
+	font-size: 12px;
+	min-height: 30px;
+	margin: 0;
+}
+
+/* نوار عملیات گروهی صف — همیشه دیده می‌شود، فقط با انتخاب فعال می‌شود */
+#wapm-torob-review-bar.wapm-bulkbar {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 8px 12px;
+	background: #fff;
+	border-bottom: 1px solid var(--wapm-line-soft);
+	font-size: 12px;
+}
+
+#wapm-torob-review-bar.wapm-bulkbar.is-active {
+	background: linear-gradient(90deg, var(--wapm-brand-50), #eef4ff);
+	border-bottom-color: var(--wapm-brand-100);
+}
+
+.wapm-bulkbar__all {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-weight: 700;
+	color: var(--wapm-ink-600);
+	white-space: nowrap;
+}
+
+.wapm-bulkbar__all input {
+	margin: 0;
+}
+
+.wapm-bulkbar__actions {
+	margin-inline-start: auto;
+	display: flex;
+	gap: 6px;
+}
+
+.wapm-review__table thead th {
+	white-space: nowrap;
+}
+
+.wapm-review__table tbody td {
+	vertical-align: top;
+}
+
+.wapm-review__check {
+	width: 34px;
+	text-align: center;
+}
+
+.wapm-review__check input {
+	margin: 0;
+}
+
+.wapm-review__name {
+	font-weight: 800;
+	color: var(--wapm-ink-900);
+	font-size: 12.5px;
+	line-height: 1.7;
+}
+
+.wapm-review__why {
+	margin-top: 4px;
+}
+
+.wapm-review__meta {
+	margin-top: 4px;
+	font-size: 10.5px;
+	color: var(--wapm-ink-400);
+	font-weight: 600;
+}
+
+.wapm-review__meta a {
+	color: var(--wapm-brand-700);
+	text-decoration: none;
+	font-weight: 800;
+}
+
+.wapm-review__price {
+	white-space: nowrap;
+	font-weight: 800;
+	color: var(--wapm-ink-800);
+}
+
+.wapm-review__pick {
+	margin-bottom: 2px;
+}
+
+.wapm-review__match:empty {
+	display: none;
+}
+
+.wapm-review__diff {
+	margin-top: 6px;
+	font-size: 10.5px;
+	color: var(--wapm-ink-500);
+	font-weight: 700;
+}
+
+.wapm-review__warn {
+	margin-top: 4px;
+	padding: 4px 8px;
+	border-radius: var(--wapm-radius-sm);
+	background: var(--wapm-warn-50);
+	border: 1px solid #fedf89;
+	color: var(--wapm-warn-600);
+	font-size: 10.5px;
+	font-weight: 800;
+	line-height: 1.6;
+}
+
+.wapm-review__actions {
+	white-space: nowrap;
+	text-align: end;
+}
+
+.wapm-review__pager {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	padding: 10px 12px;
+	background: #fbfaff;
+	border-top: 1px solid var(--wapm-line);
+	font-size: 11.5px;
+	font-weight: 700;
+	color: var(--wapm-ink-500);
+}
+
+.wapm-review.is-busy,
+#wapm-torob-unmatched-area.is-busy {
+	opacity: 0.6;
+	pointer-events: none;
+	transition: opacity var(--wapm-speed) ease;
+}
+
+.wapm-empty__icon {
+	font-size: 26px;
+	line-height: 1;
+	color: var(--wapm-ok-600);
+	margin-bottom: 6px;
+}
+
+.wapm-empty__title {
+	margin: 0 0 4px;
+	font-size: 13px;
+	font-weight: 900;
+	color: var(--wapm-ink-700);
+}
+
+/* روی موبایل، ستون «محصول ووکامرس» زیر نام می‌رود (جدول فقط اسکرول افقی شود) */
+.wapm-review__table {
+	min-width: 720px;
+}
+
+.wapm-review {
+	overflow-x: auto;
+}
+
+/* ==========================================================================
+   انتخاب همه‌ی نتایج + کشوی موجودی
+   ========================================================================== */
+
+/*
+ * دکمه‌ی «انتخاب همه‌ی N نتیجه».
+ * عمداً یک دکمه‌ی جدا در نوار است، نه یک چک‌باکس مبهم: انتخاب ۱۰۰۰ محصول باید
+ * یک اقدام صریح باشد.
+ */
+.wapm-select-results {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 5px 12px;
+	border: 1px dashed var(--wapm-brand-300);
+	border-radius: 999px;
+	background: #fff;
+	color: var(--wapm-brand-800);
+	font-size: 11.5px;
+	font-weight: 800;
+	cursor: pointer;
+	white-space: nowrap;
+	transition: background var(--wapm-speed) ease, border-color var(--wapm-speed) ease;
+}
+
+.wapm-select-results:hover {
+	background: var(--wapm-brand-50);
+	border-style: solid;
+}
+
+.wapm-select-results b {
+	font-weight: 900;
+}
+
+.wapm-select-results[hidden] {
+	display: none;
+}
+
+/* «— همه‌ی ۱۲۰۰ نتیجه‌ی فیلتر» داخل نشان تعداد انتخاب */
+#wapm-list-selected-scope {
+	display: inline;
+	margin-inline-start: 2px;
+	font-weight: 700;
+	color: var(--wapm-brand-700);
+}
+
+#wapm-list-selected-scope[hidden] {
+	display: none;
+}
+
+/* کشوی موجودی از همان کلاس‌های .wapm-drawer استفاده می‌کند؛ فقط تأکید رنگی
+   روی دکمه‌ی موجودی تا از «تغییر قیمت» اشتباه گرفته نشود. */
+#wapm-list-bulk-stock {
+	transition: border-color var(--wapm-speed) ease, background var(--wapm-speed) ease;
+}
+
+#wapm-list-bulk-stock:hover {
+	background: var(--wapm-brand-50);
+	border-color: var(--wapm-brand-300);
+}
+
+#wapm-sd-summary:empty,
+#wapm-sd-foot-note:empty {
+	display: none;
+}
+
+/* فیلترهای ذخیره‌شده — یک گروه فشرده در نوار ابزار جدول */
+.wapm-saved-filters {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 3px 6px 3px 3px;
+	border-radius: 14px;
+	background: var(--wapm-brand-50);
+	border: 1px solid var(--wapm-brand-100);
+}
+
+.wapm-saved-filters select {
+	max-width: 220px;
+	background: #fff;
+}
+
+.wapm-saved-filters button {
+	font-family: inherit;
+	white-space: nowrap;
+}
+
+.wapm-saved-filters button:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+@media (max-width: 782px) {
+	.wapm-saved-filters {
+		width: 100%;
+		flex-wrap: wrap;
+	}
+
+	.wapm-saved-filters select {
+		flex: 1 1 160px;
+		max-width: none;
+	}
+}
+
+/* نام‌گذاری فیلتر — پاپ‌اور داخل همان گروه (نه window.prompt) */
+.wapm-saved-filters__pop {
+	position: absolute;
+	top: calc(100% + 8px);
+	inset-inline-start: 0;
+	z-index: 40;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 8px;
+	background: #fff;
+	border: 1px solid var(--wapm-line);
+	border-radius: var(--wapm-radius);
+	box-shadow: var(--wapm-shadow-md);
+}
+
+.wapm-saved-filters__pop[hidden] {
+	display: none;
+}
+
+.wapm-saved-filters__pop input[type="text"] {
+	width: 220px;
+	min-height: 32px;
+	margin: 0;
+	font-size: 12.5px;
+	border-radius: var(--wapm-radius-sm);
+}
+
+@media (max-width: 782px) {
+	.wapm-saved-filters__pop {
+		inset-inline-start: 0;
+		inset-inline-end: 0;
+		flex-wrap: wrap;
+	}
+
+	.wapm-saved-filters__pop input[type="text"] {
+		width: 100%;
+	}
+}
+
+/* ---- «هم‌تراز با ترب» (کشوی داخل تب لیست) ---- */
+
+.wapm-drawer--narrow {
+	width: min(440px, 96vw);
+}
+
+.wapm-align-facts {
+	display: grid;
+	grid-template-columns: 1fr auto;
+	gap: 6px 12px;
+	padding: 10px 12px;
+	background: var(--wapm-surface-soft, #fbfaff);
+	border: 1px solid var(--wapm-line, #eaecf0);
+	border-radius: var(--wapm-radius-sm, 8px);
+}
+
+.wapm-align-fact {
+	display: contents;
+}
+
+.wapm-align-fact > span {
+	font-size: 11.5px;
+	font-weight: 700;
+	color: var(--wapm-ink-500, #667085);
+}
+
+.wapm-align-fact > b {
+	font-size: 12.5px;
+	font-weight: 900;
+	color: var(--wapm-ink-800, #1d2939);
+	text-align: left;
+	font-variant-numeric: tabular-nums;
+}
+
+.wapm-align-result {
+	display: grid;
+	grid-template-columns: 1fr auto;
+	gap: 6px 12px;
+	padding: 10px 12px;
+	border: 1px solid var(--wapm-brand-100, #e9e2f2);
+	border-radius: var(--wapm-radius-sm, 8px);
+	background: linear-gradient(180deg, #fff, rgba(245, 241, 250, 0.55));
+}
+
+.wapm-align-result > span {
+	font-size: 11.5px;
+	font-weight: 700;
+	color: var(--wapm-ink-500, #667085);
+}
+
+.wapm-align-result > b {
+	font-size: 13px;
+	font-weight: 900;
+	text-align: left;
+	font-variant-numeric: tabular-nums;
+}
+
+.wapm-align-result .wapm-align-result__new {
+	font-size: 17px;
+	color: var(--wapm-brand-700, #6941c6);
+}
+
+.wapm-align-skip {
+	padding: 10px 12px;
+	border: 1px dashed #fedf89;
+	border-radius: var(--wapm-radius-sm, 8px);
+	background: var(--wapm-warn-50, #fffaeb);
+	font-size: 12px;
+	font-weight: 800;
+	color: var(--wapm-warn-600, #b54708);
+}
+
+/* ---- زیربرش مخصوص دسته (تب ترب) ---- */
+
+.wapm-undercut-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 6px;
+	flex-wrap: wrap;
+}
+
+.wapm-undercut-row .wapm-undercut-cat {
+	min-width: 200px;
+}
+
+.wapm-undercut-row .wapm-undercut-remove {
+	min-width: 30px;
+	line-height: 1;
+	color: var(--wapm-danger-600);
+	border-color: #fecdca;
+}
