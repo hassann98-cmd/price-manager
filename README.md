@@ -109,8 +109,11 @@ for f in woocommerce-advanced-price-manager/assets/js/*.js; do node --check "$f"
 python3 tools/make-pot.py
 python3 tools/build-zip.py
 
-# CSS تیلویند (فقط اگر کلاس‌ها را عوض کردید)
+# ابزارهای توسعه‌ی مخزن (Tailwind، jsdom) — Node 22.22+ لازم است؛
+# jsdom 30 روی Node 20 بالا نمی‌آید (وابستگی undici به zstd).
 npm ci
+
+# CSS تیلویند (فقط اگر کلاس‌ها را عوض کردید)
 npm run build:css
 
 # بررسی JS: اعلان تکراری + تست دودی در jsdom (رندر لیست، انتخاب گروهی، کشوها)
