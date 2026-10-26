@@ -800,7 +800,7 @@ function esc(s) { return $('<span>').text(s == null ? '' : String(s)).html(); }
 | README + CI | ✅ | README فارسی نصب/امکانات/توسعه؛ اکشن‌ها: لینت PHP ۸.۰/۸.۳، تست واحد، `node --check`، تازه‌بودن POT و zip |
 | بسته‌ی نصب | ✅ | `price-manager.zip` از سورس و **قطعی** ساخته می‌شود (`tools/build-zip.py`)؛ نسخه‌ی قبلی فایل `class-stock.php` و `uninstall.php` را نداشت و نصب از آن خطای مرگبار می‌داد |
 | تفکیک `class-admin.php` / `admin.js` | ⏳ | باقی‌مانده‌ی فاز |
-| Tailwind بیلدشده (P2-23) | ⏳ | باقی‌مانده‌ی فاز |
+| Tailwind بیلدشده (P2-23) | ✅ | `assets/css/tailwind.css` (۹ کیلوبایت فشرده) با `npm run build:css` ساخته می‌شود؛ Play CDN حذف شد. `preflight` خاموش تا wp-admin به‌هم نریزد؛ `npm run check:css` در CI تازه بودنش را تضمین می‌کند. enqueue تکراری `selectWoo` هم (P2-24) پاک شد |
 | کرون روی Action Scheduler (P1-11) | ⏳ | باقی‌مانده‌ی فاز |
 
 ### باگ‌های رفع‌شده در فاز ۴

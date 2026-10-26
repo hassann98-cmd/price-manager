@@ -51,16 +51,15 @@ class WAPM_Admin {
 			return;
 		}
 
-		wp_enqueue_style( 'wapm-admin', WAPM_URL . 'assets/css/admin.css', [], WAPM_VERSION );
+		// استایل ابزارهای Tailwind از فایل محلیِ بیلدشده می‌آید (نه Play CDN):
+		// ~۹ کیلوبایت فشرده در برابر ~۴۰۰ کیلوبایت جاوااسکریپت CDN، بدون کامپایل
+		// در مرورگر (بدون FOUC)، بدون وابستگی به دامنه‌ی ثالث و سازگار با CSP.
+		// ساخت مجدد: npm run build:css  (CI تازه بودنش را بررسی می‌کند).
+		wp_enqueue_style( 'wapm-tailwind', WAPM_URL . 'assets/css/tailwind.css', [], WAPM_VERSION );
+		wp_enqueue_style( 'wapm-admin', WAPM_URL . 'assets/css/admin.css', [ 'wapm-tailwind' ], WAPM_VERSION );
 		wp_enqueue_style( 'woocommerce_admin_styles' );
 		wp_enqueue_script( 'wapm-admin', WAPM_URL . 'assets/js/admin.js', [ 'jquery', 'selectWoo' ], WAPM_VERSION, true );
-		wp_enqueue_script( 'selectWoo' );
 		wp_enqueue_style( 'select2' );
-
-		// Tailwind (Play CDN) — فقط همین صفحه، برای تب «لیست محصولات».
-		// Preflight غیرفعال است تا استایل‌های پیش‌فرض wp-admin (دکمه‌ها، منو و…) به‌هم نریزد.
-		wp_enqueue_script( 'wapm-tailwind-cdn', 'https://cdn.tailwindcss.com/3.4.16', [], null, false );
-		wp_enqueue_script( 'wapm-tailwind-config', WAPM_URL . 'assets/js/tailwind-config.js', [ 'wapm-tailwind-cdn' ], WAPM_VERSION, false );
 
 		$brand_taxonomy = class_exists( 'WAPM_List' ) ? WAPM_List::get_brand_taxonomy() : '';
 		$category_terms = get_terms( [ 'taxonomy' => 'product_cat', 'hide_empty' => false ] );

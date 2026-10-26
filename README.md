@@ -97,10 +97,21 @@ node --check woocommerce-advanced-price-manager/assets/js/admin.js
 python3 tools/make-pot.py
 python3 tools/build-zip.py
 
+# CSS تیلویند (فقط اگر کلاس‌ها را عوض کردید)
+npm ci
+npm run build:css
+
 # بررسی تازه بودن (همان چیزی که CI اجرا می‌کند)
 python3 tools/make-pot.py --check
+npm run check:css
 python3 tools/build-zip.py --check
 ```
+
+**درباره‌ی Tailwind:** استایل‌ها یک‌بار و در این مخزن ساخته می‌شوند
+(`assets/css/tailwind.css`) و افزونه همان فایل را لود می‌کند؛ Play CDN در
+پروداکشن استفاده نمی‌شود. اگر کلاس تیلویندی در `class-admin.php` یا
+`admin.js` اضافه/حذف کردید، `npm run build:css` را اجرا کنید — CI با
+`npm run check:css` تفاوت را می‌گیرد.
 
 CI (`.github/workflows/ci.yml`) روی هر push و PR: لینت PHP روی ۸.۰ و ۸.۳، تست واحد، بررسی سینتکس JS، و بررسی تازه‌بودن POT و zip.
 

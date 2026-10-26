@@ -1,0 +1,13 @@
+{
+  "name": "price-manager-tools",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ابزارهای توسعه‌ی افزونه: بیلد Tailwind برای صفحه‌ی پیشخوان",
+  "scripts": {
+    "build:css": "tailwindcss -c tools/tailwind/tailwind.config.js -i tools/tailwind/input.css -o woocommerce-advanced-price-manager/assets/css/tailwind.css --minify",
+    "check:css": "tailwindcss -c tools/tailwind/tailwind.config.js -i tools/tailwind/input.css -o /tmp/wapm-tailwind.css --minify && diff -q /tmp/wapm-tailwind.css woocommerce-advanced-price-manager/assets/css/tailwind.css"
+  },
+  "devDependencies": {
+    "tailwindcss": "3.4.16"
+  }
+}
