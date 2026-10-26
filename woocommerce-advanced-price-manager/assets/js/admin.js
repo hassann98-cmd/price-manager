@@ -31,8 +31,18 @@
 		return Number(n).toLocaleString('fa-IR');
 	}
 
+	/**
+	 * escape کامل برای متن *و* مقدار attribute.
+	 * نسخه‌ی قبلی از jQuery(.text().html()) استفاده می‌کرد که «"» و «'» را
+	 * escape نمی‌کند؛ نتیجه این بود که نام دسته/برند حاوی " مارک‌آپ را می‌شکست.
+	 */
 	function esc(s) {
-		return $('<span>').text(s == null ? '' : String(s)).html();
+		return String(s == null ? '' : s)
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;')
+			.replace(/"/g, '&quot;')
+			.replace(/'/g, '&#39;');
 	}
 
 	/* ---------------- تب‌ها ---------------- */
@@ -98,11 +108,19 @@
 		});
 	}
 
-	function loadTerms(taxonomy, $select) {
-		if (!taxonomy) { return; }
-		ajax('get_terms', { taxonomy: taxonomy }).done(function (res) {
+	/**
+	 * بارگذاری termهای یک taxonomy در select.
+	 * @param {string} taxonomy
+	 * @param {jQuery} $select
+	 * @param {Array=} selected شناسه‌های انتخاب‌شده (وقتی می‌خواهیم انتخاب قبلی حفظ شود)
+	 */
+	function loadTerms(taxonomy, $select, selected) {
+		$select.empty();
+		if (!taxonomy) { $select.trigger('change'); return $.Deferred().resolve().promise(); }
+
+		return ajax('get_terms', { taxonomy: taxonomy }).done(function (res) {
 			if (!res.success) { return; }
-			var current = $select.val() || [];
+			var current = (selected || $select.val() || []).map(String);
 			$select.empty();
 			res.data.forEach(function (t) {
 				$select.append(new Option(t.text, t.id, false, current.indexOf(String(t.id)) !== -1));
@@ -149,15 +167,44 @@
 		};
 	}
 
+	/**
+	 * پر کردن فرم با فیلترهای ذخیره‌شده.
+	 *
+	 * نسخه‌ی قبلی product_ids / brand_ids / attribute_ids را برنمی‌گرداند؛ نتیجه این بود
+	 * که ویرایش یک قانون محدود، آن را به «همه‌ی محصولات» تبدیل می‌کرد (چون readFilters
+	 * آرایه‌ی خالی می‌خواند و ذخیره می‌شد).
+	 */
 	function writeFilters(prefix, f) {
 		var $box = $('.wapm-target-fields[data-prefix="' + prefix + '"]');
+		f = f || {};
+
 		$box.find('.wapm-scope').val(f.scope || 'all').trigger('change');
+
+		// محصولات انتخابی: انتخاب‌های قبلی پاک شوند تا با قانون بعدی قاطی نشوند.
+		var $products = $box.find('.wapm-product-select');
+		$products.val(null).trigger('change');
+		if ((f.product_ids || []).length) {
+			ajax('get_products', { ids: f.product_ids }).done(function (res) {
+				if (!res.success || !res.data.length) { return; }
+				$products.empty();
+				res.data.forEach(function (p) { $products.append(new Option(p.text, p.id, false, true)); });
+				$products.trigger('change');
+			});
+		}
+
 		$box.find('.wapm-category-select').val((f.category_ids || []).map(String)).trigger('change');
-		$box.find('.wapm-brand-tax').val(f.brand_tax || '');
-		$box.find('.wapm-attribute-tax').val(f.attribute_tax || '').trigger('change');
+
+		// برند: val() بدون trigger تا هندلر change لیست را دوباره (بدون انتخاب) نسازد.
+		var $brandTax = $box.find('.wapm-brand-tax');
+		if (f.brand_tax) { $brandTax.val(f.brand_tax); }
+		loadTerms($brandTax.val(), $box.find('.wapm-brand-select'), f.brand_ids || []);
+
+		var $attrTax = $box.find('.wapm-attribute-tax');
+		$attrTax.val(f.attribute_tax || '');
+		loadTerms($attrTax.val(), $box.find('.wapm-attribute-select'), f.attribute_ids || []);
+
 		$box.find('.wapm-stock-filter').val(f.stock_filter || 'none');
 		$box.find('.wapm-stock-value').val(f.stock_value || 0);
-		if (f.brand_tax) { loadTerms(f.brand_tax, $box.find('.wapm-brand-select')); }
 	}
 
 	function writeSettings(prefix, s) {
@@ -463,7 +510,8 @@
 			priority: $('#wapm-rule-priority').val(),
 			start: $('#wapm-rule-start').val(),
 			end: $('#wapm-rule-end').val(),
-			enabled: true,
+			// قبلاً همیشه true بود؛ نتیجه: ویرایش یک قانون غیرفعال، آن را بی‌صدا فعال می‌کرد.
+			enabled: $('#wapm-rule-enabled').is(':checked'),
 			filters: readFilters('rule'),
 			settings: readSettings('rule')
 		};
@@ -473,6 +521,7 @@
 				renderRules();
 				$('#wapm-rule-id').val('');
 				$('#wapm-rule-title').val('');
+				$('#wapm-rule-enabled').prop('checked', true);
 				window.alert(WAPM.i18n.done);
 			} else {
 				window.alert((res.data && res.data.message) || WAPM.i18n.error);
@@ -505,6 +554,7 @@
 		$('#wapm-rule-priority').val(rule.priority);
 		$('#wapm-rule-start').val(rule.start || '');
 		$('#wapm-rule-end').val(rule.end || '');
+		$('#wapm-rule-enabled').prop('checked', !!rule.enabled);
 		writeFilters('rule', rule.filters || {});
 		writeSettings('rule', rule.settings || {});
 		$('html, body').animate({ scrollTop: $('#wapm-tab-rules').offset().top - 60 }, 300);
@@ -949,11 +999,19 @@
 		});
 	}
 
+	function highlightPendingRows() {
+		$('#wapm-list-tbody tr').css('background', '');
+		Object.keys(listState.pending).forEach(function (id) {
+			$('#wapm-list-tbody tr[data-row-id="' + id + '"]').css('background', '#fffbeb');
+		});
+	}
+
 	function updatePendingUi() {
 		var count = 0;
 		Object.keys(listState.pending).forEach(function (id) { count += Object.keys(listState.pending[id]).length; });
 		$('#wapm-list-pending-count').text(count);
 		$('#wapm-list-save-pending').toggle(count > 0);
+		highlightPendingRows();
 	}
 
 	function applyEdit(id, field, value) {
@@ -1015,20 +1073,54 @@
 			});
 		});
 
-		function next() {
-			if (!tasks.length) {
-				listState.pending = {};
-				updatePendingUi();
-				$('#wapm-list-tbody tr').css('background', '');
-				$btn.prop('disabled', false);
+		var failed = [];
+
+		// فقط موردِ موفق از صف حذف می‌شود؛ موارد ناموفق برای تلاش دوباره باقی می‌مانند.
+		// (نسخه‌ی قبلی در خطا هم pending را کامل خالی می‌کرد و «انجام شد» نشان می‌داد،
+		// یعنی تغییراتی که هرگز ذخیره نشده بودند بی‌صدا از دست می‌رفتند.)
+		function dropFromQueue(id, field) {
+			if (!listState.pending[id]) { return; }
+			delete listState.pending[id][field];
+			if (!Object.keys(listState.pending[id]).length) { delete listState.pending[id]; }
+		}
+
+		function collectFailure(t, message) {
+			var row = findRowById(t.id);
+			failed.push({ name: row ? row.name : ('#' + t.id), message: message || WAPM.i18n.error });
+		}
+
+		function finish() {
+			updatePendingUi();
+			$btn.prop('disabled', false);
+			rerenderCurrent(); // ردیف‌های ذخیره‌نشده دوباره زرد می‌شوند
+
+			if (!failed.length) {
 				window.alert(WAPM.i18n.done);
 				return;
 			}
+
+			var lines = failed.slice(0, 8).map(function (f) { return '• ' + f.name + ' — ' + f.message; });
+			if (failed.length > 8) { lines.push('…'); }
+			window.alert(failed.length + ' مورد ذخیره نشد و در صف باقی ماند:\n' + lines.join('\n'));
+		}
+
+		function next() {
+			if (!tasks.length) { finish(); return; }
 			var t = tasks.shift();
-			ajax('update_field', { product_id: t.id, field: t.field, value: t.value }).always(function (res) {
-				if (res && res.success) { updateRowInDom(res.data.row); }
-				next();
-			});
+			ajax('update_field', { product_id: t.id, field: t.field, value: t.value })
+				.done(function (res) {
+					if (res && res.success) {
+						dropFromQueue(t.id, t.field);
+						updateRowInDom(res.data.row);
+					} else {
+						collectFailure(t, res && res.data && res.data.message);
+					}
+					next();
+				})
+				.fail(function () {
+					collectFailure(t);
+					next();
+				});
 		}
 		next();
 	});

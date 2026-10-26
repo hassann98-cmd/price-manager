@@ -352,6 +352,13 @@ class WAPM_Admin {
 							<p class="description"><?php esc_html_e( 'عدد کمتر = اجرای زودتر', 'wapm' ); ?></p></td>
 						</tr>
 						<tr>
+							<th><?php esc_html_e( 'وضعیت', 'wapm' ); ?></th>
+							<td>
+								<label><input type="checkbox" id="wapm-rule-enabled" checked> <?php esc_html_e( 'این قانون فعال باشد', 'wapm' ); ?></label>
+								<p class="description"><?php esc_html_e( 'قانون غیرفعال در لیست می‌ماند ولی قابل اجرا نیست.', 'wapm' ); ?></p>
+							</td>
+						</tr>
+						<tr>
 							<th><?php esc_html_e( 'بازه اعتبار (اختیاری)', 'wapm' ); ?></th>
 							<td>
 								<?php esc_html_e( 'از:', 'wapm' ); ?> <input type="datetime-local" id="wapm-rule-start">

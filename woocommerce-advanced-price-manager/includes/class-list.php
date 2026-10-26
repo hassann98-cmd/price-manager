@@ -457,16 +457,39 @@ class WAPM_List {
 
 	/**
 	 * حذف (انتقال به زباله‌دان — قابل بازگشت) یک یا چند محصول/واریشن.
+	 *
+	 * برای واریشن‌ها، والد هم sync می‌شود: wp_trash_post به‌تنهایی قیمت‌های
+	 * min/max والد را به‌روز نمی‌کند و محصول متغیر با قیمت/محدوده‌ی کهنه می‌ماند.
 	 */
 	public static function trash_products( array $ids ): int {
-		$count = 0;
+		$count   = 0;
+		$parents = [];
+
 		foreach ( $ids as $id ) {
 			$id = absint( $id );
-			if ( $id && wp_trash_post( $id ) ) {
-				self::purge_caches( $id );
-				$count++;
+			if ( ! $id ) {
+				continue;
 			}
+
+			$product   = wc_get_product( $id );
+			$parent_id = ( $product && $product->is_type( 'variation' ) ) ? (int) $product->get_parent_id() : 0;
+
+			if ( ! wp_trash_post( $id ) ) {
+				continue;
+			}
+
+			$count++;
+			if ( $parent_id ) {
+				$parents[ $parent_id ] = true;
+			}
+			self::purge_caches( $id, $parent_id );
 		}
+
+		foreach ( array_keys( $parents ) as $parent_id ) {
+			WC_Product_Variable::sync( $parent_id );
+			self::purge_caches( $parent_id );
+		}
+
 		if ( function_exists( 'wc_delete_product_transients' ) ) {
 			wc_delete_product_transients();
 		}

@@ -280,6 +280,31 @@ class WAPM_Product_Handler {
 	}
 
 	/**
+	 * برچسب چند محصول با شناسه (حفظ ترتیب ورودی) — برای بازگرداندن انتخاب‌ها در فرم.
+	 *
+	 * @param int[] $ids
+	 * @return array<int, array{id:int, text:string}>
+	 */
+	public static function get_products_by_ids( array $ids, int $limit = 200 ): array {
+		$ids = array_slice( array_values( array_unique( array_filter( array_map( 'absint', $ids ) ) ) ), 0, $limit );
+
+		$out = [];
+		foreach ( $ids as $id ) {
+			$product = wc_get_product( $id );
+			if ( ! $product ) {
+				continue;
+			}
+			$sku   = $product->get_sku();
+			$out[] = [
+				'id'   => $id,
+				'text' => $product->get_name() . ( $sku ? " (SKU: {$sku})" : '' ),
+			];
+		}
+
+		return $out;
+	}
+
+	/**
 	 * لیست termهای یک taxonomy (دسته، برند، ویژگی).
 	 */
 	public static function get_terms_list( string $taxonomy ): array {

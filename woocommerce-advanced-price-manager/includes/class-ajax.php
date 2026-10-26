@@ -14,6 +14,7 @@ class WAPM_Ajax {
 	public function __construct() {
 		$actions = [
 			'search_products',
+			'get_products', // برچسب محصولات ذخیره‌شده در یک قانون (برای بازگرداندن انتخاب‌ها در فرم)
 			'get_terms',
 			'list_products',
 			'update_field',
@@ -79,6 +80,15 @@ class WAPM_Ajax {
 			wp_send_json_success( [] );
 		}
 		wp_send_json_success( WAPM_Product_Handler::search_products( $term ) );
+	}
+
+	/**
+	 * برچسب چند محصول با شناسه — برای بازگرداندن «محصولات انتخابی» در فرم ویرایش قانون.
+	 */
+	public function get_products(): void {
+		$this->guard();
+		$ids = array_map( 'absint', (array) ( $_POST['ids'] ?? [] ) );
+		wp_send_json_success( WAPM_Product_Handler::get_products_by_ids( $ids ) );
 	}
 
 	public function get_terms(): void {
