@@ -1908,6 +1908,112 @@ test( 'اسکریپت‌های ادمین: نام فایل‌ها با فایل�
 	}
 } );
 
+test( 'ترب: شکاف داده — محصولات بدون قیمت رقیب یا کهنه', function () {
+	$missing = WAPM_Torob::gap_meta_query( 'missing', '2026-01-01 00:00:00' );
+
+	eq( 'AND', $missing['relation'], 'شرط کلی AND' );
+	eq( WAPM_Torob::META_PRK, $missing[0]['key'], 'فقط محصولات وصل‌شده به ترب' );
+	eq( 'EXISTS', $missing[0]['compare'], 'کلید prk باید وجود داشته باشد' );
+	eq( 'OR', $missing[1]['relation'], 'قیمت رقیب: نبودِ کلید یا مقدار خالی' );
+	eq( 'NOT EXISTS', $missing[1][0]['compare'], 'بدون قیمت رقیب' );
+	eq( '', $missing[1][1]['value'], 'قیمت خالی' );
+	ok( false === strpos( wp_json_encode( $missing ), '2026-01-01' ), 'در حالت missing مرز کهنگی اثری ندارد' );
+
+	$stale = WAPM_Torob::gap_meta_query( 'stale', '2026-01-01 00:00:00' );
+	ok( false !== strpos( wp_json_encode( $stale ), '2026-01-01 00:00:00' ), 'مرز کهنگی در کوئری هست' );
+	eq( 'AND', $stale[1]['relation'], 'کهنه = قیمت دارد ولی بررسی قدیمی است' );
+
+	$all = WAPM_Torob::gap_meta_query( 'all', '2026-01-01 00:00:00' );
+	eq( 'OR', $all[1]['relation'], 'حالت all = یکی از دو شرط' );
+	ok( isset( $all[1][0]['relation'], $all[1][1]['relation'] ), 'هر دو شرط داخل OR هستند' );
+} );
+
+test( 'ترب: کلید کش شمارش شکاف زمان‌محور نیست (کش واقعاً هیت می‌خورد)', function () {
+	stub_reset();
+	$GLOBALS['wapm_options']['wapm_torob_settings'] = [ 'fresh_days' => 3 ];
+
+	$key = WAPM_Torob::gap_cache_key( 'all' );
+
+	// رگرسیون: نسخه‌ی اول کلید را از `gap_cutoff()` (ثانیه‌محور) می‌ساخت، پس
+	// هر ثانیه یک کش تازه با TTL پنج‌دقیقه‌ای ساخته می‌شد و کش هیچ‌وقت هیت
+	// نمی‌خورد — یعنی همان کوئری سنگین دوباره اجرا می‌شد.
+	ok( (bool) preg_match( '/^wapm_torob_gap_\d+_all_3_\d{8}$/', $key ), 'کلید فقط نسخه/حالت/روز/عمر داده دارد', $key );
+	eq( $key, WAPM_Torob::gap_cache_key( 'all' ), 'در فراخوانی دوباره همان کلید' );
+	ok( WAPM_Torob::gap_cache_key( 'missing' ) !== $key, 'حالت‌ها جدا کش می‌شوند' );
+
+	// باطل‌سازی نسخه را جلو می‌برد ⇒ کلید تازه.
+	WAPM_Torob::flush_gap_cache();
+	ok( WAPM_Torob::gap_cache_key( 'all' ) !== $key, 'باطل‌سازی کلید را عوض می‌کند' );
+} );
+
+test( 'ترب: مرز کهنگی از «حداکثر عمر داده» ساخته می‌شود', function () {
+	stub_reset();
+	$GLOBALS['wapm_options']['wapm_torob_settings'] = [ 'fresh_days' => 5 ];
+
+	eq( '2026-05-05 00:00:00', WAPM_Torob::gap_cutoff( '2026-05-10 00:00:00' ), 'پنج روز عقب' );
+
+	$GLOBALS['wapm_options']['wapm_torob_settings'] = [ 'fresh_days' => 0 ];
+	eq( '2026-05-09 00:00:00', WAPM_Torob::gap_cutoff( '2026-05-10 00:00:00' ), 'صفر ⇒ حداقل یک روز (نه امروز)' );
+} );
+
+test( 'ترب: تنظیمات به‌روزرسانی خودکار — پیش‌فرض خاموش و سقف امن', function () {
+	stub_reset();
+	$defaults = WAPM_Torob::settings();
+	eq( false, $defaults['auto_refresh'], 'پیش‌فرض خاموش' );
+	eq( 20, $defaults['auto_refresh_limit'], 'پیش‌فرض ۲۰ محصول' );
+
+	$on = WAPM_Torob::save_settings( [ 'auto_refresh' => '1', 'auto_refresh_limit' => 500 ] );
+	eq( true, $on['auto_refresh'], 'روشن شد' );
+	eq( WAPM_Torob::AUTO_MAX_PER_RUN, $on['auto_refresh_limit'], 'سقف بالا بریده می‌شود' );
+
+	$off = WAPM_Torob::save_settings( [ 'auto_refresh' => 0, 'auto_refresh_limit' => 0 ] );
+	eq( false, $off['auto_refresh'], 'خاموش شد' );
+	eq( 1, $off['auto_refresh_limit'], 'صفر به یک می‌رسد' );
+
+	$state = WAPM_Torob::auto_state();
+	eq( false, $state['enabled'], 'وضعیت گزارش‌شده' );
+	ok( array_key_exists( 'last', $state ), 'گزارش آخرین اجرا هم هست' );
+} );
+
+test( 'ترب: زمان‌بندی خودکار با تنظیمات هم‌گام است (روشن/خاموش)', function () {
+	stub_reset();
+
+	// خاموش ⇒ هیچ زمان‌بندی‌ای ساخته نمی‌شود.
+	WAPM_Torob::schedule_auto();
+	eq( 0, WAPM_Queue::next_run_for( WAPM_Torob::HOOK_AUTO ), 'خاموش: زمان‌بندی ندارد' );
+
+	// روشن ⇒ یک رویداد روزانه.
+	WAPM_Torob::save_settings( [ 'auto_refresh' => 1 ] );
+	ok( WAPM_Queue::next_run_for( WAPM_Torob::HOOK_AUTO ) > 0, 'روشن: زمان‌بندی ساخته شد' );
+	eq( 'daily', $GLOBALS['wapm_cron'][ WAPM_Torob::HOOK_AUTO ]->recurrence, 'بازه روزانه' );
+
+	// فراخوانی دوباره، رویداد دوم نمی‌سازد.
+	$before = WAPM_Queue::next_run_for( WAPM_Torob::HOOK_AUTO );
+	WAPM_Torob::schedule_auto();
+	eq( $before, WAPM_Queue::next_run_for( WAPM_Torob::HOOK_AUTO ), 'idempotent' );
+
+	// خاموش‌کردن، زمان‌بندی را پاک می‌کند.
+	WAPM_Torob::save_settings( [ 'auto_refresh' => 0 ] );
+	eq( 0, WAPM_Queue::next_run_for( WAPM_Torob::HOOK_AUTO ), 'خاموش: پاک شد' );
+} );
+
+test( 'ترب: کار خودکار وقتی خاموش است هیچ درخواستی نمی‌فرستد', function () {
+	stub_reset();
+	$GLOBALS['wapm_options']['wapm_torob_settings'] = [ 'auto_refresh' => 0 ];
+
+	eq( 0, WAPM_Torob::run_auto_refresh(), 'خاموش ⇒ بدون کار' );
+} );
+
+test( 'ترب: اکشن‌های خودکارسازی در Ajax ثبت شده‌اند', function () {
+	$source = (string) file_get_contents( __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-ajax.php' );
+
+	ok( false !== strpos( $source, "'torob_gap'" ), 'اکشن فهرست شکاف' );
+	ok( false !== strpos( $source, "'torob_refresh_batch'" ), 'اکشن تازه‌سازی دسته‌ای' );
+	ok( false !== strpos( $source, 'wapm_torob_missing_list' ), 'اکشن فهرست ناقص‌ها برای بوکمارکلت' );
+	ok( false !== strpos( $source, 'hash_equals( $saved_token, $token )' ), 'احراز هویت توکنی' );
+	ok( false !== strpos( $source, 'array_slice( $ids, 0, 10 )' ), 'سقف دسته‌ی تازه‌سازی' );
+} );
+
 test( 'محصولات هدف: انتخاب ناقص روی همه‌ی محصولات اعمال نمی‌شود', function () {
 	$args = function ( array $filters ) {
 		$method = new ReflectionMethod( 'WAPM_Product_Handler', 'build_query_args' );

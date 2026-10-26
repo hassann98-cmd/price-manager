@@ -125,6 +125,25 @@ class WAPM_Bookmarklet {
 		});
 	}
 
+	/**
+	 * تماس با سایت خودمان (اکشن‌های مجاز با توکن) — برای گرفتن فهرست کارها.
+	 * بدون credentials: احراز هویت با توکن است، نه کوکی ادمین.
+	 */
+	function serverCall(action, extra){
+		var body = new URLSearchParams();
+		body.set('action', 'wapm_' + action);
+		body.set('token', TOKEN);
+		if (extra) {
+			Object.keys(extra).forEach(function(k){ body.set(k, extra[k]); });
+		}
+
+		return fetch(ENDPOINT, { method: 'POST', body: body, credentials: 'omit' })
+			.then(function(r){
+				if (!r.ok) { throw new Error('HTTP ' + r.status); }
+				return r.json();
+			});
+	}
+
 	function sendBatch(items, meta){
 		var body = new URLSearchParams();
 		body.set('action', 'wapm_torob_ingest');
@@ -211,13 +230,17 @@ class WAPM_Bookmarklet {
 		var info = el('div', 'font-size:12px;color:#c7c7c7', 'شناسه فروشگاه: ' + state.shopId);
 		box.appendChild(info);
 
-		var full = el('button', 'margin-top:12px;width:100%;background:#7f54b3;color:#fff;border:0;border-radius:10px;padding:9px 12px;font-weight:700;cursor:pointer;font-family:inherit', 'کامل: کاتالوگ + قیمت رقبا');
+		var missing = el('button', 'margin-top:12px;width:100%;background:#0f766e;color:#fff;border:0;border-radius:10px;padding:9px 12px;font-weight:700;cursor:pointer;font-family:inherit', 'فقط محصولات بدون قیمت رقیب (سریع‌ترین)');
+		missing.onclick = function(){ startMissing(); };
+
+		var full = el('button', 'margin-top:8px;width:100%;background:#7f54b3;color:#fff;border:0;border-radius:10px;padding:9px 12px;font-weight:700;cursor:pointer;font-family:inherit', 'کامل: کل کاتالوگ + قیمت رقبا');
 		full.onclick = function(){ start('full'); };
 
 		var catalog = el('button', 'margin-top:8px;width:100%;background:#2f2f2f;color:#fff;border:1px solid #4a4a4a;border-radius:10px;padding:9px 12px;font-weight:700;cursor:pointer;font-family:inherit', 'سریع: فقط کاتالوگ و قیمت خودمان');
 		catalog.onclick = function(){ start('catalog'); };
 
-		var hint = el('div', 'margin-top:8px;font-size:11px;color:#9a9a9a', 'حالت کامل برای هر محصول یک درخواست به ترب می‌فرستد (کندتر، ارزان‌ترین رقیب را هم می‌آورد).');
+		var hint = el('div', 'margin-top:8px;font-size:11px;color:#9a9a9a', 'حالت اول فقط محصولاتی را می‌گیرد که هنوز قیمت رقیب ندارند یا داده‌شان کهنه است — بعد از اولین اجرا، همین دکمه سریع‌ترین راه است. «کامل» کل کاتالوگ را از نو می‌خواند.');
+		box.appendChild(missing);
 		box.appendChild(full);
 		box.appendChild(catalog);
 		box.appendChild(hint);
@@ -400,6 +423,113 @@ class WAPM_Bookmarklet {
 			await delay(jitter(1200));
 		}
 
+	}
+
+	/**
+	 * حالت «فقط محصولات بدون قیمت رقیب».
+	 *
+	 * چرا این حالت مهم است: اجرای دومِ «کامل» روی فروشگاهی با ۲۰۰۰ محصول یعنی
+	 * ۲۰۰۰ درخواست بی‌مورد، در حالی که شاید فقط ۵۰ محصول ناقص باشند. این‌جا
+	 * فهرست ناقص‌ها از سایت گرفته می‌شود و فقط همان‌ها واکشی می‌شوند.
+	 *
+	 * «ادامه» لازم نیست: هر محصولی که موفق گرفته شود دیگر ناقص نیست، پس اجرای
+	 * بعدی خودبه‌خود بقیه را برمی‌دارد (حتی بعد از بلاک یا بستن تب).
+	 */
+	async function startMissing(){
+		if (ui && ui.box && ui.box.parentNode) { ui.box.parentNode.removeChild(ui.box); }
+		ui = null;
+		buildProgressUi();
+
+		state.mode = 'full';
+		state.run  = 'miss' + Date.now() + Math.floor(Math.random() * 1000);
+		state.stopped = false;
+		state.discovered = 0;
+		state.checked = 0;
+		state.unmatched = 0;
+
+		progress(3);
+
+		try {
+			say('گرفتن فهرست محصولات بدون قیمت رقیب از سایت…');
+
+			var res = await serverCall('torob_missing_list', { limit: 500 });
+			if (!res || !res.success) {
+				throw new Error((res && res.data && res.data.message) || 'پاسخ نامعتبر از سایت');
+			}
+
+			var list  = (res.data && res.data.items) || [];
+			var total = list.length;
+
+			if (!total) {
+				progress(100);
+				finish('✓ همه‌ی محصولات قیمت رقیب تازه دارند؛ کاری برای انجام نبود.', true);
+				return;
+			}
+
+			state.discovered = total;
+
+			var batch = [];
+
+			for (var i = 0; i < total && !state.stopped; i++) {
+				say('محصول ' + (i + 1) + ' از ' + total + ' — ' + (list[i].name || list[i].prk));
+				progress(3 + Math.round(((i + 1) / total) * 94));
+
+				var sellers = null;
+				try {
+					var sdata = await apiGet('/v4/base-product/sellers/', {
+						prk: list[i].prk,
+						list_type: 'products_info'
+					});
+					sellers = slimSellers(sdata.results);
+				} catch (err) {
+					if (err && err.code === 490) { throw err; }
+					// خطای یک محصول کل کار را نمی‌خواباند و «فروشنده‌ای نبود» هم
+					// تلقی نمی‌شود (sellers = null ⇒ سرور داده‌ی قبلی را نگه می‌دارد).
+					sellers = null;
+				}
+
+				var item = { prk: list[i].prk, name: list[i].name || '' };
+				if (sellers) { item.sellers = sellers; }
+				batch.push(item);
+
+				await delay(jitter(900));
+
+				if (batch.length >= BATCH || i === total - 1) {
+					var out = await sendBatch(batch, {
+						discovered: total,
+						pages: 0,
+						version: VERSION,
+						mode: 'full',
+						run: state.run
+					});
+
+					if (out && out.success) {
+						state.matched   += out.data.matched || 0;
+						state.checked   += out.data.checked || 0;
+						state.unmatched += out.data.unmatched || 0;
+					} else {
+						throw new Error((out && out.data && out.data.message) || 'پاسخ نامعتبر از سایت');
+					}
+
+					batch = [];
+				}
+			}
+
+			if (state.stopped) {
+				finish('متوقف شد. تا اینجا ' + state.checked + ' محصول قیمت رقیب گرفت.\nدوباره همین دکمه را بزنید؛ فقط ناقص‌ها می‌مانند.');
+				return;
+			}
+
+			progress(100);
+			finish('✓ تمام شد — ' + state.checked + ' محصول قیمت رقیب گرفت' +
+				(state.unmatched ? ' و ' + state.unmatched + ' مورد به لیست تطبیق‌نیافته رفت.' : '.'), true);
+		} catch (e) {
+			if (e && e.code === 490) {
+				finish('⚠ ترب درخواست‌ها را محدود کرد (۴۹۰). چند دقیقه صبر کنید و همین دکمه را دوباره بزنید — محصولاتی که گرفته شدند دیگر در فهرست نمی‌آیند.');
+			} else {
+				finish('خطا: ' + (e && e.message ? e.message : e));
+			}
+		}
 	}
 
 	/* ---------- شروع ---------- */

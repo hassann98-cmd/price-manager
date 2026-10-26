@@ -3,7 +3,7 @@
  * Plugin Name:       WooCommerce Advanced Price Manager
  * Plugin URI:        https://jluxe.ir
  * Description:       مدیریت حرفه‌ای تغییرات گروهی قیمت محصولات ووکامرس — درصدی، عددی، قوانین، زمان‌بندی، پیش‌نمایش، تاریخچه و Rollback.
- * Version:           1.1.2
+ * Version:           1.1.3
  * Author:            Hassan
  * Text Domain:       wapm
  * Domain Path:       /languages
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'WAPM_VERSION', '1.1.2' );
+define( 'WAPM_VERSION', '1.1.3' );
 define( 'WAPM_FILE', __FILE__ );
 define( 'WAPM_PATH', plugin_dir_path( __FILE__ ) );
 define( 'WAPM_URL', plugin_dir_url( __FILE__ ) );
@@ -98,12 +98,20 @@ final class WAPM_Plugin {
 		WAPM_Stock::create_table();
 		require_once WAPM_PATH . 'includes/class-queue.php';
 		WAPM_Queue::schedule_hourly();
+
+		// اگر کاربر تازه‌سازی خودکار قیمت رقبا را روشن کرده، زمان‌بندی‌اش دوباره
+		// ساخته شود (غیرفعال/فعال‌سازی افزونه، زمان‌بندی‌ها را پاک می‌کند).
+		require_once WAPM_PATH . 'includes/class-torob.php';
+		WAPM_Torob::schedule_auto();
 	}
 
 	public function deactivate(): void {
 		// تنظیمات، قوانین و تاریخچه حفظ می‌شوند؛ فقط زمان‌بندی پاک می‌شود.
 		require_once WAPM_PATH . 'includes/class-queue.php';
 		WAPM_Queue::unschedule_all();
+
+		require_once WAPM_PATH . 'includes/class-torob.php';
+		WAPM_Queue::unschedule( WAPM_Torob::HOOK_AUTO );
 	}
 }
 

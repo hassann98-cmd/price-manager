@@ -67,6 +67,13 @@ class WAPM_Torob {
 	const META_PRICE_HISTORY = '_wapm_torob_price_history'; // JSON: ۳۰ نقطه‌ی آخر قیمت رقیب
 	const HISTORY_POINTS    = 30;                            // سقف نقطه‌های نگهداری‌شده
 
+	/** هوک تازه‌سازی خودکار روزانه‌ی قیمت رقبا. */
+	const HOOK_AUTO        = 'wapm_torob_auto_refresh';
+	/** آخرین اجرای خودکار (برای نمایش در پنل). */
+	const OPTION_AUTO_LAST = 'wapm_torob_auto_last';
+	/** سقف محصول در هر اجرای خودکار — بیشتر از بودجه‌ی روزانه‌ی API معنا ندارد. */
+	const AUTO_MAX_PER_RUN = 60;
+
 	const MAX_SELLERS_STORED = 12;   // فقط ارزان‌ترین‌ها ذخیره می‌شوند (حجم متا)
 	const MAX_UNMATCHED      = 500;  // سقف لیست تطبیق‌نیافته
 	const SCHEMA_VERSION     = '2.0'; // نسخه‌ی ساختار داده (برای فید/بوکمارکلت)
@@ -87,6 +94,235 @@ class WAPM_Torob {
 		add_action( 'save_post_product', [ __CLASS__, 'flush_index' ], 20, 0 );
 		add_action( 'trashed_post', [ __CLASS__, 'on_post_removed' ], 10, 1 );
 		add_action( 'before_delete_post', [ __CLASS__, 'on_post_removed' ], 10, 1 );
+
+		// تازه‌سازی خودکار روزانه (اگر کاربر روشن کرده باشد).
+		add_action( self::HOOK_AUTO, [ __CLASS__, 'run_auto_refresh' ], 10, 0 );
+	}
+
+	/* ---------- شکاف داده: محصولات بدون قیمت رقیب ---------- */
+
+	/**
+	 * آستانه‌ی «کهنه» به شکل زمان دیواری محلی — همان قالبی که در متا ذخیره می‌شود.
+	 *
+	 * چرا با wp_date و نه gmdate: متای `_wapm_torob_checked_at` با
+	 * `current_time( 'mysql' )` نوشته می‌شود (زمان محلی سایت). مقایسه‌ی آن با
+	 * UTC یعنی چند ساعت خطا — برای آستانه‌ی چندروزه مهم نیست، ولی برای
+	 * سازگاری همان مبنای نوشتن انتخاب شد.
+	 */
+	public static function gap_cutoff( string $now = '' ): string {
+		$settings = self::settings();
+		$days     = max( 1, (int) $settings['fresh_days'] );
+		$base     = '' !== $now ? (int) strtotime( $now ) : time();
+
+		return (string) wp_date( 'Y-m-d H:i:s', $base - $days * DAY_IN_SECONDS );
+	}
+
+	/**
+	 * شرط متای «محصولات نیازمند بررسی قیمت رقیب».
+	 *
+	 * @param string $mode   missing (قیمت رقیب ندارد) | stale (کهنه شده) | all (هر دو)
+	 * @param string $cutoff زمان مرز کهنگی (خالی ⇒ از تنظیمات ساخته می‌شود)
+	 */
+	public static function gap_meta_query( string $mode = 'all', string $cutoff = '' ): array {
+		$missing = [
+			'relation' => 'OR',
+			[ 'key' => self::META_PRICE, 'compare' => 'NOT EXISTS' ],
+			[ 'key' => self::META_PRICE, 'value' => '', 'compare' => '=' ],
+		];
+
+		if ( '' === $cutoff ) {
+			$cutoff = self::gap_cutoff();
+		}
+
+		$stale = [
+			'relation' => 'AND',
+			[ 'key' => self::META_PRICE, 'compare' => 'EXISTS' ],
+			[ 'key' => self::META_PRICE, 'value' => '', 'compare' => '!=' ],
+			[
+				'relation' => 'OR',
+				[ 'key' => self::META_CHECKED, 'compare' => 'NOT EXISTS' ],
+				[ 'key' => self::META_CHECKED, 'value' => $cutoff, 'compare' => '<' ],
+			],
+		];
+
+		if ( 'missing' === $mode ) {
+			$where = $missing;
+		} elseif ( 'stale' === $mode ) {
+			$where = $stale;
+		} else {
+			$where = [ 'relation' => 'OR', $missing, $stale ];
+		}
+
+		return [
+			'relation' => 'AND',
+			// فقط محصولاتی که به ترب وصل‌اند معنا دارند؛ بقیه از «تطبیق‌نیافته‌ها»
+			// مسیر جداگانه دارند.
+			[ 'key' => self::META_PRK, 'compare' => 'EXISTS' ],
+			$where,
+		];
+	}
+
+	/**
+	 * شناسه‌ی محصولات نیازمند بررسی قیمت رقیب (ترتیب ثابت، قدیمی‌ترین شناسه اول).
+	 *
+	 * چرا مرتب‌سازی با `meta_key` انجام نمی‌شود: آن کار یک JOIN داخلی روی متا
+	 * می‌سازد و محصولاتی که *اصلاً* متای «آخرین بررسی» ندارند — یعنی همان‌هایی
+	 * که قیمت رقیب ندارند — از نتیجه حذف می‌شدند؛ دقیقاً برعکس هدف این تابع.
+	 *
+	 * @return int[]
+	 */
+	public static function competitor_gap_ids( string $mode = 'all', int $limit = 200 ): array {
+		$limit = max( 1, $limit );
+
+		$ids = get_posts( [
+			'post_type'        => 'product',
+			'post_status'      => 'publish',
+			'fields'           => 'ids',
+			'posts_per_page'   => $limit,
+			'no_found_rows'    => true,
+			'suppress_filters' => true,
+			'orderby'          => [ 'ID' => 'ASC' ],
+			'meta_query'       => self::gap_meta_query( $mode ), // phpcs:ignore WordPress.DB.SlowDBQuery
+		] );
+
+		return array_values( array_unique( array_map( 'intval', (array) $ids ) ) );
+	}
+
+	/**
+	 * شمارش کل محصولات نیازمند بررسی (بدون سقف) — با کش کوتاه.
+	 *
+	 * چرا کش: این عدد در هر پاسخ آمار (و در هر دسته‌ی به‌روزرسانی گروهی) خوانده
+	 * می‌شود و کوئری `NOT EXISTS` روی جدول متا ارزان نیست. کش با هر تغییر داده
+	 * (ingest/تنظیمات) باطل می‌شود، پس عدد کهنه نمی‌ماند.
+	 */
+	public static function count_competitor_gap( string $mode = 'all' ): int {
+		$key    = self::gap_cache_key( $mode );
+		$cached = get_transient( $key );
+
+		if ( false !== $cached ) {
+			return (int) $cached;
+		}
+
+		$query = new WP_Query( [
+			'post_type'      => 'product',
+			'post_status'    => 'publish',
+			'fields'         => 'ids',
+			'posts_per_page' => 1,
+			'no_found_rows'  => false,
+			'meta_query'     => self::gap_meta_query( $mode ), // phpcs:ignore WordPress.DB.SlowDBQuery
+		] );
+
+		$count = (int) $query->found_posts;
+		set_transient( $key, $count, 5 * MINUTE_IN_SECONDS );
+
+		return $count;
+	}
+
+	/**
+	 * کلید کش شمارش شکاف.
+	 *
+	 * نکته: از `gap_cutoff()` عیناً استفاده نمی‌شود، چون آن زمان‌محور است و
+	 * کلید هر ثانیه عوض می‌شد ⇒ کش هیچ‌وقت هیت نمی‌خورد. این‌جا فقط روز و
+	 * «حداکثر عمر داده» می‌آید (کافی برای پنج دقیقه کش).
+	 */
+	public static function gap_cache_key( string $mode ): string {
+		$version = (int) get_option( 'wapm_torob_gap_ver', 1 );
+		$days    = max( 1, (int) self::settings()['fresh_days'] );
+
+		return 'wapm_torob_gap_' . $version . '_' . $mode . '_' . $days . '_' . wp_date( 'Ymd' );
+	}
+
+	/** باطل‌کردن کش شمارش (بعد از هر تغییری در داده یا تنظیمات). */
+	public static function flush_gap_cache(): void {
+		update_option( 'wapm_torob_gap_ver', (int) get_option( 'wapm_torob_gap_ver', 1 ) + 1, false );
+	}
+
+	/* ---------- تازه‌سازی خودکار ---------- */
+
+	/** وضعیت کار خودکار برای نمایش در پنل. */
+	public static function auto_state(): array {
+		$settings = self::settings();
+		$last     = get_option( self::OPTION_AUTO_LAST, [] );
+
+		return [
+			'enabled'    => (bool) $settings['auto_refresh'],
+			'limit'      => (int) $settings['auto_refresh_limit'],
+			'next'       => class_exists( 'WAPM_Queue' ) ? WAPM_Queue::next_run_for( self::HOOK_AUTO ) : 0,
+			'last'       => is_array( $last ) ? $last : [],
+			'engine'     => class_exists( 'WAPM_Queue' ) ? WAPM_Queue::state()['label'] : '',
+		];
+	}
+
+	/** ساخت/حذف زمان‌بندی روزانه بر اساس تنظیمات (idempotent). */
+	public static function schedule_auto(): void {
+		if ( ! class_exists( 'WAPM_Queue' ) ) {
+			return;
+		}
+
+		$settings = self::settings();
+		if ( empty( $settings['auto_refresh'] ) ) {
+			WAPM_Queue::unschedule( self::HOOK_AUTO );
+			return;
+		}
+
+		// اولین اجرا ۱۰ دقیقه بعد تا با فعال‌سازی افزونه/ذخیره‌ی تنظیمات قاطی نشود.
+		WAPM_Queue::schedule_recurring( self::HOOK_AUTO, DAY_IN_SECONDS, 10 * MINUTE_IN_SECONDS );
+	}
+
+	/**
+	 * اجرای شبانه: فقط محصولاتی که قیمت رقیب ندارند یا کهنه شده‌اند.
+	 *
+	 * سقف عمدی است: مسیر سرور روزی ۶۰ درخواست به ترب می‌زند. اگر همه‌ی
+	 * محصولات را در یک شب بخواهیم، یا بلاک می‌شویم یا بقیه‌ی عملیات‌های دستی
+	 * کاربر بی‌بودجه می‌ماند.
+	 *
+	 * @return int تعداد محصولی که واقعاً تازه شد
+	 */
+	public static function run_auto_refresh(): int {
+		$settings = self::settings();
+
+		if ( empty( $settings['auto_refresh'] ) ) {
+			return 0;
+		}
+		if ( ! class_exists( 'WAPM_Torob_Api' ) || ! self::can_identify_shop() ) {
+			// بدون شناسه‌ی فروشگاه، «ارزان‌ترین رقیب» می‌تواند خودمان باشد.
+			return 0;
+		}
+
+		$limit = max( 1, min( self::AUTO_MAX_PER_RUN, (int) $settings['auto_refresh_limit'] ) );
+		$ids   = self::competitor_gap_ids( 'all', $limit );
+
+		$done    = 0;
+		$failed  = 0;
+		$blocked = false;
+
+		foreach ( $ids as $id ) {
+			$result = self::refresh_product( (int) $id );
+
+			if ( is_wp_error( $result ) ) {
+				if ( 'torob_blocked' === $result->get_error_code() ) {
+					$blocked = true;
+					break;
+				}
+				$failed++;
+				continue;
+			}
+			$done++;
+		}
+
+		update_option(
+			self::OPTION_AUTO_LAST,
+			[
+				'at'      => current_time( 'mysql' ),
+				'tried'   => count( $ids ),
+				'done'    => $done,
+				'failed'  => $failed,
+				'blocked' => $blocked,
+			],
+			false
+		);
+
+		return $done;
 	}
 
 	public static function on_product_saved( $product_id ): void {
@@ -117,6 +353,10 @@ class WAPM_Torob {
 			'exclude_brands'     => [],
 			// زیربرش مخصوص هر دسته: [ ['term_id'=>5,'value'=>3,'mode'=>'percent'], ... ]
 			'category_undercuts' => [],
+			// تازه‌سازی خودکار روزانه‌ی قیمت رقبا (پیش‌فرض: خاموش — درخواست به
+			// سرور می‌فرستد و بدون اجازه‌ی صریح کاربر نباید شروع شود).
+			'auto_refresh'       => false,
+			'auto_refresh_limit' => 20,
 		];
 	}
 
@@ -135,6 +375,8 @@ class WAPM_Torob {
 		}
 
 		$settings['category_undercuts'] = self::sanitize_undercut_rules( $settings['category_undercuts'] );
+		$settings['auto_refresh']       = self::to_bool( $settings['auto_refresh'] );
+		$settings['auto_refresh_limit'] = max( 1, min( self::AUTO_MAX_PER_RUN, (int) $settings['auto_refresh_limit'] ) );
 
 		return $settings;
 	}
@@ -156,6 +398,14 @@ class WAPM_Torob {
 			'category_undercuts' => isset( $raw['category_undercuts'] )
 				? self::sanitize_undercut_rules( $raw['category_undercuts'] )
 				: $current['category_undercuts'],
+			// چک‌باکسِ خاموش ارسال نمی‌شود؛ پس `null` یعنی «خاموش» نه «دست نزن».
+			// برای همین فرم همیشه این کلید را می‌فرستد (0/1).
+			'auto_refresh'       => isset( $raw['auto_refresh'] )
+				? self::to_bool( $raw['auto_refresh'] )
+				: $current['auto_refresh'],
+			'auto_refresh_limit' => isset( $raw['auto_refresh_limit'] )
+				? max( 1, min( self::AUTO_MAX_PER_RUN, absint( $raw['auto_refresh_limit'] ) ) )
+				: $current['auto_refresh_limit'],
 		];
 
 		update_option( self::OPTION_SETTINGS, $next, false );
@@ -163,6 +413,10 @@ class WAPM_Torob {
 		if ( isset( $raw['shop_id'] ) ) {
 			self::save_shop_id( (string) $raw['shop_id'] );
 		}
+
+		// زمان‌بندی خودکار با تنظیمات هم‌گام می‌شود: روشن ⇒ ساخته، خاموش ⇒ پاک.
+		self::schedule_auto();
+		self::flush_gap_cache();
 
 		return self::settings();
 	}
@@ -1331,6 +1585,7 @@ class WAPM_Torob {
 			);
 
 			self::flush_index();
+			self::flush_gap_cache();
 			return $stats;
 		}
 
@@ -1377,6 +1632,7 @@ class WAPM_Torob {
 		);
 
 		self::flush_index();
+		self::flush_gap_cache();
 
 		if ( function_exists( 'wc_delete_product_transients' ) ) {
 			wc_delete_product_transients();

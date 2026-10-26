@@ -201,7 +201,18 @@ const html = `<!doctype html><html lang="fa" dir="rtl"><body>
   <button id="wapm-list-save-pending" style="display:none"></button>
 </div>
 <div class="wapm-tab-content" id="wapm-tab-stock" style="display:none"></div>
-<div class="wapm-tab-content" id="wapm-tab-torob" style="display:none"></div>
+<div class="wapm-tab-content" id="wapm-tab-torob" style="display:none">
+  <input type="checkbox" id="wapm-torob-auto-refresh">
+  <input type="number" id="wapm-torob-auto-limit" value="20">
+  <button type="button" id="wapm-torob-bulk-refresh">به‌روزرسانی گروهی</button>
+  <button type="button" id="wapm-torob-bulk-stop" style="display:none">توقف</button>
+  <span id="wapm-torob-bulk-count"></span>
+  <div id="wapm-torob-bulk-progress" style="display:none"><span></span></div>
+  <div id="wapm-torob-bulk-result"></div>
+  <div id="wapm-torob-gap-banner"></div>
+  <div id="wapm-torob-api-state"></div>
+  <div id="wapm-torob-status-body"></div>
+</div>
 <div class="wapm-tab-content" id="wapm-tab-history" style="display:none">
   <div id="wapm-history-area"></div>
 </div>
@@ -300,6 +311,18 @@ $.post = function (url, data) {
 			regular_price: String((data && data.value) || ''),
 			regular_price_fmt: String((data && data.value) || ''),
 		}) };
+	} else if (action === 'torob_gap') {
+		payload = {
+			mode: 'all', missing: 2, stale: 0, total: 2, ids: [101, 102],
+			auto: { enabled: true, limit: 20 }, api: { blocked: false, used: 1, budget: 60, min_interval: 3 },
+		};
+	} else if (action === 'torob_refresh_batch') {
+		const sent = JSON.parse((data && data.ids) || '[]');
+		payload = {
+			done: sent, failed: [], blocked: false,
+			api: { blocked: false, used: 2, budget: 60, min_interval: 3 },
+			stats: { matched: 2, unmatched: 0, gap: { missing: 0, stale: 0 }, auto: { enabled: true, limit: 20 } },
+		};
 	} else if (action === 'get_terms') {
 		payload = [{ id: 1, text: 'برند الف' }, { id: 2, text: 'برند ب' }];
 	} else if (action === 'count_targets') {
@@ -487,6 +510,29 @@ try {
 	ok($('#wapm-tab-list').css('display') !== 'none', 'تب لیست نمایان شد', $('#wapm-tab-list').attr('style') || '');
 } catch (error) {
 	ok(false, 'کلیک تب‌ها بدون خطا', error.message);
+}
+
+console.log('— به‌روزرسانی گروهی قیمت رقبا (تب ترب)');
+try {
+	window.__wapmCalls.length = 0;
+	$('#wapm-torob-bulk-refresh').trigger('click');
+
+	const gapCall = window.__wapmCalls.find((c) => c.action === 'torob_gap');
+	ok(!!gapCall, 'فهرست محصولات بدون قیمت رقیب گرفته شد');
+	ok($('#wapm-torob-bulk-progress').css('display') !== 'none', 'نوار پیشرفت نمایش داده شد');
+	ok($('#wapm-torob-bulk-stop').css('display') !== 'none', 'دکمه‌ی توقف نمایش داده شد');
+
+	// دسته‌ها با تأخیر ۱٫۲ ثانیه‌ای پشت‌سرهم می‌روند؛ صبر می‌کنیم تا تمام شود.
+	await new Promise((r) => setTimeout(r, 1600));
+
+	const batches = window.__wapmCalls.filter((c) => c.action === 'torob_refresh_batch');
+	ok(batches.length >= 1, 'دسته‌های تازه‌سازی ارسال شد', String(batches.length));
+	const sentIds = batches.length ? JSON.parse(batches[0].data.ids) : [];
+	ok(sentIds.length > 0 && sentIds.every((id) => id === 101 || id === 102), 'شناسه‌های درست فرستاده شد', JSON.stringify(sentIds));
+	ok(/تمام شد/.test(String($('#wapm-torob-bulk-result').text())), 'پیام پایان نمایش داده شد', $('#wapm-torob-bulk-result').text());
+	ok($('#wapm-torob-bulk-refresh').prop('disabled') === false, 'دکمه دوباره فعال شد');
+} catch (error) {
+	ok(false, 'به‌روزرسانی گروهی بدون خطا اجرا شد', error.message);
 }
 
 if (errors.length) {

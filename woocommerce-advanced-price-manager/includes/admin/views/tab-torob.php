@@ -50,6 +50,21 @@ if ( ! defined( 'ABSPATH' ) ) {
 							</td>
 						</tr>
 						<tr>
+							<th><?php esc_html_e( 'به‌روزرسانی خودکار', 'wapm' ); ?></th>
+							<td>
+								<?php $wapm_torob_settings = WAPM_Torob::settings(); ?>
+								<label>
+									<input type="checkbox" id="wapm-torob-auto-refresh" <?php echo $wapm_torob_settings['auto_refresh'] ? 'checked' : ''; ?>>
+									<?php esc_html_e( 'هر شب قیمت رقبا را خودکار تازه کن', 'wapm' ); ?>
+								</label>
+								<input type="number" id="wapm-torob-auto-limit" class="small-text" min="1" max="<?php echo esc_attr( (string) WAPM_Torob::AUTO_MAX_PER_RUN ); ?>" value="<?php echo esc_attr( (string) $wapm_torob_settings['auto_refresh_limit'] ); ?>">
+								<?php esc_html_e( 'محصول در هر اجرا', 'wapm' ); ?>
+								<p class="description">
+									<?php esc_html_e( 'فقط محصولاتی که «قیمت رقیب» ندارند یا داده‌شان از «حداکثر عمر داده» قدیمی‌تر است بررسی می‌شوند، قدیمی‌ترها اول. پیش‌فرض خاموش است چون هر اجرا درخواست به ترب می‌فرستد (سقف سرور: ۶۰ درخواست در روز).', 'wapm' ); ?>
+								</p>
+							</td>
+						</tr>
+						<tr>
 							<th><?php esc_html_e( 'دسته‌های مستثنا', 'wapm' ); ?></th>
 							<td>
 								<?php
@@ -152,12 +167,29 @@ if ( ! defined( 'ABSPATH' ) ) {
 					</p>
 					<div id="wapm-torob-api-state"></div>
 					<div id="wapm-torob-catalog-result"></div>
+
+					<hr style="margin:18px 0">
+
+					<h3 style="margin:0 0 6px"><?php esc_html_e( 'بررسی گروهی قیمت رقبا', 'wapm' ); ?></h3>
+					<p class="description">
+						<?php esc_html_e( 'همگام‌سازی کاتالوگ بالا فقط «قیمتی که ترب از شما نشان می‌دهد» را می‌آورد و هیچ قیمت رقیبی ذخیره نمی‌کند. اگر در ستون تربِ لیست محصولات نوشته «قیمت رقیب ندارد»، همین دکمه آن‌ها را دسته‌دسته از API ترب می‌خواند: هر درخواست تا ۵ محصول، با نوار پیشرفت و دکمه‌ی توقف. برای کاتالوگ بزرگ، بوکمارکلت بخش ۳ سریع‌تر است.', 'wapm' ); ?>
+					</p>
+					<div id="wapm-torob-gap-banner"></div>
+					<p>
+						<button type="button" class="button button-primary" id="wapm-torob-bulk-refresh"><?php esc_html_e( 'به‌روزرسانی گروهی قیمت رقبا', 'wapm' ); ?></button>
+						<button type="button" class="button" id="wapm-torob-bulk-stop" style="display:none"><?php esc_html_e( 'توقف', 'wapm' ); ?></button>
+						<span id="wapm-torob-bulk-count" class="description" style="margin-inline-start:8px"></span>
+					</p>
+					<div id="wapm-torob-bulk-progress" style="display:none;height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden;max-width:520px">
+						<span style="display:block;height:100%;width:0;background:#7f54b3;transition:width .2s"></span>
+					</div>
+					<div id="wapm-torob-bulk-result"></div>
 				</div>
 
 				<div class="wapm-card">
 					<h2><?php esc_html_e( '۳) همگام‌سازی با Bookmarklet', 'wapm' ); ?></h2>
 					<p class="description">
-						<?php esc_html_e( 'این بوکمارکلت با API عمومی ترب (api.torob.com) کار می‌کند و فقط JSON می‌خواند — یعنی دیگر به ظاهر صفحه وابسته نیست. دو حالت دارد: «سریع» فقط کاتالوگ و قیمت خودتان را می‌گیرد؛ «کامل» برای هر محصول یک درخواست می‌فرستد و ارزان‌ترین رقیب را هم می‌آورد. چون از مرورگر خودتان و روی دامنه‌ی ترب اجرا می‌شود، مثل بازدید واقعی دیده می‌شود؛ ولی با بلاک ۴۹۰ فوراً متوقف می‌شود.', 'wapm' ); ?>
+						<?php esc_html_e( 'این بوکمارکلت با API عمومی ترب (api.torob.com) کار می‌کند و فقط JSON می‌خواند — یعنی دیگر به ظاهر صفحه وابسته نیست. سه حالت دارد: «فقط محصولات بدون قیمت رقیب» (سریع‌ترین راه؛ لیست ناقص‌ها را از سایت می‌گیرد و فقط همان‌ها را واکشی می‌کند)، «کامل» (کل کاتالوگ + قیمت رقبا) و «سریع» (فقط کاتالوگ و قیمت خودتان). چون از مرورگر خودتان و روی دامنه‌ی ترب اجرا می‌شود، مثل بازدید واقعی دیده می‌شود؛ ولی با بلاک ۴۹۰ فوراً متوقف می‌شود.', 'wapm' ); ?>
 					</p>
 
 					<ol style="margin-inline-start:20px">

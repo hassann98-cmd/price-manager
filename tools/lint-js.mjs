@@ -18,6 +18,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import vm from 'vm';
 import { fileURLToPath } from 'url';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -72,6 +73,30 @@ for (const name of files) {
 	const close = (source.match(/\}/g) ?? []).length;
 	if (open !== close) {
 		console.warn(`⚠ ${name}: آکولادها متوازن نیستند (${open} باز، ${close} بسته) — با node --check بررسی کنید.`);
+	}
+}
+
+/* -------------------------------------------------------------------------
+ * بوکمارکلت: ~۴۰۰ خط جاوااسکریپت داخل یک nowdoc در class-bookmarklet.php است و
+ * ابزار بالا آن را نمی‌بیند. یک غلط تایپی در آن، فقط وقتی در مرورگر کاربر روی
+ * torob.com اجرا شود معلوم می‌شود — پس همان‌جا کامپایل می‌شود.
+ * ---------------------------------------------------------------------- */
+const bookmarkletFile = path.join(root, 'woocommerce-advanced-price-manager', 'includes', 'class-bookmarklet.php');
+if (fs.existsSync(bookmarkletFile)) {
+	const php = fs.readFileSync(bookmarkletFile, 'utf8');
+	const match = php.match(/\$js = <<<'JS'\n([\s\S]*?)\nJS;/);
+
+	if (!match) {
+		problems++;
+		console.error('❌ class-bookmarklet.php: بلوک جاوااسکریپت (nowdoc JS) پیدا نشد.');
+	} else {
+		try {
+			// فقط کامپایل، بدون اجرا (نه fetch، نه DOM لازم است).
+			new vm.Script(match[1], { filename: 'bookmarklet.js' });
+		} catch (error) {
+			problems++;
+			console.error('❌ class-bookmarklet.php: جاوااسکریپت بوکمارکلت کامپایل نمی‌شود — ' + error.message);
+		}
 	}
 }
 

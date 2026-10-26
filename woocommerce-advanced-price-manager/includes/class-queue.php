@@ -53,15 +53,71 @@ class WAPM_Queue {
 			return false;
 		}
 
-		if ( self::uses_action_scheduler() ) {
-			// اولین اجرا یک دقیقه بعد، بعدی‌ها هر ساعت.
-			as_schedule_recurring_action( time() + 60, HOUR_IN_SECONDS, self::HOOK, [], self::GROUP );
-		} else {
-			wp_schedule_event( time() + 60, 'hourly', self::HOOK );
-		}
+		// اولین اجرا یک دقیقه بعد، بعدی‌ها هر ساعت.
+		self::schedule_recurring( self::HOOK, HOUR_IN_SECONDS, 60 );
 
 		self::remember_engine();
 		return true;
+	}
+
+	/**
+	 * زمان‌بندی تکرارشونده‌ی یک هوک دلخواه (idempotent).
+	 *
+	 * چرا جدا شد: افزونه به‌جز «اجرای قوانین/زمان‌بندی‌ها» یک کار دوم هم دارد
+	 * (تازه‌سازی خودکار قیمت رقبای ترب). منطق Action Scheduler/فالبک نباید دو
+	 * بار نوشته شود، وگرنه یک مسیر با تغییر کتابخانه بی‌صدا می‌شکند.
+	 *
+	 * @param string $hook      نام هوک
+	 * @param int    $interval  فاصله به ثانیه
+	 * @param int    $delay     فاصله‌ی اولین اجرا از حالا
+	 * @return bool آیا در این فراخوانی ساخته شد؟
+	 */
+	public static function schedule_recurring( string $hook, int $interval, int $delay = 60 ): bool {
+		if ( self::next_run_for( $hook ) > 0 ) {
+			return false;
+		}
+
+		$interval = max( 60, $interval );
+		$delay    = max( 0, $delay );
+		$next     = time() + $delay;
+
+		if ( self::uses_action_scheduler() ) {
+			as_schedule_recurring_action( $next, $interval, $hook, [], self::GROUP );
+		} else {
+			// wp-cron فقط بازه‌های نام‌دار می‌شناسد؛ نزدیک‌ترین بازه انتخاب می‌شود.
+			$recurrence = 'hourly';
+			if ( $interval >= DAY_IN_SECONDS ) {
+				$recurrence = 'daily';
+			} elseif ( $interval >= 12 * HOUR_IN_SECONDS ) {
+				$recurrence = 'twicedaily';
+			}
+			wp_schedule_event( $next, $recurrence, $hook );
+		}
+
+		return true;
+	}
+
+	/** زمان اجرای بعدی یک هوک دلخواه (0 = چیزی زمان‌بندی نشده). */
+	public static function next_run_for( string $hook ): int {
+		if ( self::uses_action_scheduler() ) {
+			$next = function_exists( 'as_next_scheduled_action' )
+				? as_next_scheduled_action( $hook, [], self::GROUP )
+				: false;
+			if ( is_numeric( $next ) && (int) $next > 0 ) {
+				return (int) $next;
+			}
+		}
+
+		$next = wp_next_scheduled( $hook );
+		return $next ? (int) $next : 0;
+	}
+
+	/** حذف زمان‌بندی یک هوک دلخواه. */
+	public static function unschedule( string $hook ): void {
+		if ( function_exists( 'as_unschedule_all_actions' ) ) {
+			as_unschedule_all_actions( $hook, [], self::GROUP );
+		}
+		wp_clear_scheduled_hook( $hook );
 	}
 
 	/**
@@ -72,11 +128,7 @@ class WAPM_Queue {
 	 * نباید بماند و اجرای دوباره بسازد.
 	 */
 	public static function unschedule_all(): void {
-		if ( function_exists( 'as_unschedule_all_actions' ) ) {
-			as_unschedule_all_actions( self::HOOK, [], self::GROUP );
-		}
-
-		wp_clear_scheduled_hook( self::HOOK );
+		self::unschedule( self::HOOK );
 		delete_option( self::OPTION_ENGINE );
 	}
 
@@ -84,15 +136,7 @@ class WAPM_Queue {
 	 * زمان اجرای بعدی (timestamp) — 0 اگر چیزی زمان‌بندی نشده باشد.
 	 */
 	public static function next_run(): int {
-		if ( self::uses_action_scheduler() ) {
-			$next = as_next_scheduled_action( self::HOOK, [], self::GROUP );
-			if ( is_numeric( $next ) && (int) $next > 0 ) {
-				return (int) $next;
-			}
-		}
-
-		$next = wp_next_scheduled( self::HOOK );
-		return $next ? (int) $next : 0;
+		return self::next_run_for( self::HOOK );
 	}
 
 	/**

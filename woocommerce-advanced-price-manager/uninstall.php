@@ -58,6 +58,12 @@ function wapm_uninstall_site(): void {
 	}
 	wp_clear_scheduled_hook( 'wapm_run_schedules' );
 
+	// تازه‌سازی خودکار قیمت رقبا (ترب) — هوک دوم افزونه.
+	if ( function_exists( 'as_unschedule_all_actions' ) ) {
+		as_unschedule_all_actions( 'wapm_torob_auto_refresh', [], 'wapm' );
+	}
+	wp_clear_scheduled_hook( 'wapm_torob_auto_refresh' );
+
 	// ۲) transientهای ثابت.
 	$transients = [
 		'wapm_torob_title_index',
@@ -107,6 +113,9 @@ function wapm_uninstall_site(): void {
 		'wapm_torob_unmatched',
 		'wapm_torob_last_sync',
 		'wapm_torob_last_catalog',
+		'wapm_torob_auto_last',
+		// نسخه‌ی کش شمارش شکاف (تازه‌سازی دسته‌ای قیمت رقبا).
+		'wapm_torob_gap_ver',
 		// ترب — وضعیت کلاینت API.
 		'wapm_torob_api_cooldown',
 		'wapm_torob_api_last_call',
