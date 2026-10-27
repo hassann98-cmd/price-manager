@@ -259,6 +259,48 @@ class WC_Product {
 	}
 }
 
+/**
+ * کش transient (stub) — `count_competitor_gap()`/`steps()` واقعاً از کش می‌خوانند،
+ * پس بدون این stub شمارش شکاف هر بار کوئری می‌زد.
+ */
+$GLOBALS['wapm_transients'] = [];
+
+function get_transient( $key ) {
+	return $GLOBALS['wapm_transients'][ $key ] ?? false;
+}
+
+function set_transient( $key, $value, $expiration = 0 ) {
+	$GLOBALS['wapm_transients'][ $key ] = $value;
+	return true;
+}
+
+function delete_transient( $key ) {
+	unset( $GLOBALS['wapm_transients'][ $key ] );
+	return true;
+}
+
+/**
+ * stub WP_Query — فقط تعداد نتایج (`found_posts`) را می‌دهد.
+ * مقدار از `$GLOBALS['wapm_query_found']` خوانده می‌شود تا تست‌ها بتوانند
+ * «چند محصول وصل شده / چند محصول شکاف دارد» را کنترل کنند.
+ */
+class WP_Query {
+
+	public int $found_posts = 0;
+	public array $posts     = [];
+	public array $args      = [];
+
+	public function __construct( array $args = [] ) {
+		$this->args        = $args;
+		$this->found_posts = (int) ( $GLOBALS['wapm_query_found'] ?? 0 );
+	}
+}
+
+/** تعداد نتایج ساختگی کوئری‌های بعدی. */
+function stub_query_found( int $n ): void {
+	$GLOBALS['wapm_query_found'] = $n;
+}
+
 require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-str.php';
 require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-price-engine.php';
 require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-logger.php';
@@ -278,6 +320,8 @@ require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-ru
 $GLOBALS['wapm_tests'] = [ 'run' => 0, 'failed' => 0, 'failures' => [] ];
 
 function stub_reset( array $overrides = [] ): void {
+	$GLOBALS['wapm_transients'] = [];
+	$GLOBALS['wapm_query_found'] = 0;
 	$GLOBALS['wapm_stub'] = array_merge(
 		[ 'decimals' => 0, 'currency' => 'IRT', 'filters' => [] ],
 		$overrides
@@ -2494,6 +2538,143 @@ test( 'هم‌تراز: اکشن Ajax و هندلرش وجود دارند', func
 	ok( false !== strpos( $ajax, 'public function torob_align(): void' ), 'هندلر تعریف شده' );
 	// مسیر اعمال باید از موتور قیمت رد شود، نه اینکه مستقیم متا را بنویسد.
 	ok( false !== strpos( $ajax, 'WAPM_Price_Engine::apply_to_product( $id, $settings, $batch_id, \'torob_align\' )' ), 'اعمال از موتور قیمت' );
+} );
+
+/* -------------------------------------------------------------------------
+ * ترتیب کار در تب ترب (راهنمای پنج‌قدمی)
+ * ---------------------------------------------------------------------- */
+
+test( 'ترب: راهنما پنج قدم با کلیدهای یکسان دارد و از قدم ۱ شروع می‌شود', function () {
+	stub_reset();
+	$GLOBALS['wapm_options'] = [];
+
+	$guide = WAPM_Torob::steps();
+
+	eq( 5, count( $guide['steps'] ), 'پنج قدم' );
+	eq( [ 'connect', 'catalog', 'competitors', 'unmatched', 'rules' ], array_column( $guide['steps'], 'key' ), 'ترتیب کلیدها' );
+
+	// شکل خروجی باید یکدست باشد: هم رندر PHP و هم renderTorobGuide در JS روی
+	// همین کلیدها کار می‌کنند و به کلید غایب تکیه نمی‌کنند.
+	$keys = [ 'key', 'num', 'title', 'detail', 'done', 'count', 'anchor', 'cta', 'optional' ];
+	foreach ( $guide['steps'] as $step ) {
+		$missing = array_diff( $keys, array_keys( $step ) );
+		ok( [] === $missing, 'قدم «' . $step['key'] . '» همه‌ی کلیدها را دارد', implode( ',', $missing ) );
+		ok( 0 === strpos( (string) $step['anchor'], '#wapm-torob-card-' ), 'لنگر قدم درست است', (string) $step['anchor'] );
+	}
+
+	// بدون شناسه، هیچ قدمی انجام نشده و پیشنهاد باید «اتصال» باشد.
+	eq( false, $guide['steps'][0]['done'], 'اتصال انجام نشده' );
+	eq( 'connect', $guide['next'], 'قدم بعدی: اتصال' );
+	eq( null, $guide['steps'][0]['count'], 'قدم اتصال شمارنده ندارد' );
+} );
+
+test( 'ترب: با ثبت شناسه، قدم بعدی به کاتالوگ می‌رود', function () {
+	stub_reset();
+	$GLOBALS['wapm_options'] = [];
+	WAPM_Torob::save_shop_id( '118417' );
+
+	$guide = WAPM_Torob::steps();
+
+	eq( true, $guide['steps'][0]['done'], 'اتصال انجام شد' );
+	eq( 'catalog', $guide['next'], 'قدم بعدی: کاتالوگ' );
+} );
+
+test( 'ترب: شکاف قیمت، قدم ۳ را باز نگه می‌دارد و شمارنده می‌دهد', function () {
+	stub_reset();
+	$GLOBALS['wapm_options'] = [];
+	WAPM_Torob::save_shop_id( '118417' );
+	$GLOBALS['wapm_options'][ WAPM_Torob::OPTION_LAST_CATALOG ] = [ 'at' => '2026-05-20 10:00:00' ];
+
+	// شکاف فقط از کش خوانده می‌شود تا کوئری‌های «چند محصول» جدا بمانند.
+	$matched = 2;
+	stub_query_found( $matched );
+	set_transient( WAPM_Torob::gap_cache_key( 'missing' ), 4 );
+	set_transient( WAPM_Torob::gap_cache_key( 'stale' ), 3 );
+
+	$guide = WAPM_Torob::steps();
+	$byKey = array_column( $guide['steps'], null, 'key' );
+
+	eq( true, $byKey['catalog']['done'], 'کاتالوگ انجام شد' );
+	eq( $matched, $byKey['catalog']['count'], 'شمارنده‌ی کاتالوگ = تعداد وصل‌شده‌ها' );
+	eq( 7, $byKey['competitors']['count'], 'شمارنده‌ی قیمت = بدون قیمت + کهنه' );
+	eq( false, $byKey['competitors']['done'], 'قدم قیمت باز است' );
+	eq( 'competitors', $guide['next'], 'قدم بعدی: قیمت رقبا' );
+	ok( false !== strpos( (string) $byKey['competitors']['detail'], '7' ), 'توضیح قدم به عدد اشاره می‌کند', (string) $byKey['competitors']['detail'] );
+} );
+
+test( 'ترب: صف تطبیق دست‌نخورده، قدم ۴ را اجباری می‌کند', function () {
+	stub_reset();
+	$GLOBALS['wapm_options'] = [];
+	WAPM_Torob::save_shop_id( '118417' );
+	$GLOBALS['wapm_options'][ WAPM_Torob::OPTION_LAST_CATALOG ] = [ 'at' => '2026-05-20 10:00:00' ];
+	$GLOBALS['wapm_options'][ WAPM_Torob::OPTION_UNMATCHED ]    = [ [ 'prk' => 'aaa' ], [ 'prk' => 'bbb' ] ];
+
+	stub_query_found( 3 );
+	set_transient( WAPM_Torob::gap_cache_key( 'missing' ), 0 );
+	set_transient( WAPM_Torob::gap_cache_key( 'stale' ), 0 );
+
+	$guide = WAPM_Torob::steps();
+	$byKey = array_column( $guide['steps'], null, 'key' );
+
+	eq( true, $byKey['competitors']['done'], 'قیمت‌ها کامل است' );
+	eq( false, $byKey['unmatched']['done'], 'صف باز است' );
+	eq( 2, $byKey['unmatched']['count'], 'دو ردیف در صف' );
+	eq( false, $byKey['unmatched']['optional'], 'صف باز، اختیاری نیست' );
+	eq( 'unmatched', $guide['next'], 'قدم بعدی: صف تطبیق' );
+} );
+
+test( 'ترب: وقتی همه‌ی قدم‌های اجباری تمام شد، فقط گام اختیاری می‌ماند', function () {
+	stub_reset();
+	$GLOBALS['wapm_options'] = [];
+	WAPM_Torob::save_shop_id( '118417' );
+	$GLOBALS['wapm_options'][ WAPM_Torob::OPTION_LAST_CATALOG ] = [ 'at' => '2026-05-20 10:00:00' ];
+
+	stub_query_found( 5 );
+	set_transient( WAPM_Torob::gap_cache_key( 'missing' ), 0 );
+	set_transient( WAPM_Torob::gap_cache_key( 'stale' ), 0 );
+
+	$guide = WAPM_Torob::steps();
+	$byKey = array_column( $guide['steps'], null, 'key' );
+
+	eq( true, $byKey['unmatched']['optional'], 'صف خالی اختیاری است' );
+	eq( false, $byKey['rules']['done'], 'خودکارسازی خاموش است' );
+	eq( 'rules', $guide['next'], 'قدم بعدی: قواعد (اختیاری)' );
+
+	// روشن‌کردن به‌روزرسانی خودکار، آخرین قدم را هم تمام می‌کند.
+	$GLOBALS['wapm_options'][ WAPM_Torob::OPTION_SETTINGS ] = [ 'shop_id' => '118417', 'auto_refresh' => 1 ];
+	$guide = WAPM_Torob::steps();
+
+	eq( '', $guide['next'], 'همه‌ی قدم‌ها تمام ⇒ قدم بعدی خالی' );
+	ok( ! in_array( false, array_column( $guide['steps'], 'done' ), true ), 'همه‌ی قدم‌ها done' );
+} );
+
+test( 'ترب: خروجی راهنما به تب و به پاسخ Ajax وصل است', function () {
+	$view = (string) file_get_contents( __DIR__ . '/../woocommerce-advanced-price-manager/includes/admin/views/tab-torob.php' );
+	$ajax = (string) file_get_contents( __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-ajax.php' );
+	$admin = (string) file_get_contents( __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-admin.php' );
+
+	// ترتیب کارت‌ها عمدی است: راهنما/وضعیت اول، بعد ۱ تا ۵، بعد ابزارهای پیشرفته.
+	$order = [
+		'render_torob_guide',
+		'wapm-torob-card-connect',
+		'wapm-torob-card-catalog',
+		'wapm-torob-card-prices',
+		'wapm-torob-card-unmatched',
+		'wapm-torob-card-rules',
+		'wapm-torob-card-advanced',
+	];
+	$last = -1;
+	foreach ( $order as $needle ) {
+		$pos = strpos( $view, $needle );
+		ok( false !== $pos, 'در تب هست: ' . $needle );
+		ok( $pos > $last, 'ترتیب درست است: ' . $needle );
+		$last = (int) $pos;
+	}
+
+	ok( false !== strpos( $admin, 'id="wapm-torob-steps"' ), 'فهرست قدم‌ها رندر می‌شود' );
+	ok( false !== strpos( $admin, 'id="wapm-torob-next-step"' ), 'کارت «قدم بعدی» رندر می‌شود' );
+	ok( false !== strpos( $view, '$this->render_torob_guide()' ), 'تب راهنما را صدا می‌زند' );
+	ok( (bool) preg_match( "/'guide'\\s*=>\\s*WAPM_Torob::steps\\(\\)/", $ajax ), 'راهنما در پاسخ torob_stats هست' );
 } );
 
 /* -------------------------------------------------------------------------

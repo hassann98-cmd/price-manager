@@ -633,6 +633,185 @@
 }
 
 /* ==========================================================================
+   تب ترب: راهنمای ترتیب کار (استپر پنج‌قدمی)
+   ========================================================================== */
+
+.wapm-torob-guide {
+	background: linear-gradient(180deg, var(--wapm-brand-50), var(--wapm-surface) 60%);
+	border-color: var(--wapm-brand-100);
+}
+
+.wapm-steps {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+	gap: 10px;
+	margin: 14px 0 0;
+	padding: 0;
+	list-style: none;
+	counter-reset: none;
+}
+
+.wapm-step {
+	margin: 0;
+	padding: 0;
+	background: var(--wapm-surface);
+	border: 1px solid var(--wapm-line);
+	border-radius: var(--wapm-radius);
+	box-shadow: var(--wapm-shadow-xs);
+	transition: border-color var(--wapm-speed), box-shadow var(--wapm-speed), transform var(--wapm-speed);
+}
+
+.wapm-step-link {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	padding: 11px 12px;
+	text-decoration: none;
+	color: inherit;
+	border-radius: var(--wapm-radius);
+}
+
+.wapm-step-link:hover,
+.wapm-step-link:focus {
+	color: inherit;
+	text-decoration: none;
+}
+
+.wapm-step-link:hover {
+	background: var(--wapm-surface-soft);
+}
+
+.wapm-step-num {
+	flex: 0 0 auto;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	border-radius: 999px;
+	background: var(--wapm-brand-600);
+	color: #fff;
+	font-size: 12px;
+	font-weight: 900;
+}
+
+.wapm-step-body {
+	display: block;
+	font-size: 12px;
+	line-height: 1.7;
+}
+
+.wapm-step-body b {
+	display: inline;
+	font-size: 12.5px;
+	font-weight: 800;
+	color: var(--wapm-ink-900);
+}
+
+.wapm-step-detail {
+	display: block;
+	margin-top: 2px;
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--wapm-ink-500);
+}
+
+.wapm-step-count {
+	display: inline-flex;
+	align-items: center;
+	padding: 1px 8px;
+	border-radius: 999px;
+	background: var(--wapm-warn-50);
+	border: 1px solid #fedf89;
+	color: var(--wapm-warn-600);
+	font-size: 10.5px;
+	font-weight: 900;
+}
+
+/* قدم انجام‌شده: سبز و تیک */
+.wapm-step.is-done {
+	border-color: #abefc6;
+	background: linear-gradient(180deg, var(--wapm-ok-50), var(--wapm-surface) 70%);
+}
+
+.wapm-step.is-done .wapm-step-num {
+	background: var(--wapm-ok-600);
+}
+
+.wapm-step.is-done .wapm-step-count {
+	background: var(--wapm-ok-50);
+	border-color: #abefc6;
+	color: var(--wapm-ok-700);
+}
+
+/* قدم بعدی: برجسته — تنها جایی که کاربر باید کلیک کند */
+.wapm-step.is-next {
+	border-color: var(--wapm-brand-300);
+	box-shadow: 0 0 0 3px rgba(127, 84, 179, 0.12), var(--wapm-shadow-sm);
+}
+
+.wapm-step.is-next .wapm-step-body b {
+	color: var(--wapm-brand-800);
+}
+
+.wapm-next-step {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex-wrap: wrap;
+	margin-top: 14px;
+	padding: 12px 14px;
+	background: var(--wapm-surface);
+	border: 1px solid var(--wapm-brand-200);
+	border-radius: var(--wapm-radius);
+	box-shadow: var(--wapm-shadow-xs);
+	font-size: 12.5px;
+	color: var(--wapm-ink-800);
+}
+
+.wapm-next-step.is-done {
+	display: block;
+	border-color: #abefc6;
+	background: var(--wapm-ok-50);
+	color: var(--wapm-ok-700);
+}
+
+.wapm-next-label {
+	padding: 3px 10px;
+	border-radius: 999px;
+	background: var(--wapm-brand-600);
+	color: #fff;
+	font-size: 10.5px;
+	font-weight: 900;
+}
+
+.wapm-next-step .button {
+	margin-inline-start: auto;
+}
+
+/* زیرعنوان قدم‌ها داخل کارت (۳-۱، ۳-۲، ۳-۳) */
+.wapm-substep {
+	padding-inline-start: 10px;
+	border-inline-start: 3px solid var(--wapm-brand-200);
+}
+
+/* هایلایت کوتاه کارت هدف بعد از کلیک روی «قدم بعدی» */
+.wapm-card.is-flash {
+	animation: wapm-flash 1.4s ease-out;
+}
+
+@keyframes wapm-flash {
+	0%   { box-shadow: 0 0 0 4px rgba(127, 84, 179, 0.35); }
+	100% { box-shadow: var(--wapm-shadow-xs); }
+}
+
+/* اعداد لاتین در ورودی‌های عددی ترب، ولی متن راست‌چین بماند */
+#wapm-tab-torob input[type="number"] {
+	direction: ltr;
+	text-align: right;
+}
+
+/* ==========================================================================
    تب لیست: پوسته، نوار عملیات گروهی و جدول
    ========================================================================== */
 

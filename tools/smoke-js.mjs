@@ -212,6 +212,14 @@ const html = `<!doctype html><html lang="fa" dir="rtl"><body>
   <div id="wapm-torob-gap-banner"></div>
   <div id="wapm-torob-api-state"></div>
   <div id="wapm-torob-status-body"></div>
+  <ul id="wapm-torob-steps"></ul>
+  <div id="wapm-torob-next-step"></div>
+  <div class="wapm-card" id="wapm-torob-card-catalog"></div>
+  <button type="button" class="button wapm-torob-save" id="wapm-torob-save-settings">ذخیره</button>
+  <input id="wapm-torob-fresh-days" value="7"><input id="wapm-torob-tolerance" value="2">
+  <input id="wapm-torob-shop-id" value="118417"><input id="wapm-torob-shop-name" value="فروشگاه">
+  <select id="wapm-torob-exclude-categories" multiple></select>
+  <select id="wapm-torob-exclude-brands" multiple></select>
 </div>
 <div class="wapm-tab-content" id="wapm-tab-history" style="display:none">
   <div id="wapm-history-area"></div>
@@ -278,6 +286,18 @@ window.WAPM = {
 	},
 };
 
+/* پنج قدم راهنما — همان ساختاری که `WAPM_Torob::steps()` می‌دهد. */
+const GUIDE = {
+	next: 'catalog',
+	steps: [
+		{ key: 'connect', num: 1, title: 'اتصال به فروشگاه ترب', detail: 'شناسه فروشگاه', done: true, count: null, anchor: '#wapm-torob-card-connect', cta: 'ثبت شناسه', optional: false },
+		{ key: 'catalog', num: 2, title: 'همگام‌سازی کاتالوگ', detail: 'وصل کردن محصولات', done: false, count: 12, anchor: '#wapm-torob-card-catalog', cta: 'همگام‌سازی کاتالوگ', optional: false },
+		{ key: 'competitors', num: 3, title: 'گرفتن قیمت رقبا', detail: 'از API یا بوکمارکلت', done: false, count: null, anchor: '#wapm-torob-card-prices', cta: 'به‌روزرسانی گروهی', optional: false },
+		{ key: 'unmatched', num: 4, title: 'صف تطبیق', detail: 'محصولات وصل‌نشده', done: false, count: 3, anchor: '#wapm-torob-card-unmatched', cta: 'دیدن صف', optional: false },
+		{ key: 'rules', num: 5, title: 'قواعد و به‌روزرسانی خودکار', detail: 'تلورانس و زمان‌بندی', done: false, count: null, anchor: '#wapm-torob-card-rules', cta: 'تنظیم قواعد', optional: true },
+	],
+};
+
 /* پاسخ ساختگی سرور برای همه‌ی اکشن‌ها */
 $.post = function (url, data) {
 	const deferred = $.Deferred();
@@ -311,6 +331,16 @@ $.post = function (url, data) {
 			regular_price: String((data && data.value) || ''),
 			regular_price_fmt: String((data && data.value) || ''),
 		}) };
+	} else if (action === 'torob_stats') {
+		payload = {
+			matched: 2, unmatched: 1,
+			gap: { missing: 2, stale: 0 },
+			auto: { enabled: true, limit: 20 },
+			api: { blocked: false, used: 1, budget: 60, min_interval: 3 },
+			guide: GUIDE,
+		};
+	} else if (action === 'torob_save_settings') {
+		payload = { saved: true, matched: 2, unmatched: 1, gap: { missing: 2, stale: 0 }, guide: GUIDE };
 	} else if (action === 'torob_gap') {
 		payload = {
 			mode: 'all', missing: 2, stale: 0, total: 2, ids: [101, 102],
@@ -533,6 +563,34 @@ try {
 	ok($('#wapm-torob-bulk-refresh').prop('disabled') === false, 'دکمه دوباره فعال شد');
 } catch (error) {
 	ok(false, 'به‌روزرسانی گروهی بدون خطا اجرا شد', error.message);
+}
+
+console.log('— راهنمای ترتیب کار (تب ترب)');
+try {
+	window.__wapmCalls.length = 0;
+	window.WAPMUI.refreshTorobStats();
+	await new Promise((r) => setTimeout(r, 20));
+
+	ok($('#wapm-torob-steps .wapm-step').length === 5, 'پنج قدم رندر شد', String($('#wapm-torob-steps .wapm-step').length));
+	ok($('#wapm-torob-steps .wapm-step.is-done').length === 1, 'قدم انجام‌شده علامت خورد');
+	ok($('#wapm-torob-steps .wapm-step.is-next').data('step') === 'catalog', 'قدم بعدی درست نشان داده شد', String($('#wapm-torob-steps .wapm-step.is-next').data('step')));
+	ok(/۱۲|12/.test(String($('#wapm-torob-steps .wapm-step-count').first().text())), 'شمارنده‌ی قدم دیده می‌شود', $('#wapm-torob-steps .wapm-step-count').first().text());
+	ok(/همگام‌سازی کاتالوگ/.test(String($('#wapm-torob-next-step').text())), 'دکمه‌ی قدم بعدی متن اقدام دارد', $('#wapm-torob-next-step').text());
+
+	// کلیک روی لینک قدم باید به کارت مقصد برود و هایلایت کوتاه بدهد.
+	window.HTMLElement.prototype.scrollIntoView = function () { this.__scrolled = true; };
+	$('#wapm-torob-next-step .wapm-goto').trigger('click');
+	const card = window.document.getElementById('wapm-torob-card-catalog');
+	ok(card.__scrolled === true, 'به کارت مقصد اسکرول شد');
+	ok(card.classList.contains('is-flash'), 'کارت مقصد هایلایت شد');
+
+	// ذخیره از هر دو دکمه (قدم ۱ و قدم ۵) باید همان اکشن را صدا بزند.
+	window.__wapmCalls.length = 0;
+	$('.wapm-torob-save').first().trigger('click');
+	await new Promise((r) => setTimeout(r, 20));
+	ok(window.__wapmCalls.some((c) => c.action === 'torob_save_settings'), 'دکمه‌ی ذخیره با کلاس، تنظیمات را می‌فرستد');
+} catch (error) {
+	ok(false, 'سناریوی راهنما بدون خطا اجرا شد', error.message);
 }
 
 if (errors.length) {

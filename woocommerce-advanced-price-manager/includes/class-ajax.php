@@ -820,6 +820,8 @@ class WAPM_Ajax {
 				'stale'   => WAPM_Torob::count_competitor_gap( 'stale' ),
 			],
 			'auto'              => WAPM_Torob::auto_state(),
+			// ترتیب کار: رندر اولیه و به‌روزرسانی زنده از یک منبع می‌آیند.
+			'guide'             => WAPM_Torob::steps(),
 		];
 	}
 
