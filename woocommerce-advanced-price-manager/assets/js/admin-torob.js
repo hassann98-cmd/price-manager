@@ -153,6 +153,80 @@
 		$box.html(html);
 	}
 
+	/**
+	 * راهنمای ترتیب کار (پنج قدم) — عیناً همان مارک‌آپ PHP در
+	 * `WAPM_Admin::render_torob_guide()`. داده از `stats.guide` می‌آید تا منطق
+	 * «چه چیزی مانده» فقط یک جا (PHP) تعریف شده باشد.
+	 */
+	function renderTorobGuide(guide) {
+		if (!guide || !guide.steps) { return; }
+
+		var $list = $('#wapm-torob-steps');
+		if ($list.length) {
+			var html = '';
+			guide.steps.forEach(function (step) {
+				var cls = 'wapm-step' + (step.done ? ' is-done' : '') + (step.key === guide.next ? ' is-next' : '');
+				var count = (step.count === null || step.count === undefined) ? null : Number(step.count);
+				html += '<li class="' + cls + '" data-step="' + esc(step.key) + '">' +
+					'<a class="wapm-step-link wapm-goto" href="' + esc(step.anchor) + '">' +
+						'<span class="wapm-step-num" aria-hidden="true">' + (step.done ? '✓' : esc(step.num)) + '</span>' +
+						'<span class="wapm-step-body">' +
+							'<b>' + esc(step.title) + '</b>' +
+							(count !== null && count > 0 ? ' <span class="wapm-step-count">' + fmt(count) + '</span>' : '') +
+							'<span class="wapm-step-detail">' + esc(step.detail) + '</span>' +
+						'</span>' +
+					'</a>' +
+				'</li>';
+			});
+			$list.html(html);
+		}
+
+		var $next = $('#wapm-torob-next-step');
+		if (!$next.length) { return; }
+
+		var step = null;
+		(guide.steps || []).forEach(function (candidate) {
+			if (candidate.key === guide.next) { step = candidate; }
+		});
+
+		if (!step) {
+			$next.html('<p class="wapm-next-step is-done"><strong>' + esc(__('همه‌ی قدم‌ها انجام شده‌اند.')) + '</strong> ' +
+				esc(__('از این به بعد فقط کافی است داده تازه بماند (قدم ۵: به‌روزرسانی خودکار).')) + '</p>');
+			return;
+		}
+
+		$next.html('<div class="wapm-next-step">' +
+			'<span class="wapm-next-label">' + esc(__('قدم بعدی')) + '</span> ' +
+			'<b>' + esc(step.num + '. ' + step.title) + '</b> ' +
+			'<a href="' + esc(step.anchor) + '" class="button button-primary wapm-goto" data-goto="' + esc(step.anchor) + '">' +
+				esc(step.cta) + '</a>' +
+			'</div>');
+	}
+
+	/**
+	 * پرش نرم به کارت هدف + هایلایت کوتاه.
+	 *
+	 * چرا به‌جای لینک لنگری معمولی: تب‌ها با `display:none` عوض می‌شوند و
+	 * پرش پیش‌فرض مرورگر گاهی به بالای صفحه می‌پرد؛ این‌جا ارتفاع هدر ادمین هم
+	 * لحاظ می‌شود.
+	 */
+	$(document).on('click', '.wapm-goto', function (e) {
+		var target = $(this).data('goto') || $(this).attr('href') || '';
+		if (String(target).charAt(0) !== '#') { return; }
+
+		var node = document.querySelector(target);
+		if (!node) { return; }
+
+		e.preventDefault();
+
+		if (typeof node.scrollIntoView === 'function') {
+			node.scrollIntoView({ behavior: 'smooth', block: 'start' });
+		}
+
+		node.classList.add('is-flash');
+		setTimeout(function () { node.classList.remove('is-flash'); }, 1400);
+	});
+
 	function applyTorobStats(stats) {
 		if (!stats) { return; }
 		if ($('#wapm-torob-status-body').length) {
@@ -169,6 +243,9 @@
 				? '<p class="description" style="font-weight:700;color:#b45309">' + fmt(gap.missing) + ' ' + esc(__('محصول بدون قیمت رقیب — دکمه‌ی زیر همین‌ها را می‌گیرد.')) + '</p>'
 				: '<p class="description">' + esc(__('همه‌ی محصولاتِ وصل‌شده قیمت رقیب دارند ✓')) + '</p>');
 		}
+
+		// راهنما و «قدم بعدی» با همان داده‌ی سرور تازه می‌شوند (منبع حقیقت: PHP).
+		renderTorobGuide(stats.guide);
 
 		renderApiState(stats.api);
 	}
@@ -227,7 +304,9 @@
 		$(this).closest('.wapm-undercut-row').remove();
 	});
 
-	$('#wapm-torob-save-settings').on('click', function () {
+	// دو دکمه‌ی ذخیره وجود دارد (قدم ۱ برای شناسه، قدم ۵ برای قواعد) و هر دو کل
+	// فرم را می‌فرستند؛ binding با کلاس است تا شناسه‌ی تکراری نداشته باشیم.
+	$(document).on('click', '.wapm-torob-save', function () {
 		var $btn = $(this).prop('disabled', true);
 
 		ajax('torob_save_settings', {
