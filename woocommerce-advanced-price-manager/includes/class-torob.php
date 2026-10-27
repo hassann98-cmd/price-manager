@@ -237,6 +237,129 @@ class WAPM_Torob {
 		update_option( 'wapm_torob_gap_ver', (int) get_option( 'wapm_torob_gap_ver', 1 ) + 1, false );
 	}
 
+	/* ---------- ترتیب کار (راهنمای تب) ---------- */
+
+	/**
+	 * پنج قدم تب ترب به ترتیب اجرا + قدم بعدی.
+	 *
+	 * چرا این‌جا و نه در View: هم رندر اولیه‌ی صفحه و هم به‌روزرسانی زنده بعد از
+	 * هر عملیات (Ajax) باید یک جواب بگیرند. اگر منطق «چه چیزی مانده» دو جا
+	 * نوشته شود، دیر یا زود یک مسیر می‌گوید «تمام شد» و دیگری می‌گوید «مانده».
+	 *
+	 * ترتیب از وابستگی واقعی داده می‌آید، نه سلیقه:
+	 *   ۱) بدون شناسه‌ی فروشگاه، «ارزان‌ترین رقیب» می‌تواند خودمان باشیم.
+	 *   ۲) کاتالوگ، محصولات را به کارت ترب وصل می‌کند (prk) — بدون آن هیچ
+	 *      قیمت رقیبی قابل گرفتن نیست.
+	 *   ۳) قیمت رقبا از همان اتصال‌ها خوانده می‌شود.
+	 *   ۴) آن‌چه خودکار وصل نشد، تصمیم انسانی لازم دارد.
+	 *   ۵) قواعد و خودکارسازی، بعد از رسیدن به داده‌ی سالم معنا دارد.
+	 *
+	 * @return array{steps: array<int, array<string, mixed>>, next: string}
+	 */
+	public static function steps(): array {
+		$settings  = self::settings();
+		$matched   = self::count_matched();
+		$unmatched = count( self::unmatched() );
+		$catalog   = self::get_last_catalog();
+		$missing   = self::count_competitor_gap( 'missing' );
+		$stale     = self::count_competitor_gap( 'stale' );
+		$pending   = $missing + $stale;
+
+		$connected  = self::can_identify_shop();
+		$catalog_ok = ! empty( $catalog['at'] ) || $matched > 0;
+		$prices_ok  = $matched > 0 && 0 === $pending;
+
+		$steps = [
+			[
+				'key'      => 'connect',
+				'num'      => '۱',
+				'title'    => __( 'اتصال به فروشگاه ترب', 'wapm' ),
+				'detail'   => __( 'شناسه یا نام فروشگاه را ثبت کنید تا قیمت خودتان با «ارزان‌ترین رقیب» اشتباه نشود.', 'wapm' ),
+				'done'     => $connected,
+				'count'    => null,
+				'anchor'   => '#wapm-torob-card-connect',
+				'cta'      => __( 'ثبت شناسه', 'wapm' ),
+				'optional' => false,
+			],
+			[
+				'key'      => 'catalog',
+				'num'      => '۲',
+				'title'    => __( 'پیوند محصولات و قیمت ما از دید ترب', 'wapm' ),
+				'detail'   => __( 'کاتالوگ فروشگاه را می‌خواند و هر محصول را به کارت تربش وصل می‌کند؛ همین اتصال‌ها بعداً قیمت رقیب می‌گیرند.', 'wapm' ),
+				'done'     => $catalog_ok,
+				'count'    => $matched > 0 ? $matched : null,
+				'anchor'   => '#wapm-torob-card-catalog',
+				'cta'      => __( 'همگام‌سازی کاتالوگ', 'wapm' ),
+				'optional' => false,
+			],
+			[
+				'key'      => 'competitors',
+				'num'      => '۳',
+				'title'    => __( 'گرفتن قیمت رقبا', 'wapm' ),
+				'detail'   => $pending > 0
+					? sprintf(
+						/* translators: %s: number of products */
+						__( 'برای %s محصول هنوز قیمت رقیب نداریم یا داده‌شان کهنه شده.', 'wapm' ),
+						number_format_i18n( $pending )
+					)
+					: __( 'برای همه‌ی محصولاتِ وصل‌شده قیمت رقیب تازه داریم.', 'wapm' ),
+				'done'     => $prices_ok,
+				'count'    => $pending,
+				'anchor'   => '#wapm-torob-card-prices',
+				'cta'      => __( 'به‌روزرسانی گروهی', 'wapm' ),
+				'optional' => false,
+			],
+			[
+				'key'      => 'unmatched',
+				'num'      => '۴',
+				'title'    => __( 'تعیین تکلیف تطبیق‌نیافته‌ها', 'wapm' ),
+				'detail'   => $unmatched > 0
+					? sprintf(
+						/* translators: %s: number of products */
+						__( '%s محصول ترب با اطمینان کافی به محصول شما وصل نشد و منتظر تصمیم شماست.', 'wapm' ),
+						number_format_i18n( $unmatched )
+					)
+					: __( 'صف خالی است؛ هر محصولی که قابل اتصال بود وصل شده.', 'wapm' ),
+				'done'     => 0 === $unmatched,
+				'count'    => $unmatched,
+				'anchor'   => '#wapm-torob-card-unmatched',
+				'cta'      => __( 'بازبینی صف', 'wapm' ),
+				'optional' => 0 === $unmatched,
+			],
+			[
+				'key'      => 'rules',
+				'num'      => '۵',
+				'title'    => __( 'قواعد قیمت‌گذاری و به‌روزرسانی خودکار', 'wapm' ),
+				'detail'   => __( 'حداکثر عمر داده، آستانه‌ی «برابر»، دسته/برند مستثنا، زیربرش هر دسته و اجرای شبانه.', 'wapm' ),
+				'done'     => (bool) $settings['auto_refresh'],
+				'count'    => null,
+				'anchor'   => '#wapm-torob-card-rules',
+				'cta'      => __( 'تنظیم قواعد', 'wapm' ),
+				'optional' => true,
+			],
+		];
+
+		// قدم بعدی: اولین قدمِ ناتمام که «اجباری» است. قدم‌های اختیاری (صف خالی،
+		// خودکارسازی) فقط وقتی پیشنهاد می‌شوند که بقیه تمام شده باشند.
+		$next = '';
+		foreach ( $steps as $step ) {
+			if ( empty( $step['done'] ) && empty( $step['optional'] ) ) {
+				$next = (string) $step['key'];
+				break;
+			}
+		}
+		if ( '' === $next ) {
+			foreach ( $steps as $step ) {
+				if ( empty( $step['done'] ) ) {
+					$next = (string) $step['key'];
+					break;
+				}
+			}
+		}
+
+		return [ 'steps' => $steps, 'next' => $next ];
+	}
+
 	/* ---------- تازه‌سازی خودکار ---------- */
 
 	/** وضعیت کار خودکار برای نمایش در پنل. */
