@@ -474,6 +474,79 @@ class WAPM_Admin {
 	}
 
 	/**
+	 * راهنمای ترتیب کار در تب ترب: پنج قدم با وضعیت انجام/مانده + «قدم بعدی».
+	 *
+	 * داده از `WAPM_Torob::steps()` می‌آید (یک منبع حقیقت برای رندر اولیه و
+	 * به‌روزرسانی Ajax). مارک‌آپ عیناً همان چیزی است که `renderTorobGuide()` در
+	 * `admin-torob.js` می‌سازد؛ هر تغییر در یکی، باید در دیگری هم بیاید.
+	 */
+	private function render_torob_guide(): void {
+		$guide = WAPM_Torob::steps();
+		$next  = (string) $guide['next'];
+
+		echo '<div class="wapm-card wapm-torob-guide" id="wapm-torob-guide-card">';
+		echo '<h2>' . esc_html__( 'ترتیب کار در این تب — از ۱ تا ۵', 'wapm' ) . '</h2>';
+		echo '<p class="description">' . esc_html__( 'این تب را به همین ترتیب انجام دهید؛ هر قدم به داده‌ی قدم قبلی وابسته است. وضعیت هر قدم خودکار علامت می‌خورد و قدم بعدی همیشه بالای صفحه مشخص است.', 'wapm' ) . '</p>';
+
+		echo '<ol class="wapm-steps" id="wapm-torob-steps">';
+		foreach ( (array) $guide['steps'] as $step ) {
+			$done     = ! empty( $step['done'] );
+			$is_next  = ( $step['key'] === $next );
+			$classes  = 'wapm-step' . ( $done ? ' is-done' : '' ) . ( $is_next ? ' is-next' : '' );
+			$count    = isset( $step['count'] ) && null !== $step['count'] ? (int) $step['count'] : null;
+
+			echo '<li class="' . esc_attr( $classes ) . '" data-step="' . esc_attr( (string) $step['key'] ) . '">';
+			echo '<a class="wapm-step-link wapm-goto" href="' . esc_url( (string) $step['anchor'] ) . '">';
+			echo '<span class="wapm-step-num" aria-hidden="true">' . ( $done ? '✓' : esc_html( (string) $step['num'] ) ) . '</span>';
+			echo '<span class="wapm-step-body">';
+			echo '<b>' . esc_html( (string) $step['title'] ) . '</b>';
+			if ( null !== $count && $count > 0 ) {
+				echo ' <span class="wapm-step-count">' . esc_html( number_format_i18n( $count ) ) . '</span>';
+			}
+			echo '<span class="wapm-step-detail">' . esc_html( (string) $step['detail'] ) . '</span>';
+			echo '</span>';
+			echo '</a>';
+			echo '</li>';
+		}
+		echo '</ol>';
+
+		echo '<div id="wapm-torob-next-step">';
+		$this->render_torob_next_step( $guide );
+		echo '</div>';
+
+		echo '</div>';
+	}
+
+	/**
+	 * جعبه‌ی «قدم بعدی» — دکمه‌ی میان‌بر به همان کارت.
+	 *
+	 * @param array{steps: array, next: string} $guide
+	 */
+	private function render_torob_next_step( array $guide ): void {
+		$next = (string) $guide['next'];
+		$step = null;
+		foreach ( (array) $guide['steps'] as $candidate ) {
+			if ( $candidate['key'] === $next ) {
+				$step = $candidate;
+				break;
+			}
+		}
+
+		if ( null === $step ) {
+			echo '<p class="wapm-next-step is-done"><strong>' . esc_html__( 'همه‌ی قدم‌ها انجام شده‌اند.', 'wapm' ) . '</strong> ' .
+				esc_html__( 'از این به بعد فقط کافی است داده تازه بماند (قدم ۵: به‌روزرسانی خودکار).', 'wapm' ) . '</p>';
+			return;
+		}
+
+		echo '<div class="wapm-next-step">';
+		echo '<span class="wapm-next-label">' . esc_html__( 'قدم بعدی', 'wapm' ) . '</span> ';
+		echo '<b>' . esc_html( (string) $step['num'] . '. ' . $step['title'] ) . '</b> ';
+		echo '<a href="' . esc_url( (string) $step['anchor'] ) . '" class="button button-primary wapm-goto" data-goto="' . esc_attr( (string) $step['anchor'] ) . '">' .
+			esc_html( (string) $step['cta'] ) . '</a>';
+		echo '</div>';
+	}
+
+	/**
 	 * کارت وضعیت همگام‌سازی ترب (سرور-رندر؛ بعد از هر همگام‌سازی با Ajax به‌روز می‌شود).
 	 */
 	private function render_torob_status(): void {
@@ -525,7 +598,7 @@ class WAPM_Admin {
 		echo '</div>';
 
 		if ( empty( $last['at'] ) ) {
-			echo '<p class="description">' . esc_html__( 'هنوز هیچ داده‌ای از ترب دریافت نشده است.', 'wapm' ) . '</p>';
+			echo '<p class="description">' . esc_html__( 'هنوز هیچ داده‌ای از ترب دریافت نشده است. از قدم ۲ (همگام‌سازی کاتالوگ) شروع کنید؛ اگر شناسه‌ی فروشگاه ثبت نشده باشد، اول قدم ۱.', 'wapm' ) . '</p>';
 			return;
 		}
 
