@@ -2,7 +2,7 @@
 # This file is distributed under the GPL-2.0-or-later license.
 msgid ""
 msgstr ""
-"Project-Id-Version: WooCommerce Advanced Price Manager 1.2.0\n"
+"Project-Id-Version: WooCommerce Advanced Price Manager 1.2.1\n"
 "Report-Msgid-Bugs-To: https://github.com/hassann98-cmd/price-manager/issues\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -301,7 +301,7 @@ msgstr ""
 msgid "افزودن دسته"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/woocommerce-advanced-price-manager.php:56
+#: woocommerce-advanced-price-manager/woocommerce-advanced-price-manager.php:86
 msgid "افزونه WooCommerce Advanced Price Manager برای کار کردن به ووکامرس نیاز دارد."
 msgstr ""
 
@@ -389,6 +389,10 @@ msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/class-list.php:896
 msgid "این آیتم قابل کپی نیست."
+msgstr ""
+
+#: woocommerce-advanced-price-manager/woocommerce-advanced-price-manager.php:72
+msgid "این افزونه به PHP %2$s یا بالاتر نیاز دارد و نسخه‌ی فعلی سرور %1$s است. تا ارتقای PHP، هیچ تغییری در قیمت و موجودی انجام نمی‌شود (داده‌ها دست‌نخورده‌اند)."
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-torob.php:122
@@ -1373,7 +1377,7 @@ msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:117
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:162
-#: woocommerce-advanced-price-manager/includes/class-price-engine.php:425
+#: woocommerce-advanced-price-manager/includes/class-price-engine.php:439
 msgid "ساده"
 msgstr ""
 
@@ -1852,7 +1856,7 @@ msgstr ""
 msgid "متغیر"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-price-engine.php:414
+#: woocommerce-advanced-price-manager/includes/class-price-engine.php:428
 msgid "متغیر (والد)"
 msgstr ""
 
@@ -2023,6 +2027,10 @@ msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/class-admin.php:236
 msgid "مدیریت پیشرفته قیمت ووکامرس"
+msgstr ""
+
+#: woocommerce-advanced-price-manager/woocommerce-advanced-price-manager.php:68
+msgid "مدیریت پیشرفته قیمت ووکامرس اجرا نشد."
 msgstr ""
 
 #: woocommerce-advanced-price-manager/includes/admin/views/tab-list.php:313
@@ -2394,7 +2402,7 @@ msgstr ""
 msgid "وارد کردن قیمت‌ها"
 msgstr ""
 
-#: woocommerce-advanced-price-manager/includes/class-price-engine.php:420
+#: woocommerce-advanced-price-manager/includes/class-price-engine.php:434
 msgid "واریشن"
 msgstr ""
 
