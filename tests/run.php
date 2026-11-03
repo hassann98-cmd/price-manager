@@ -2804,6 +2804,122 @@ test( 'تشخیص: بوت‌استرپ زمان‌بندی را در فرانت�
 } );
 
 /* -------------------------------------------------------------------------
+ * سازگاری پارسر: کد نباید ساختار PHP 8-only داشته باشد
+ * ---------------------------------------------------------------------- */
+
+/**
+ * فهرست همه‌ی فایل‌های PHP افزونه.
+ *
+ * @return string[]
+ */
+function wapm_plugin_php_files(): array {
+	$root = __DIR__ . '/../woocommerce-advanced-price-manager/';
+	$out  = [];
+	$it   = new RecursiveIteratorIterator( new RecursiveDirectoryIterator( $root, FilesystemIterator::SKIP_DOTS ) );
+
+	foreach ( $it as $file ) {
+		if ( $file->isFile() && 'php' === strtolower( $file->getExtension() ) ) {
+			$out[] = $file->getPathname();
+		}
+	}
+
+	sort( $out );
+
+	return $out;
+}
+
+test( 'سازگاری: هیچ ساختار PHP 8-only در کد نیست (رگرسیون خط ۳۲۲)', function () {
+	// چرا این تست: هاست گزارش داد «syntax error در class-price-engine.php خط ۳۲۲».
+	// آن خط `match` بود — یک ساختار PHP 8.0. `php -l` در CI با ۸ اجرا می‌شد و
+	// قبولش می‌کرد، پس کسی نمی‌فهمید که ابزار مدیریت افزونه/پروفایلینگ (که با
+	// 7.4 اجرا می‌شود) نمی‌تواند فایل را بخواند. این تست همان شکاف را می‌بندد.
+	$forbidden_tokens = [];
+	if ( defined( 'T_MATCH' ) ) {
+		$forbidden_tokens[ T_MATCH ] = 'match';
+	}
+	if ( defined( 'T_NULLSAFE_OBJECT_OPERATOR' ) ) {
+		$forbidden_tokens[ T_NULLSAFE_OBJECT_OPERATOR ] = '?->';
+	}
+
+	// توابعی که فقط در PHP 8 وجود دارند.
+	$forbidden_functions = [ 'str_contains', 'str_starts_with', 'str_ends_with', 'array_is_list', 'get_debug_type', 'enum_exists' ];
+
+	$problems = [];
+
+	foreach ( wapm_plugin_php_files() as $path ) {
+		$source = (string) file_get_contents( $path );
+		$tokens = token_get_all( $source );
+		$rel    = str_replace( __DIR__ . '/../woocommerce-advanced-price-manager/', '', $path );
+
+		foreach ( $tokens as $index => $token ) {
+			if ( ! is_array( $token ) ) {
+				continue;
+			}
+
+			if ( isset( $forbidden_tokens[ $token[0] ] ) ) {
+				$problems[] = $rel . ':' . $token[2] . ' — ' . $forbidden_tokens[ $token[0] ];
+				continue;
+			}
+
+			if ( T_STRING !== $token[0] || ! in_array( strtolower( $token[1] ), $forbidden_functions, true ) ) {
+				continue;
+			}
+
+			// فراخوانی تابع: بعد از نام، پرانتز باز.
+			$next = $tokens[ $index + 1 ] ?? null;
+			if ( is_array( $next ) && T_WHITESPACE === $next[0] ) {
+				$next = $tokens[ $index + 2 ] ?? null;
+			}
+			if ( '(' === $next ) {
+				$problems[] = $rel . ':' . $token[2] . ' — ' . $token[1] . '()';
+			}
+		}
+	}
+
+	ok( [] === $problems, 'همه‌ی فایل‌ها روی PHP 7.4 پارس می‌شوند', implode( ' | ', array_slice( $problems, 0, 6 ) ) );
+	ok( count( wapm_plugin_php_files() ) > 20, 'فایل‌ها واقعاً اسکن شدند', (string) count( wapm_plugin_php_files() ) );
+} );
+
+test( 'سازگاری: گرد کردن قیمت با switch همان رفتار سه حالت را دارد', function () {
+	// رگرسیون مستقیم خط ۳۲۲: بازنویسی `match` به `switch` نباید رفتار را عوض کند.
+	$up = settings( [ 'mode' => 'amount', 'direction' => 'increase', 'amount' => 1500, 'round_mode' => 'up', 'round_base' => 1000 ] );
+	$engine = new ReflectionMethod( 'WAPM_Price_Engine', 'round_price' );
+	$engine->setAccessible( true );
+
+	// round_price روی خودِ تابع تست می‌شود تا وابسته به مسیر کامل موتور نباشد.
+	eq( 2000.0, $engine->invoke( null, 1234.0, $up ), 'رو به بالا' );
+
+	$down = settings( [ 'mode' => 'amount', 'direction' => 'increase', 'amount' => 1500, 'round_mode' => 'down', 'round_base' => 1000 ] );
+	eq( 1000.0, $engine->invoke( null, 1234.0, $down ), 'رو به پایین' );
+
+	$near = settings( [ 'mode' => 'amount', 'direction' => 'increase', 'amount' => 1500, 'round_mode' => 'nearest', 'round_base' => 1000 ] );
+	eq( 1000.0, $engine->invoke( null, 1234.0, $near ), 'نزدیک‌ترین' );
+	eq( 2000.0, $engine->invoke( null, 1777.0, $near ), 'نزدیک‌ترین (بالا)' );
+
+	$off = settings( [ 'mode' => 'amount', 'direction' => 'increase', 'amount' => 1500, 'round_mode' => 'none', 'round_base' => 1000 ] );
+	eq( 1234.0, $engine->invoke( null, 1234.0, $off ), 'خاموش: بدون تغییر' );
+} );
+
+test( 'سازگاری: فایل بوت‌استرپ قبل از هر require نسخه‌ی PHP را چک می‌کند', function () {
+	$source = (string) file_get_contents( __DIR__ . '/../woocommerce-advanced-price-manager/woocommerce-advanced-price-manager.php' );
+
+	$guard = strpos( $source, 'PHP_VERSION_ID < 80000' );
+	$first = strpos( $source, "require_once WAPM_PATH" );
+
+	ok( false !== $guard, 'نگهبان نسخه هست' );
+	ok( false !== $first && $guard < $first, 'نگهبان قبل از اولین require است' );
+	ok( false !== strpos( $source, 'نسخه‌ی فعلی سرور' ), 'پیام روشن برای کاربر' );
+
+	// خود فایل بوت‌استرپ باید روی ۷.۴ هم پارس شود، وگرنه نگهبان بی‌فایده است.
+	try {
+		token_get_all( $source, TOKEN_PARSE );
+		ok( true, 'بوت‌استرپ پارس می‌شود' );
+	} catch ( Throwable $e ) {
+		ok( false, 'بوت‌استرپ پارس می‌شود', $e->getMessage() );
+	}
+} );
+
+/* -------------------------------------------------------------------------
  * نتیجه
  * ---------------------------------------------------------------------- */
 
