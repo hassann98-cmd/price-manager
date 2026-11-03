@@ -3,7 +3,7 @@
  * Plugin Name:       WooCommerce Advanced Price Manager
  * Plugin URI:        https://jluxe.ir
  * Description:       مدیریت حرفه‌ای تغییرات گروهی قیمت محصولات ووکامرس — درصدی، عددی، قوانین، زمان‌بندی، پیش‌نمایش، تاریخچه و Rollback.
- * Version:           1.2.0
+ * Version:           1.2.1
  * Author:            Hassan
  * Text Domain:       wapm
  * Domain Path:       /languages
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'WAPM_VERSION', '1.2.0' );
+define( 'WAPM_VERSION', '1.2.1' );
 define( 'WAPM_FILE', __FILE__ );
 define( 'WAPM_PATH', plugin_dir_path( __FILE__ ) );
 define( 'WAPM_URL', plugin_dir_url( __FILE__ ) );
@@ -50,6 +50,36 @@ final class WAPM_Plugin {
 	}
 
 	public function init(): void {
+		/*
+		 * نگهبان نسخه‌ی PHP — قبل از هر require.
+		 *
+		 * چرا: هدر افزونه PHP 8.0 می‌خواهد، ولی هاست‌هایی هستند که سایت را روی ۸
+		 * اجرا می‌کنند و ابزارهای مدیریت افزونه/پروفایلینگ را روی 7.4. اگر داخل
+		 * فایل‌ها ساختار ۸-only باشد، آن ابزار خطای syntax می‌گیرد (همان چیزی که
+		 * «پروفایلینگ محدود شده» را ساخت) و اگر خود سایت 7.4 باشد، صفحه سفید
+		 * می‌شود. این نگهبان پیام روشن می‌دهد و جلوی بارگذاری بقیه‌ی فایل‌ها را
+		 * می‌گیرد؛ لازم است خودِ همین فایل روی 7.4 قابل پارس بماند.
+		 */
+		if ( PHP_VERSION_ID < 80000 ) {
+			add_action(
+				'admin_notices',
+				static function (): void {
+					echo '<div class="notice notice-error"><p><strong>' .
+						esc_html__( 'مدیریت پیشرفته قیمت ووکامرس اجرا نشد.', 'wapm' ) .
+						'</strong> ' .
+						sprintf(
+							/* translators: 1: current PHP version, 2: required version */
+							esc_html__( 'این افزونه به PHP %2$s یا بالاتر نیاز دارد و نسخه‌ی فعلی سرور %1$s است. تا ارتقای PHP، هیچ تغییری در قیمت و موجودی انجام نمی‌شود (داده‌ها دست‌نخورده‌اند).', 'wapm' ),
+							PHP_VERSION,
+							'8.0'
+						) .
+						'</p></div>';
+				}
+			);
+
+			return;
+		}
+
 		if ( ! class_exists( 'WooCommerce' ) ) {
 			add_action( 'admin_notices', function () {
 				echo '<div class="notice notice-error"><p>' .
