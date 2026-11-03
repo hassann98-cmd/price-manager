@@ -116,6 +116,10 @@ function wapm_uninstall_site(): void {
 		'wapm_torob_auto_last',
 		// نسخه‌ی کش شمارش شکاف (تازه‌سازی دسته‌ای قیمت رقبا).
 		'wapm_torob_gap_ver',
+		// تشخیص: خطاهای ثبت‌شده‌ی خود افزونه و خودآزمایی محیط.
+		'wapm_last_error',
+		'wapm_last_thrown',
+		'wapm_php_notices',
 		// ترب — وضعیت کلاینت API.
 		'wapm_torob_api_cooldown',
 		'wapm_torob_api_last_call',

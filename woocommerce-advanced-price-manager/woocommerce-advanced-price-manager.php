@@ -3,7 +3,7 @@
  * Plugin Name:       WooCommerce Advanced Price Manager
  * Plugin URI:        https://jluxe.ir
  * Description:       مدیریت حرفه‌ای تغییرات گروهی قیمت محصولات ووکامرس — درصدی، عددی، قوانین، زمان‌بندی، پیش‌نمایش، تاریخچه و Rollback.
- * Version:           1.1.4
+ * Version:           1.2.0
  * Author:            Hassan
  * Text Domain:       wapm
  * Domain Path:       /languages
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'WAPM_VERSION', '1.1.4' );
+define( 'WAPM_VERSION', '1.2.0' );
 define( 'WAPM_FILE', __FILE__ );
 define( 'WAPM_PATH', plugin_dir_path( __FILE__ ) );
 define( 'WAPM_URL', plugin_dir_url( __FILE__ ) );
@@ -74,14 +74,32 @@ final class WAPM_Plugin {
 		require_once WAPM_PATH . 'includes/class-rules.php';
 		require_once WAPM_PATH . 'includes/class-queue.php';
 		require_once WAPM_PATH . 'includes/class-scheduler.php';
+		require_once WAPM_PATH . 'includes/class-diagnostics.php';
 		require_once WAPM_PATH . 'includes/class-ajax.php';
 		require_once WAPM_PATH . 'includes/class-bookmarklet.php';
 		require_once WAPM_PATH . 'includes/class-admin.php';
 
 		WAPM_Logger::maybe_upgrade();
 		WAPM_Stock::maybe_upgrade();
-		// زمان‌بندی: Action Scheduler اگر ووکامرس آن را همراه دارد، وگرنه wp-cron.
-		WAPM_Queue::maybe_migrate();
+		WAPM_Diagnostics::init();
+
+		/*
+		 * زمان‌بندی: Action Scheduler اگر ووکامرس آن را همراه دارد، وگرنه wp-cron.
+		 *
+		 * مهاجرت/بررسی زمان‌بندی فقط جایی اجرا می‌شود که واقعاً لازم است. چرا: این
+		 * تابع `next_run()` را صدا می‌زند و با Action Scheduler فعال، آن یک کوئری
+		 * دیتابیس است — یعنی هر بازدید صفحه‌ی سایت (هر بازدیدکننده، هر بار) یک
+		 * کوئری اضافه می‌گرفت. زمان‌بندی چیزی است که فقط در پیشخوان، در کرون و در
+		 * CLI عوض می‌شود؛ بازدیدکننده‌ی فرانت‌اند هیچ‌وقت نباید بابتش کوئری بدهد.
+		 *
+		 * نتیجه‌ی جانبی لازم: اگر رویداد کرون روی فرانت ساخته نمی‌شود، پس از
+		 * گم‌شدن زمان‌بندی، اولین ورود به پیشخوان آن را برمی‌گرداند (و فعال‌سازی
+		 * افزونه هم از ابتدا می‌سازد).
+		 */
+		if ( self::needs_schedule_maintenance() ) {
+			WAPM_Queue::maybe_migrate();
+		}
+
 		WAPM_Torob::hooks();
 		new WAPM_Scheduler();
 		new WAPM_Ajax();
@@ -89,6 +107,28 @@ final class WAPM_Plugin {
 		if ( is_admin() ) {
 			new WAPM_Admin();
 		}
+	}
+
+	/**
+	 * آیا این درخواست باید زمان‌بندی/مهاجرت را بررسی کند؟
+	 *
+	 * پیشخوان (شامل admin-ajax)، کرون (wp-cron و Action Scheduler) و WP-CLI.
+	 * فرانت‌اند عمداً نه — دلیلش در `init()` توضیح داده شده.
+	 */
+	private static function needs_schedule_maintenance(): bool {
+		if ( is_admin() ) {
+			return true;
+		}
+
+		$doing_cron = function_exists( 'wp_doing_cron' )
+			? wp_doing_cron()
+			: ( defined( 'DOING_CRON' ) && DOING_CRON );
+
+		if ( $doing_cron ) {
+			return true;
+		}
+
+		return defined( 'WP_CLI' ) && WP_CLI;
 	}
 
 	public function activate(): void {

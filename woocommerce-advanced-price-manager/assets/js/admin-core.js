@@ -497,6 +497,35 @@ window.WAPMUI = window.WAPMUI || {};
 		step(1, 0);
 	}
 
+	/* ---------------- کارت خودآزمایی و خطاها ---------------- */
+
+	/**
+	 * پاک‌کردن گزارش خطاها.
+	 *
+	 * دو دکمه وجود دارد (بالای صفحه در اعلان، و ته کارت خودآزمایی)؛ هر دو یک
+	 * اکشن را صدا می‌زنند. بعد از موفقیت، خودِ اعلان/کارت از DOM برداشته می‌شود
+	 * تا کاربر لازم نباشد صفحه را رفرش کند.
+	 */
+	$(document).on('click', '#wapm-diag-clear, #wapm-diag-clear-bottom', function () {
+		var $btn = $(this).prop('disabled', true);
+
+		ajax('diag_clear').done(function (res) {
+			if (!res || !res.success) {
+				wapmToast(WAPM.i18n.error, 'error');
+				$btn.prop('disabled', false);
+				return;
+			}
+
+			$('#wapm-error-notice').slideUp(120, function () { $(this).remove(); });
+			$('#wapm-diagnostics-card .wapm-diag-code').slideUp(120, function () { $(this).remove(); });
+			wapmToast(__('گزارش‌ها پاک شد.'), 'success');
+		}).fail(function () {
+			wapmToast(WAPM.i18n.error, 'error');
+		}).always(function () {
+			$btn.prop('disabled', false);
+		});
+	});
+
 	/* ---------------- صادرات برای ماژول‌های بعدی ---------------- */
 
 	UI.state          = state;
