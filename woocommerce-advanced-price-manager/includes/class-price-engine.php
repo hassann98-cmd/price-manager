@@ -313,16 +313,30 @@ class WAPM_Price_Engine {
 
 	/**
 	 * گرد کردن قیمت بر اساس تنظیمات مدیر (مثلاً مضرب 1000).
-	 */	private static function round_price( float $price, array $s ): float {
+	 *
+	 * چرا `switch` و نه `match`: `match` یک ساختار PHP 8.0 است و همین خط (۳۲۲)
+	 * روی هاست‌هایی که ابزار مدیریت افزونه‌ها/پروفایلینگ را با PHP 7.4 اجرا
+	 * می‌کنند، خطای «unexpected '=>'» می‌داد و کل فایل پارس نمی‌شد — نتیجه‌اش
+	 * این بود که پروفایلینگ بک‌اند و مدیریت افزونه‌ها این افزونه را نمی‌خواندند،
+	 * در حالی که خود سایت روی PHP 8 سالم بود. `switch` همان رفتار را دارد و روی
+	 * ۷.۴ هم پارس می‌شود؛ برای همین تا وقتی هدر افزونه PHP 8 اعلام می‌کند،
+	 * ساختار ۸-only در کد نوشته نمی‌شود (تست `tests/run.php` هم نگهبانی می‌کند).
+	 */
+	private static function round_price( float $price, array $s ): float {
 		if ( 'none' === $s['round_mode'] || $s['round_base'] <= 0 ) {
 			return $price;
 		}
+
 		$base = $s['round_base'];
-		return match ( $s['round_mode'] ) {
-			'up'      => ceil( $price / $base ) * $base,
-			'down'    => floor( $price / $base ) * $base,
-			default   => round( $price / $base ) * $base,
-		};
+
+		switch ( $s['round_mode'] ) {
+			case 'up':
+				return ceil( $price / $base ) * $base;
+			case 'down':
+				return floor( $price / $base ) * $base;
+			default:
+				return round( $price / $base ) * $base;
+		}
 	}
 
 	/**
