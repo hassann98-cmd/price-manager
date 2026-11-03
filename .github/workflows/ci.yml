@@ -40,6 +40,37 @@ jobs:
         if: matrix.php == '8.3'
         run: php tests/run.php
 
+  php74:
+    # چرا جدا از ماتریس بالا: `php -l` روی 8.0 ساختارهای ۸-only (مثل `match`)
+    # را قبول می‌کند، پس ناسازگاری با ۷.۴ هرگز در CI دیده نمی‌شد — و همان
+    # چیزی بود که ابزار پروفایلینگ هاست «خطای syntax در class-price-engine.php
+    # خط ۳۲۲» گزارش کرد. این جاب فقط پارس‌شدن را چک می‌کند، نه اجرا.
+    name: PHP 7.4 (فقط پارس)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: نصب PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '7.4'
+          extensions: mbstring, json
+          coverage: none
+
+      - name: پارس‌شدن همه‌ی فایل‌های PHP با ۷.۴
+        run: |
+          set -euo pipefail
+          failed=0
+          while IFS= read -r -d '' file; do
+            if ! php -l "$file" > /dev/null 2>&1; then
+              echo "::error file=$file::PHP 7.4 parse error"
+              php -l "$file" || true
+              failed=1
+            fi
+          done < <(find woocommerce-advanced-price-manager -name '*.php' -print0)
+          exit "$failed"
+
   js:
     name: JavaScript
     runs-on: ubuntu-latest
