@@ -313,6 +313,10 @@ require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-pr
 require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-bookmarklet.php';
 require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-rules.php';
 
+// مسیر افزونه برای WAPM_Diagnostics::is_plugin_file لازم است.
+define( 'WAPM_PATH', __DIR__ . '/../woocommerce-advanced-price-manager/' );
+require_once __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-diagnostics.php';
+
 /* -------------------------------------------------------------------------
  * چارچوب تست کوچک
  * ---------------------------------------------------------------------- */
@@ -2675,6 +2679,128 @@ test( 'ترب: خروجی راهنما به تب و به پاسخ Ajax وصل ا
 	ok( false !== strpos( $admin, 'id="wapm-torob-next-step"' ), 'کارت «قدم بعدی» رندر می‌شود' );
 	ok( false !== strpos( $view, '$this->render_torob_guide()' ), 'تب راهنما را صدا می‌زند' );
 	ok( (bool) preg_match( "/'guide'\\s*=>\\s*WAPM_Torob::steps\\(\\)/", $ajax ), 'راهنما در پاسخ torob_stats هست' );
+} );
+
+/* -------------------------------------------------------------------------
+ * تشخیص: ثبت خطا و خودآزمایی محیط
+ * ---------------------------------------------------------------------- */
+
+test( 'تشخیص: فقط خطای داخل پوشه‌ی افزونه به گردن افزونه نوشته می‌شود', function () {
+	$root = (string) WAPM_PATH;
+
+	ok( WAPM_Diagnostics::is_plugin_file( $root . 'includes/class-ajax.php' ), 'فایل افزونه' );
+	ok( ! WAPM_Diagnostics::is_plugin_file( '/var/www/wp-includes/plugin.php' ), 'هسته‌ی وردپرس' );
+	ok( ! WAPM_Diagnostics::is_plugin_file( '/var/www/wp-content/plugins/other-addon/x.php' ), 'افزونه‌ی دیگر' );
+	ok( ! WAPM_Diagnostics::is_plugin_file( '' ), 'مسیر خالی' );
+
+	// مهم: پوشه‌ی خواهر با پیشوند مشابه نباید تطبیق بخورد.
+	ok( ! WAPM_Diagnostics::is_plugin_file( rtrim( $root, '/' ) . '-pro/includes/x.php' ), 'پوشه‌ی هم‌نام ولی متفاوت' );
+	eq( 'dir/file.php', WAPM_Diagnostics::short_file( '/very/long/path/dir/file.php' ), 'مسیر کوتاه' );
+} );
+
+test( 'تشخیص: برچسب نوع خطا برای انواع رایج', function () {
+	ok( WAPM_Diagnostics::is_fatal_type( E_ERROR ), 'E_ERROR کشنده است' );
+	ok( WAPM_Diagnostics::is_fatal_type( E_PARSE ), 'E_PARSE کشنده است' );
+	ok( ! WAPM_Diagnostics::is_fatal_type( E_NOTICE ), 'E_NOTICE کشنده نیست' );
+	ok( WAPM_Diagnostics::is_fatal_type( E_USER_ERROR ), 'E_USER_ERROR کشنده است' );
+
+	ok( 'خطای کشنده' === WAPM_Diagnostics::type_label( E_ERROR ), 'برچسب E_ERROR' );
+	ok( 'منسوخ‌شده' === WAPM_Diagnostics::type_label( E_DEPRECATED ), 'برچسب deprecated' );
+	eq( 'E12345', WAPM_Diagnostics::type_label( 12345 ), 'نوع ناشناخته' );
+} );
+
+test( 'تشخیص: متن آماده‌ی ارسال شامل پیام، فایل و خط است', function () {
+	$text = WAPM_Diagnostics::format_record( [
+		'type'    => E_ERROR,
+		'message' => 'Call to undefined function foo()',
+		'file'    => '/var/www/wp-content/plugins/wapm/includes/class-x.php',
+		'line'    => 42,
+		'uri'     => '/wp-admin/admin.php?page=wapm',
+		'at'      => '2026-05-20 10:00:00',
+		'version' => '1.2.0',
+		'php'     => '8.2',
+		'wp'      => '6.6',
+	] );
+
+	ok( false !== strpos( $text, 'undefined function foo' ), 'پیام هست' );
+	ok( false !== strpos( $text, 'class-x.php:42' ), 'فایل و خط هست' );
+	ok( false !== strpos( $text, 'page=wapm' ), 'آدرس درخواست هست' );
+	ok( false !== strpos( $text, 'php: 8.2' ), 'نسخه‌ی PHP هست' );
+} );
+
+test( 'تشخیص: استثنای هندلر Ajax ثبت، تکراری‌ها ادغام و سقف رعایت می‌شود', function () {
+	stub_reset();
+	WAPM_Diagnostics::clear();
+
+	// همان خطا، همان خط کد (کاربر دوبار روی یک دکمه زده است) باید یک رکورد باشد.
+	$boom = static function (): Throwable {
+		try {
+			throw new TypeError( 'boom' );
+		} catch ( Throwable $e ) {
+			return $e;
+		}
+	};
+	WAPM_Diagnostics::record_throwable( $boom(), 'torob_stats' );
+	WAPM_Diagnostics::record_throwable( $boom(), 'torob_stats' );
+
+	$list = WAPM_Diagnostics::thrown();
+	eq( 1, count( $list ), 'خطای تکراری دوباره ذخیره نشد' );
+	eq( 'torob_stats', $list[0]['action'], 'نام اکشن ذخیره شد' );
+	ok( false !== strpos( (string) $list[0]['message'], 'TypeError' ), 'نوع استثنا در متن' );
+	ok( WAPM_Diagnostics::has_issues(), 'گزارش هست' );
+
+	// سقف: بیشتر از MAX_THROWN نگه داشته نمی‌شود.
+	for ( $i = 0; $i < WAPM_Diagnostics::MAX_THROWN + 3; $i++ ) {
+		WAPM_Diagnostics::record_throwable( new RuntimeException( 'boom-' . $i . '-' . __LINE__ ), 'x' );
+	}
+	eq( WAPM_Diagnostics::MAX_THROWN, count( WAPM_Diagnostics::thrown() ), 'سقف رعایت شد' );
+
+	WAPM_Diagnostics::clear();
+	ok( ! WAPM_Diagnostics::has_issues(), 'بعد از پاک‌کردن چیزی نمی‌ماند' );
+} );
+
+test( 'تشخیص: خودآزمایی محیط شکل درست دارد و شناسه‌های تکراری ندارد', function () {
+	stub_reset();
+	WAPM_Diagnostics::clear();
+
+	$checks = WAPM_Diagnostics::checks();
+
+	ok( count( $checks ) >= 8, 'بررسی‌های اصلی هست', (string) count( $checks ) );
+
+	$keys = [];
+	foreach ( $checks as $check ) {
+		foreach ( [ 'key', 'label', 'status', 'detail' ] as $field ) {
+			ok( array_key_exists( $field, $check ), 'فیلد ' . $field . ' در ' . ( $check['key'] ?? '?' ) );
+		}
+		ok( in_array( $check['status'], [ 'ok', 'warn', 'fail' ], true ), 'وضعیت معتبر: ' . $check['key'] );
+		ok( ! in_array( $check['key'], $keys, true ), 'شناسه‌ی یکتا: ' . $check['key'] );
+		$keys[] = $check['key'];
+	}
+
+	$by_key = array_column( $checks, null, 'key' );
+	ok( isset( $by_key['php'], $by_key['mbstring'], $by_key['cron'], $by_key['errors'] ), 'بررسی‌های کلیدی' );
+	eq( 'ok', $by_key['php']['status'], 'PHP این محیط ۸ است' );
+	eq( 'ok', $by_key['errors']['status'], 'بدون خطا' );
+
+	$summary = WAPM_Diagnostics::summary();
+	eq( count( $checks ), array_sum( $summary ), 'جمع‌بندی همه‌ی بررسی‌ها را می‌شمارد' );
+} );
+
+test( 'تشخیص: بوت‌استرپ زمان‌بندی را در فرانت‌اند بررسی نمی‌کند و Ajax محافظ دارد', function () {
+	$bootstrap = (string) file_get_contents( __DIR__ . '/../woocommerce-advanced-price-manager/woocommerce-advanced-price-manager.php' );
+	$ajax      = (string) file_get_contents( __DIR__ . '/../woocommerce-advanced-price-manager/includes/class-ajax.php' );
+
+	// رگرسیون: `maybe_migrate()` در هر درخواست اجرا می‌شد و با Action Scheduler
+	// یک کوئری دیتابیس به هر بازدید فرانت‌اند اضافه می‌کرد.
+	ok( false !== strpos( $bootstrap, 'self::needs_schedule_maintenance()' ), 'شرط نگه‌داری زمان‌بندی' );
+	ok( false !== strpos( $bootstrap, "if ( self::needs_schedule_maintenance() ) {\n\t\t\tWAPM_Queue::maybe_migrate();" ), 'مهاجرت داخل شرط است' );
+	ok( false !== strpos( $bootstrap, 'is_admin()' ), 'پیشخوان' );
+	ok( false !== strpos( $bootstrap, 'wp_doing_cron' ), 'کرون' );
+	ok( false !== strpos( $bootstrap, 'WAPM_Diagnostics::init()' ), 'ثبت گیرنده‌ی خطا' );
+
+	ok( false !== strpos( $ajax, '$this->wrap( $action )' ), 'همه‌ی هندلرها محافظ دارند' );
+	ok( false !== strpos( $ajax, 'catch ( Throwable $e )' ), 'Throwable گرفته می‌شود' );
+	ok( false !== strpos( $ajax, "'diag_clear'," ), 'اکشن پاک‌کردن گزارش' );
 } );
 
 /* -------------------------------------------------------------------------

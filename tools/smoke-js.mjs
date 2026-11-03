@@ -213,6 +213,12 @@ const html = `<!doctype html><html lang="fa" dir="rtl"><body>
   <div id="wapm-torob-api-state"></div>
   <div id="wapm-torob-status-body"></div>
   <ul id="wapm-torob-steps"></ul>
+</div>
+<div class="notice notice-error" id="wapm-error-notice"><button type="button" id="wapm-diag-clear">پاک کردن</button></div>
+<div class="wapm-card" id="wapm-diagnostics-card">
+  <pre class="wapm-diag-code">TypeError: boom</pre>
+  <button type="button" id="wapm-diag-clear-bottom">پاک کردن</button>
+<div>
   <div id="wapm-torob-next-step"></div>
   <div class="wapm-card" id="wapm-torob-card-catalog"></div>
   <button type="button" class="button wapm-torob-save" id="wapm-torob-save-settings">ذخیره</button>
@@ -353,6 +359,8 @@ $.post = function (url, data) {
 			api: { blocked: false, used: 2, budget: 60, min_interval: 3 },
 			stats: { matched: 2, unmatched: 0, gap: { missing: 0, stale: 0 }, auto: { enabled: true, limit: 20 } },
 		};
+	} else if (action === 'diag_clear') {
+		payload = { cleared: true };
 	} else if (action === 'get_terms') {
 		payload = [{ id: 1, text: 'برند الف' }, { id: 2, text: 'برند ب' }];
 	} else if (action === 'count_targets') {
@@ -591,6 +599,17 @@ try {
 	ok(window.__wapmCalls.some((c) => c.action === 'torob_save_settings'), 'دکمه‌ی ذخیره با کلاس، تنظیمات را می‌فرستد');
 } catch (error) {
 	ok(false, 'سناریوی راهنما بدون خطا اجرا شد', error.message);
+}
+
+console.log('— خودآزمایی و خطاها');
+try {
+	window.__wapmCalls.length = 0;
+	$('#wapm-diag-clear').trigger('click');
+	await new Promise((r) => setTimeout(r, 30));
+
+	ok(window.__wapmCalls.some((c) => c.action === 'diag_clear'), 'درخواست پاک‌کردن گزارش ارسال شد');
+} catch (error) {
+	ok(false, 'پاک‌کردن گزارش بدون خطا اجرا شد', error.message);
 }
 
 if (errors.length) {
