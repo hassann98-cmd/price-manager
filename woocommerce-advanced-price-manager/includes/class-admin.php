@@ -11,9 +11,19 @@ class WAPM_Admin {
 
 	const SLUG = 'wapm';
 
+	/** حداکثر رکورد خطایی که در اعلان/کارت نمایش داده می‌شود. */
+	const NOTICE_MAX_RECORDS = 3;
+
+	/** کش ترم‌ها بین enqueue و render_page — دو کوئری یکسان در یک درخواست لازم نیست. */
+	private static ?array $terms_cache = null;
+
 	public function __construct() {
 		add_action( 'admin_menu', [ $this, 'register_menu' ] );
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue' ] );
+
+		// متن خطای ضبط‌شده‌ی افزونه را همین‌جا نشان می‌دهد (نه در لاگ هاست که
+		// کاربر به آن دسترسی ندارد).
+		add_action( 'admin_notices', [ $this, 'render_error_notice' ] );
 
 		// چک‌باکس «خارج از تغییر قیمت گروهی» در برگه General محصول.
 		add_action( 'woocommerce_product_options_pricing', [ $this, 'render_exclude_field' ] );
@@ -127,8 +137,8 @@ class WAPM_Admin {
 		}
 
 		$brand_taxonomy = class_exists( 'WAPM_List' ) ? WAPM_List::get_brand_taxonomy() : '';
-		$category_terms = get_terms( [ 'taxonomy' => 'product_cat', 'hide_empty' => false ] );
-		$brand_terms    = $brand_taxonomy ? get_terms( [ 'taxonomy' => $brand_taxonomy, 'hide_empty' => false ] ) : [];
+		$category_terms = self::terms( 'product_cat' );
+		$brand_terms    = $brand_taxonomy ? self::terms( $brand_taxonomy ) : [];
 
 		wp_localize_script( 'wapm-admin-core', 'WAPM', [
 			'ajax_url'       => admin_url( 'admin-ajax.php' ),
@@ -138,14 +148,8 @@ class WAPM_Admin {
 			'nonce'          => wp_create_nonce( WAPM_Ajax::NONCE ),
 			'currency'       => get_woocommerce_currency_symbol(),
 			'brand_taxonomy' => $brand_taxonomy,
-			'category_terms' => array_map(
-				fn( $t ) => [ 'id' => $t->term_id, 'text' => $t->name ],
-				is_wp_error( $category_terms ) ? [] : $category_terms
-			),
-			'brand_terms'    => array_map(
-				fn( $t ) => [ 'id' => $t->term_id, 'text' => $t->name ],
-				is_wp_error( $brand_terms ) ? [] : $brand_terms
-			),
+			'category_terms' => self::terms_payload( $category_terms ),
+			'brand_terms'    => self::terms_payload( $brand_terms ),
 			'i18n'       => [
 				'confirm_apply'    => __( 'آیا از اعمال تغییرات مطمئن هستید؟ این عملیات روی %d محصول اجرا می‌شود.', 'wapm' ),
 				'confirm_warn'     => __( 'در پیش‌نمایش %d قیمت پرخطر (افت بیش از ۹۰٪) دیده شد. با آگاهی از این مورد اعمال شود؟', 'wapm' ),
@@ -176,10 +180,52 @@ class WAPM_Admin {
 		] );
 	}
 
+	/**
+	 * ترم‌های یک تاکسونومی — همیشه آرایه، هرگز WP_Error.
+	 *
+	 * چرا: `get_terms` در خطای دیتابیس/تاکسونومی نامعتبر شیء `WP_Error` برمی‌گرداند
+	 * و Viewها روی نتیجه `foreach` می‌زنند. با WP_Error، حلقه روی پراپرتی‌های
+	 * عمومی آن (`errors`, `error_data`) می‌چرخد و `$cat->term_id` روی یک آرایه
+	 * خوانده می‌شود ⇒ هشدار PHP «Attempt to read property on array» روی هر خط
+	 * فرم. ابزارهای تحلیلی هاست همین را «خطای افزونه» گزارش می‌کنند.
+	 *
+	 * @return array<int, WP_Term>
+	 */
+	public static function terms( string $taxonomy ): array {
+		if ( null === self::$terms_cache ) {
+			self::$terms_cache = [];
+		}
+
+		if ( array_key_exists( $taxonomy, self::$terms_cache ) ) {
+			return self::$terms_cache[ $taxonomy ];
+		}
+
+		$terms = taxonomy_exists( $taxonomy )
+			? get_terms( [ 'taxonomy' => $taxonomy, 'hide_empty' => false ] )
+			: [];
+
+		self::$terms_cache[ $taxonomy ] = is_wp_error( $terms ) || ! is_array( $terms ) ? [] : array_values( $terms );
+
+		return self::$terms_cache[ $taxonomy ];
+	}
+
+	/**
+	 * آماده‌سازی ترم‌ها برای JS (`{id, text}`).
+	 *
+	 * @param array<int, WP_Term> $terms
+	 * @return array<int, array{id:int,text:string}>
+	 */
+	private static function terms_payload( array $terms ): array {
+		return array_map(
+			static fn( $t ) => [ 'id' => (int) $t->term_id, 'text' => (string) $t->name ],
+			$terms
+		);
+	}
+
 	public function render_page(): void {
 		$brand_taxes     = WAPM_Product_Handler::detect_brand_taxonomies();
 		$attributes      = WAPM_Product_Handler::get_attribute_taxonomies();
-		$categories      = get_terms( [ 'taxonomy' => 'product_cat', 'hide_empty' => false ] );
+		$categories      = self::terms( 'product_cat' );
 		$rules           = WAPM_Rules::all();
 		$schedules       = WAPM_Scheduler::all();
 		$list_brand_tax  = $brand_taxes ? $brand_taxes[0] : '';
@@ -196,7 +242,10 @@ class WAPM_Admin {
 				</div>
 				<div class="wapm-hero__chips">
 					<?php
-					$wapm_product_count = (int) wp_count_posts( 'product' )->publish;
+					// `wp_count_posts` برای نوع ثبت‌نشده هم شیء برمی‌گرداند، ولی خواندن
+					// پراپرتی غایب روی آن هشدار PHP می‌دهد؛ مقدار پیش‌فرض صفر امن است.
+					$wapm_count_obj     = wp_count_posts( 'product' );
+					$wapm_product_count = is_object( $wapm_count_obj ) ? (int) ( $wapm_count_obj->publish ?? 0 ) : 0;
 					$wapm_shop_id       = class_exists( 'WAPM_Torob' ) ? WAPM_Torob::get_shop_id() : '';
 					$wapm_shop_name     = class_exists( 'WAPM_Torob' ) ? WAPM_Torob::get_shop_name() : '';
 					?>
@@ -242,6 +291,8 @@ class WAPM_Admin {
 			<?php require WAPM_PATH . 'includes/admin/views/tab-csv.php'; ?>
 
 			<?php require WAPM_PATH . 'includes/admin/views/tab-torob.php'; ?>
+
+			<?php $this->render_diagnostics_card(); ?>
 
 			<script type="application/json" id="wapm-initial-data"><?php
 				echo wp_json_encode( [
@@ -544,6 +595,86 @@ class WAPM_Admin {
 		echo '<a href="' . esc_url( (string) $step['anchor'] ) . '" class="button button-primary wapm-goto" data-goto="' . esc_attr( (string) $step['anchor'] ) . '">' .
 			esc_html( (string) $step['cta'] ) . '</a>';
 		echo '</div>';
+	}
+
+	/**
+	 * آیا کاربر در صفحه‌ی خود افزونه است؟ (اعلان‌ها فقط این‌جا نشان داده می‌شوند
+	 * تا در بقیه‌ی پیشخوان مزاحم نشوند.)
+	 */
+	private function is_own_screen(): bool {
+		if ( ! function_exists( 'get_current_screen' ) ) {
+			return false;
+		}
+
+		$screen = get_current_screen();
+
+		return $screen && false !== strpos( (string) $screen->id, self::SLUG );
+	}
+
+	/**
+	 * اعلان متن دقیق خطای ضبط‌شده.
+	 *
+	 * این همان چیزی است که گزارش‌های هاست «خطای مهم افزونه» می‌نامند ولی متنش را
+	 * نمی‌دهند. حالا کاربر بدون دسترسی به لاگ هاست، پیام + فایل + خط + آدرس
+	 * درخواست را می‌بیند و می‌تواند کپی کند.
+	 */
+	public function render_error_notice(): void {
+		if ( ! class_exists( 'WAPM_Diagnostics' ) || ! $this->is_own_screen() ) {
+			return;
+		}
+
+		$fatal   = WAPM_Diagnostics::last_error();
+		$thrown  = WAPM_Diagnostics::thrown();
+		$notices = WAPM_Diagnostics::notices();
+
+		if ( [] === $fatal && [] === $thrown && [] === $notices ) {
+			return;
+		}
+
+		echo '<div class="notice notice-error wapm-error-notice" id="wapm-error-notice">';
+		echo '<p><strong>' . esc_html__( 'افزونه‌ی مدیریت قیمت خطایی ثبت کرده است.', 'wapm' ) . '</strong> ' .
+			esc_html__( 'متن دقیق پایین آمده؛ برای پیگیری همین را کپی کنید.', 'wapm' ) . '</p>';
+
+		$records = [];
+		if ( [] !== $fatal ) {
+			$records[] = $fatal;
+		}
+		$records = array_merge( $records, $thrown );
+
+		foreach ( array_slice( $records, 0, self::NOTICE_MAX_RECORDS ) as $record ) {
+			echo '<p><code style="white-space:pre-wrap;display:block;direction:ltr;text-align:left">' .
+				esc_html( WAPM_Diagnostics::format_record( (array) $record ) ) . '</code></p>';
+		}
+
+		if ( [] !== $notices ) {
+			echo '<p>' . esc_html__( 'اعلان‌های PHP (حالت تشخیص):', 'wapm' ) . '</p>';
+			echo '<ul style="list-style:disc;margin-inline-start:22px">';
+			foreach ( array_slice( $notices, 0, self::NOTICE_MAX_RECORDS ) as $row ) {
+				echo '<li><code style="direction:ltr;display:inline-block">' .
+					esc_html( (string) ( $row['message'] ?? '' ) ) . ' — ' .
+					esc_html( WAPM_Diagnostics::short_file( (string) ( $row['file'] ?? '' ) ) . ':' . (string) ( $row['line'] ?? '' ) ) .
+					'</code></li>';
+			}
+			echo '</ul>';
+		}
+
+		echo '<p><button type="button" class="button" id="wapm-diag-clear">' .
+			esc_html__( 'پاک کردن این گزارش‌ها', 'wapm' ) . '</button></p>';
+		echo '</div>';
+	}
+
+	/**
+	 * کارت «خودآزمایی» — وضعیت محیط و خطاهای ضبط‌شده.
+	 *
+	 * مارک‌آپ در `includes/admin/views/diagnostics.php` است تا مثل بقیه‌ی تب‌ها،
+	 * این فایل فقط منطق داشته باشد.
+	 */
+	private function render_diagnostics_card(): void {
+		if ( ! class_exists( 'WAPM_Diagnostics' ) ) {
+			return;
+		}
+
+		require WAPM_PATH . 'includes/admin/views/diagnostics.php';
 	}
 
 	/**

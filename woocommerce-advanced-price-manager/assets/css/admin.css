@@ -633,6 +633,113 @@
 }
 
 /* ==========================================================================
+   خودآزمایی و خطاها (کارت تشخیص، ته صفحه)
+   ========================================================================== */
+
+.wapm-diagnostics__badge {
+	display: inline-flex;
+	align-items: center;
+	margin-inline-start: 10px;
+	padding: 4px 11px;
+	border-radius: 999px;
+	border: 1px solid transparent;
+	font-size: 11px;
+	font-weight: 900;
+	vertical-align: middle;
+}
+
+.wapm-diagnostics__badge.is-ok   { background: var(--wapm-ok-50);   border-color: #abefc6; color: var(--wapm-ok-700); }
+.wapm-diagnostics__badge.is-warn { background: var(--wapm-warn-50); border-color: #fedf89; color: var(--wapm-warn-600); }
+.wapm-diagnostics__badge.is-fail { background: var(--wapm-danger-50); border-color: #fecdca; color: var(--wapm-danger-600); }
+
+.wapm-checks {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+	gap: 8px 18px;
+	margin: 14px 0 6px;
+	padding: 0;
+	list-style: none;
+}
+
+.wapm-check {
+	display: grid;
+	grid-template-columns: 10px auto;
+	grid-template-areas: 'dot label' '. detail';
+	gap: 2px 8px;
+	align-items: baseline;
+	padding: 8px 10px;
+	border: 1px solid var(--wapm-line-soft);
+	border-radius: var(--wapm-radius-sm);
+	background: var(--wapm-surface);
+}
+
+.wapm-check__dot {
+	grid-area: dot;
+	width: 8px;
+	height: 8px;
+	border-radius: 999px;
+	background: var(--wapm-ok-600);
+	align-self: center;
+}
+
+.wapm-check__label {
+	grid-area: label;
+	font-size: 12px;
+	font-weight: 800;
+	color: var(--wapm-ink-800);
+}
+
+.wapm-check__detail {
+	grid-area: detail;
+	font-size: 11px;
+	line-height: 1.7;
+	color: var(--wapm-ink-500);
+}
+
+.wapm-check.is-warn .wapm-check__dot { background: var(--wapm-warn-600); }
+.wapm-check.is-warn { border-color: #fedf89; background: var(--wapm-warn-50); }
+
+.wapm-check.is-fail .wapm-check__dot { background: var(--wapm-danger-600); }
+.wapm-check.is-fail { border-color: #fecdca; background: var(--wapm-danger-50); }
+.wapm-check.is-fail .wapm-check__label { color: var(--wapm-danger-600); }
+
+.wapm-diag-details {
+	margin-top: 14px;
+	border-top: 1px dashed var(--wapm-line);
+	padding-top: 12px;
+}
+
+.wapm-diag-details summary {
+	cursor: pointer;
+	font-weight: 800;
+	font-size: 12.5px;
+	color: var(--wapm-ink-800);
+}
+
+.wapm-diag-code {
+	margin: 8px 0;
+	padding: 10px 12px;
+	background: #0f172a;
+	color: #e2e8f0;
+	border-radius: var(--wapm-radius-sm);
+	font-size: 11px;
+	line-height: 1.9;
+	white-space: pre-wrap;
+	word-break: break-word;
+	direction: ltr;
+	text-align: left;
+	overflow: auto;
+	max-height: 260px;
+}
+
+.wapm-error-notice code {
+	background: #fff;
+	border: 1px solid #fecdca;
+	border-radius: var(--wapm-radius-sm);
+	padding: 8px 10px;
+}
+
+/* ==========================================================================
    تب ترب: راهنمای ترتیب کار (استپر پنج‌قدمی)
    ========================================================================== */
 

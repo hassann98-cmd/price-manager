@@ -68,9 +68,10 @@ class WAPM_Ajax {
 			'save_schedule',
 			'delete_schedule',
 			'import_csv',
+			'diag_clear',
 		];
 		foreach ( $actions as $action ) {
-			add_action( "wp_ajax_wapm_{$action}", [ $this, $action ] );
+			add_action( "wp_ajax_wapm_{$action}", $this->wrap( $action ) );
 		}
 		add_action( 'admin_post_wapm_export_csv', [ $this, 'export_csv' ] );
 		add_action( 'admin_post_wapm_export_stock_csv', [ $this, 'export_stock_csv' ] );
@@ -89,6 +90,53 @@ class WAPM_Ajax {
 		// فهرست «محصولات بدون قیمت رقیب» برای بوکمارکلت (اجرای هدفمند، نه کل کاتالوگ).
 		add_action( 'wp_ajax_wapm_torob_missing_list', [ $this, 'torob_missing_list' ] );
 		add_action( 'wp_ajax_nopriv_wapm_torob_missing_list', [ $this, 'torob_missing_list' ] );
+	}
+
+	/**
+	 * هندلر را در یک نوار محافظ می‌پیچد: هر Throwable به پیام JSON تبدیل می‌شود.
+	 *
+	 * چرا: بدون این، یک `TypeError` یا خطای WooCommerce در یکی از ~۵۰ هندلر
+	 * باعث پاسخ ۵۰۰ با HTML می‌شد؛ جاوااسکریپت فقط «خطایی رخ داد» می‌گفت و متن
+	 * واقعی هیچ‌جا دیده نمی‌شد (لاگ هاست هم در دسترس کاربر نیست). حالا متن دقیق
+	 * در پیشخوان افزونه ثبت و نمایش داده می‌شود.
+	 */
+	private function wrap( string $action ): callable {
+		return function () use ( $action ): void {
+			try {
+				$this->{$action}();
+			} catch ( Throwable $e ) {
+				if ( class_exists( 'WAPM_Diagnostics' ) ) {
+					WAPM_Diagnostics::record_throwable( $e, $action );
+				}
+
+				if ( ! headers_sent() ) {
+					wp_send_json_error(
+						[
+							'message' => sprintf(
+								/* translators: %s: error action name */
+								__( 'خطای غیرمنتظره در «%s». متن دقیق در بخش «خودآزمایی» پایین همین صفحه ثبت شد.', 'wapm' ),
+								$action
+							),
+							'code'    => 'wapm_exception',
+						],
+						500
+					);
+				}
+			}
+		};
+	}
+
+	/** پاک‌کردن خطاهای ثبت‌شده (کارت خودآزمایی). */
+	public function diag_clear(): void {
+		$this->guard();
+
+		if ( ! class_exists( 'WAPM_Diagnostics' ) ) {
+			wp_send_json_error();
+		}
+
+		WAPM_Diagnostics::clear();
+
+		wp_send_json_success( [ 'cleared' => true ] );
 	}
 
 	/**
